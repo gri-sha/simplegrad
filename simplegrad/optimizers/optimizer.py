@@ -1,2 +1,3 @@
 class Optimizer:
-    pass
+    def __intit__(self):
+        pass

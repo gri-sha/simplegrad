@@ -2,6 +2,7 @@ import numpy as np
 import graphviz
 from simplegrad.dtypes import as_array
 
+
 class Tensor:
     def __init__(
         self, values=None, comp_grad=True, label=None, dtype=None, column=False
@@ -14,7 +15,6 @@ class Tensor:
             self.values = (
                 self.values.reshape(-1, 1) if column else self.values.reshape(1, -1)
             )
-
         self.shape = self.values.shape
         self.label = label
         self.prev = set()
@@ -22,14 +22,6 @@ class Tensor:
         self.comp_grad = comp_grad
         self.grad = None
         self.backward_step = lambda: None
-
-    @staticmethod
-    def ones(shape, comp_grad=True, label=None):
-        return Tensor(np.ones(shape), comp_grad, label)
-
-    @staticmethod
-    def zeros(shape, comp_grad=True, label=None):
-        return Tensor(np.zeros(shape), comp_grad, label)
 
     def __eq__(self, other):
         return id(self) == id(other)
@@ -47,7 +39,10 @@ class Tensor:
         return self.values.__iter__()
 
     def __str__(self):
-        return f"Tensor '{self.label}', shape: {self.shape}:\nvalues:\n{self.values}\ngrad:\n{self.grad}"
+        grad_info = (
+            f"\ngrad:\n{self.grad}" if self.comp_grad else "\ngrad: (comp_grad=False)"
+        )
+        return f"Tensor '{self.label}', shape: {self.shape}:\nvalues:\n{self.values}{grad_info}"
 
     def flatten(self):
         return self.values.flatten()
@@ -172,7 +167,46 @@ class Tensor:
 
             return out
         else:
-            raise ValueError("Only 'float' or 'int' exponents are supported")
+            raise ValueError(
+                f"Only 'float' or 'int' exponents are supported, got {type(other)}"
+            )
+
+    def __matmul__(self, other):
+        if isinstance(other, Tensor):
+            out = Tensor(self.values @ other.values)
+            out.prev = {self, other}
+            out.oper = "@"
+
+            def backward_step():
+                if self.comp_grad:
+                    self.grad += self._reduce_broadcasted_dims(
+                        # smart way to transpose matrices in the batches
+                        np.matmul(out.grad, other.values.swapaxes(-1, -2))
+                    )
+                if other.comp_grad:
+                    other.grad += other._reduce_broadcasted_dims(
+                        np.matmul(self.values.swapaxes(-1, -2), out.grad)
+                    )
+
+            out.backward_step = backward_step
+            return out
+        else:
+            raise ValueError(
+                f"Only 'Tensor' operands are supported for matmul, got {type(other)}"
+            )
+
+    @property
+    def T(self):
+        out = Tensor(self.values.T)
+        out.prev = {self}
+        out.oper = "T"
+
+        def backward_step():
+            if self.comp_grad:
+                self.grad += out.grad.T
+
+        out.backward_step = backward_step
+        return out
 
     def __sub__(self, other):
         return self + other * -1

@@ -27,7 +27,9 @@ class Softmax(Function):
         return exps / sum(exps, dim)
 
     def __repr__(self):
-        return "Softmax()"
+        if "dim" in self._stored_kwargs:
+            return f"Softmax(dim={self._stored_kwargs['dim']})"
+        return "Softmax(dim=None)"
 
 
 class Tanh(Function):
