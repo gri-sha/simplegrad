@@ -1,2 +1,3 @@
 from .module import Module
-from .layers import Linear
+from .linear import Linear
+from .activation_layers import *

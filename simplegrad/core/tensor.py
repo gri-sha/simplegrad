@@ -20,6 +20,7 @@ class Tensor:
         self.prev = set()
         self.oper = None  # Operation name (no spaces allowed)
         self.comp_grad = comp_grad
+        self.is_leaf = True
         self.grad = None
         self.backward_step = lambda: None
 
@@ -39,21 +40,38 @@ class Tensor:
         return self.values.__iter__()
 
     def __str__(self):
-        grad_info = (
-            f"\ngrad:\n{self.grad}" if self.comp_grad else "\ngrad: (comp_grad=False)"
-        )
-        return f"Tensor '{self.label}', shape: {self.shape}:\nvalues:\n{self.values}{grad_info}"
+        # Determine grad info based on comp_grad and is_leaf
+        if not self.comp_grad:
+            grad_info = "\ngrad: (comp_grad=False)"
+        elif self.grad is not None:
+            grad_info = f"\ngrad:\n{self.grad}"
+        else:
+            grad_info = "\ngrad: None"
 
-    def flatten(self):
-        return self.values.flatten()
+        return f"Tensor '{self.label}', shape: {self.shape}, is_leaf: {self.is_leaf}:\nvalues:\n{self.values}{grad_info}"
 
     def zero_grad(self):
-        if self.comp_grad:
+        # Initialize gradients only on leaf nodes
+        if self.comp_grad and self.is_leaf:
             self.grad = np.zeros(self.shape)
         for t in self.prev:
             t.zero_grad()
 
+    def _check_can_backward(self):
+        if not self.comp_grad:
+            raise RuntimeError(
+                f"Cannot call backward() on tensor {self.label or ''} with comp_grad=False."
+            )
+        if self.grad is not None and not self.is_leaf:
+            raise RuntimeError(
+                "backward() can only be called once on non-leaf tensors, or you need to use retain_grad()"
+            )
+        if self.values.size == 0:
+            raise RuntimeError("Cannot call backward() on an empty tensor")
+
     def backward(self):
+        self._check_can_backward()
+
         topo_order = []
         visited = set()
 
@@ -70,7 +88,17 @@ class Tensor:
         for t in reversed(topo_order):
             t.backward_step()
 
+        # clean up the gradients of non-leaf nodes
+        for t in topo_order:
+            if not t.is_leaf and t != self:
+                t.grad = None
+
+    def _init_grad_if_needed(self):
+        if self.grad is None:
+            self.grad = np.zeros(self.shape)
+
     def _reduce_broadcasted_dims(self, delta):
+
         while delta.ndim > self.grad.ndim:
             delta = delta.sum(axis=0)
         for i, (d, g) in enumerate(zip(delta.shape, self.grad.shape)):
@@ -83,9 +111,12 @@ class Tensor:
             out = Tensor(self.values + other)
             out.prev = {self}
             out.oper = f"+({other:.2f})"
+            out.comp_grad = self.comp_grad  # Scalars don't have comp_grad attribute
+            out.is_leaf = False
 
             def backward_step():
                 if self.comp_grad:
+                    self._init_grad_if_needed()
                     self.grad += self._reduce_broadcasted_dims(delta=out.grad)
 
             out.backward_step = backward_step
@@ -98,11 +129,15 @@ class Tensor:
             out = Tensor(self.values + other.values)
             out.prev = {self, other}
             out.oper = "+"
+            out.comp_grad = self.comp_grad or other.comp_grad
+            out.is_leaf = False
 
             def backward_step():
                 if self.comp_grad:
+                    self._init_grad_if_needed()
                     self.grad += self._reduce_broadcasted_dims(delta=out.grad)
                 if other.comp_grad:
+                    other._init_grad_if_needed()
                     other.grad += other._reduce_broadcasted_dims(delta=out.grad)
 
             out.backward_step = backward_step
@@ -116,9 +151,12 @@ class Tensor:
             out = Tensor(self.values * other)
             out.prev = {self}
             out.oper = f"*({other:.2f})"
+            out.comp_grad = self.comp_grad  # Scalars don't have comp_grad attribute
+            out.is_leaf = False
 
             def backward_step():
                 if self.comp_grad:
+                    self._init_grad_if_needed()
                     self.grad += out.grad * other
 
             out.backward_step = backward_step
@@ -131,14 +169,18 @@ class Tensor:
             out = Tensor(self.values * other.values)
             out.prev = {self, other}
             out.oper = "*"
+            out.comp_grad = self.comp_grad or other.comp_grad
+            out.is_leaf = False
 
             def backward_step():
                 if self.comp_grad:
-                    self.grad += self._reduce_broadcasted_dims(
+                    self._init_grad_if_needed()
+                    self.grad +=  self._reduce_broadcasted_dims(
                         delta=out.grad * other.values
                     )
 
                 if other.comp_grad:
+                    other._init_grad_if_needed()
                     other.grad += other._reduce_broadcasted_dims(
                         delta=out.grad * self.values
                     )
@@ -158,9 +200,12 @@ class Tensor:
             out = Tensor(self.values**other)
             out.prev = {self}
             out.oper = f"^{other:.2f}"
+            out.comp_grad = self.comp_grad
+            out.is_leaf = False
 
             def backward_step():
                 if self.comp_grad:
+                    self._init_grad_if_needed()
                     self.grad += out.grad * other * (self.values ** (other - 1))
 
             out.backward_step = backward_step
@@ -176,14 +221,18 @@ class Tensor:
             out = Tensor(self.values @ other.values)
             out.prev = {self, other}
             out.oper = "@"
+            out.comp_grad = self.comp_grad or other.comp_grad
+            out.is_leaf = False
 
             def backward_step():
                 if self.comp_grad:
+                    self._init_grad_if_needed()
                     self.grad += self._reduce_broadcasted_dims(
                         # smart way to transpose matrices in the batches
                         np.matmul(out.grad, other.values.swapaxes(-1, -2))
                     )
                 if other.comp_grad:
+                    other._init_grad_if_needed()
                     other.grad += other._reduce_broadcasted_dims(
                         np.matmul(self.values.swapaxes(-1, -2), out.grad)
                     )
@@ -200,9 +249,12 @@ class Tensor:
         out = Tensor(self.values.T)
         out.prev = {self}
         out.oper = "T"
+        out.comp_grad = self.comp_grad
+        out.is_leaf = False
 
         def backward_step():
             if self.comp_grad:
+                self._init_grad_if_needed()
                 self.grad += out.grad.T
 
         out.backward_step = backward_step
@@ -242,22 +294,47 @@ class Tensor:
             return f"shape: {self.shape} | comp_grad: {self.comp_grad}"
 
     def _add_graph_vertices(self, graph):
-        graph.node(self._str_id, self._node_signature, shape="record")
+        node_attrs = {"shape": "record", "style": "rounded,filled"}
+        if self.is_leaf:
+            node_attrs["fillcolor"] = "lightblue"
+            node_attrs["fontname"]="monospace"
+            node_attrs["fontsize"]="10"
+        else:
+            node_attrs["fillcolor"] = "white"
+            node_attrs["fontname"]="monospace"
+            node_attrs["fontsize"]="10"
+        graph.node(self._str_id, self._node_signature, **node_attrs)
         if self.oper is not None:
-            oper_id = self._str_id + self.oper  # spaces are not allowed in he ids
-            graph.node(oper_id, self.oper, shape="oval")
-            graph.edge(oper_id, self._str_id)
+            oper_id = self._str_id + self.oper
+            graph.node(
+                oper_id,
+                self.oper,
+                shape="box",
+                style="rounded,filled",
+                fillcolor="lightgrey",
+                fontname="monospace",
+                fontsize="10",
+            )
+            graph.edge(oper_id, self._str_id, arrowhead="vee")
             for t in self.prev:
                 t._add_graph_vertices(graph)
 
     def _add_graph_edges(self, graph):
         for t in self.prev:
-            graph.edge(t._str_id, self._str_id + self.oper)
+            graph.edge(t._str_id, self._str_id + self.oper, arrowhead="vee")
         for sc in self.prev:
             sc._add_graph_edges(graph)
 
     def display_graph(self, path=None):
-        g = graphviz.Digraph(format="svg", graph_attr={"rankdir": "LR"})
+        g = graphviz.Digraph(
+            format="svg",
+            graph_attr={
+                "rankdir": "LR",
+                "nodesep": "0.5",
+                "ranksep": "0.7",
+                "bgcolor": "white",
+            },
+        )
         g.strict = True
         self._add_graph_vertices(graph=g)
         self._add_graph_edges(graph=g)

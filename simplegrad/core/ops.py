@@ -1,61 +1,81 @@
 import numpy as np
 from .tensor import Tensor
 
-def log(tensor):
-    if np.any(tensor.values <= 0):
+
+def log(x):
+    if np.any(x.values <= 0):
         raise ValueError("Log of negative value is undefined")
 
-    out = Tensor(np.log(tensor.values))
-    out.prev = {tensor}
+    out = Tensor(np.log(x.values))
+    out.prev = {x}
     out.oper = "log"
+    out.comp_grad = x.comp_grad
+    out.is_leaf = False
 
     def backward_step():
-        if tensor.comp_grad:
-            tensor.grad += out.grad / tensor.values
+        if x.comp_grad:
+            x._init_grad_if_needed()
+            x.grad += out.grad / x.values
 
     out.backward_step = backward_step
     return out
 
-def exp(tensor):
-    out = Tensor(np.exp(tensor.values))
-    out.prev = {tensor}
+
+def exp(x):
+    out = Tensor(np.exp(x.values))
+    out.prev = {x}
     out.oper = "exp"
+    out.comp_grad = x.comp_grad
+    out.is_leaf = False
 
     def backward_step():
-        if tensor.comp_grad:
-            tensor.grad += out.grad * tensor.values
+        if x.comp_grad:
+            x._init_grad_if_needed()
+            x.grad += out.grad * x.values
 
     out.backward_step = backward_step
     return out
 
-def sum(tensor, dim=None):
+
+def sum(x, dim=None):
     # dim 0: sum columns, resulting in a single row
     # dim 1: sum rows, resulting in a single column
     # etc.
-    out = Tensor(np.sum(tensor.values, axis=dim, keepdims=True))
-    out.prev = {tensor}
+    out = Tensor(np.sum(x.values, axis=dim, keepdims=True))
+    out.prev = {x}
     out.oper = f"sum(d={dim})"
+    out.comp_grad = x.comp_grad
+    out.is_leaf = False
 
     def backward_step():
-        if tensor.comp_grad:
-            tensor.grad += np.ones_like(tensor.values) * out.grad
+        if x.comp_grad:
+            x._init_grad_if_needed()
+            x.grad += np.ones_like(x.values) * out.grad
 
     out.backward_step = backward_step
     return out
 
-def trace(tensor):
-    if tensor.values.ndim != 2 or tensor.values.shape[0] != tensor.values.shape[1]:
+
+def trace(x):
+    if x.values.ndim != 2 or x.values.shape[0] != x.values.shape[1]:
         raise ValueError("Trace is only defined for square matrices")
 
-    out = Tensor(np.array([[np.trace(tensor.values)]]))
-    out.prev = {tensor}
+    out = Tensor(np.array([[np.trace(x.values)]]))
+    out.prev = {x}
     out.oper = "trace"
+    out.comp_grad = x.comp_grad
+    out.is_leaf = False
 
     def backward_step():
-        if tensor.comp_grad:
-            grad_matrix = np.zeros_like(tensor.values)
+        if x.comp_grad:
+            x._init_grad_if_needed()
+            grad_matrix = np.zeros_like(x.values)
             np.fill_diagonal(grad_matrix, out.grad.flatten())
-            tensor.grad += grad_matrix
+            x.grad += grad_matrix
 
     out.backward_step = backward_step
     return out
+
+
+def mean(tensor, dim=None):
+    return tensor / sum(tensor, dim=dim)

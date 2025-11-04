@@ -11,8 +11,6 @@ class Linear(Module):
 
     By default, weights are initialized with random values from standard distibution (numpy.random.standard_normal).
     You can vary them using init_multiplier parameter.
-
-
     """
     def __init__(
         self,
@@ -26,10 +24,12 @@ class Linear(Module):
         ones_init=False,
         weight_label="W",
         bias_label="b",
+        label="Linear",
     ):
         self.in_features = in_features
         self.out_features = out_features
         self.use_bias = use_bias
+        self.label = label
 
         assert sum([zeros_init, ones_init]) <= 1, (
             "Choose only one special method: zeros_init or ones_init must be True."
@@ -69,12 +69,11 @@ class Linear(Module):
         
 
 
-    def forward(self, input):
+    def forward(self, x):
         # print("Weights:", self.weight.shape, "Inputs:", input.shape)
-        res = input @ self.weight
+        res = x @ self.weight
         # print("After matmul:", res.shape)
         if self.use_bias:
             # print("Bias:", self.bias.shape)
             res = res + self.bias
         return res
-

@@ -1,3 +1,6 @@
 from .tensor import Tensor
-from .ops import sum, log, exp
-from .factory import random, zeros, ones
+from .ops import *
+from .factory import *
+from .activations import *
+from .tranform import *
+from .losses import *
