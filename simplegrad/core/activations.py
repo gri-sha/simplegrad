@@ -12,6 +12,7 @@ def relu(x):
 
     def backward_step():
         if x.comp_grad:
+            x._init_grad_if_needed()
             x.grad = out.grad * np.where(x.values > 0, 1.0, 0.0)
 
     out.backward_step = backward_step
@@ -22,7 +23,17 @@ def softmax(x, dim=None):
     exps = exp(x)
     return exps / sum(exps, dim)
 
-
 def tanh(x):
-    exps = exp(-2 * x)
-    return (1 - exps) / (1 + exps)
+    out = Tensor(np.tanh(x.values))
+    out.prev = {x}
+    out.oper = "Tanh"
+    out.comp_grad = x.comp_grad
+    out.is_leaf = False
+
+    def backward_step():
+        if x.comp_grad:
+            x._init_grad_if_needed()
+            x.grad += out.grad * (1 - np.tanh(x.values) ** 2)
+
+    out.backward_step = backward_step
+    return out

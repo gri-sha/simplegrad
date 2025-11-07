@@ -7,11 +7,12 @@ class Linear(Module):
     """
     A fully connected linear layer that applies a linear transformation to the incoming data:
     y = (W @ x) + b, where x is a column vector of input features.
-    For compatibility 
+    For compatibility
 
     By default, weights are initialized with random values from standard distibution (numpy.random.standard_normal).
     You can vary them using init_multiplier parameter.
     """
+
     def __init__(
         self,
         in_features,
@@ -31,14 +32,16 @@ class Linear(Module):
         self.use_bias = use_bias
         self.label = label
 
-        assert sum([zeros_init, ones_init]) <= 1, (
-            "Choose only one special method: zeros_init or ones_init must be True."
-        )
-        
+        assert (
+            sum([zeros_init, ones_init]) <= 1
+        ), "Choose only one special method: zeros_init or ones_init must be True."
+
         self.weight = (
             weight
             if weight is not None
-            else self._init_weights(init_multiplier, zeros_init, ones_init, weight_label)
+            else self._init_weights(
+                init_multiplier, zeros_init, ones_init, weight_label
+            )
         )
 
         if self.use_bias:
@@ -55,7 +58,7 @@ class Linear(Module):
             data = np.ones((self.in_features, self.out_features))
         else:
             data = np.random.randn(self.in_features, self.out_features) * multiplier
-        
+
         return Tensor(data, label=weight_label)
 
     def _init_bias(self, multiplier, zeros_init, ones_init, bias_label):
@@ -66,8 +69,6 @@ class Linear(Module):
         else:
             data = np.random.randn(1, self.out_features) * multiplier
         return Tensor(data, label=bias_label)
-        
-
 
     def forward(self, x):
         # print("Weights:", self.weight.shape, "Inputs:", input.shape)

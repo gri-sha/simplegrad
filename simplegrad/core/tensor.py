@@ -11,7 +11,9 @@ class Tensor:
             values = np.array([])
         self.values = as_array(values, dtype)
 
-        if self.values.ndim == 1:
+        if self.values.ndim == 0:
+            self.values = self.values.reshape(1, 1)
+        elif self.values.ndim == 1:
             self.values = (
                 self.values.reshape(-1, 1) if column else self.values.reshape(1, -1)
             )

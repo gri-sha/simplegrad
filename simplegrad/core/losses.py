@@ -2,16 +2,18 @@ import numpy as np
 from simplegrad.core.ops import sum, log
 from simplegrad.core.tensor import Tensor
 
-def ce_loss(z, y, reduction='mean'):
+def ce_loss(z, y, dim=-1, reduction='mean'):
     # z - layer output (logits, Tensor)
     # y - target probability distribution (Tensor)
 
     # Softmax
-    exps = np.exp(z.values - np.max(z.values, axis=-1, keepdims=True))  # for numerical stability
-    s = exps / np.sum(exps, axis=-1, keepdims=True)
+    exps = np.exp(z.values - np.max(z.values, axis=dim, keepdims=True))  # for numerical stability
+    s = exps / np.sum(exps, axis=dim, keepdims=True)
+
+    # print(s.shape, y.values.shape)
 
     # Cross-entropy loss per sample
-    losses = -np.sum(y.values * np.log(s + 1e-12), axis=-1)  # small epsilon for stability
+    losses = -np.sum(y.values * np.log(s + 1e-12), axis=dim)  # small epsilon for stability
 
     # Reduction
     if reduction == 'mean':
@@ -23,10 +25,8 @@ def ce_loss(z, y, reduction='mean'):
     else:
         raise ValueError(f"Invalid reduction: {reduction}")
     
-    print(out_value)
-
     out = Tensor(out_value)
-    out.prev = {z}
+    out.prev = {z, y}
     out.oper = f"CELoss(reduction={reduction})"
     out.comp_grad = z.comp_grad
     out.is_leaf = False
@@ -58,8 +58,6 @@ def mse_loss(p, y, reduction='mean'):
         out_value = losses
     else:
         raise ValueError(f"Invalid reduction: {reduction}")
-    
-    print(out_value)
 
     out = Tensor(out_value)
     out.prev = {p, y}

@@ -1,17 +1,34 @@
 from .optimizer import Optimizer
+from simplegrad.core.tensor import Tensor
+from simplegrad.modules import Module
+import numpy as np
+
 
 class SGD(Optimizer):
-    def __init__(self, lr=0.01, momentum=0, dampening=0, weight_decay=0, nesterov=False):
+    def __init__(self, model, lr=0.01, momentum=0, dampening=0):
+        if not isinstance(model, Module):
+            raise TypeError(f"model must be a Module")
+
+        self.model = model
         self.lr = lr
         self.momentum = momentum
         self.dampening = dampening
-        self.weight_decay= weight_decay
-        self.nesterov = nesterov
+        self.velocities = {
+            name: np.zeros_like(param.values)
+            for name, param in model.parameters().items()
+        }
 
-        # dont forget about velocities
-        # reminder: each trainable parameter of the model has its own velocity
+    def zero_grad(self):
+        for name, param in self.model.parameters().items():
+            param.grad = np.zeros_like(param.values)
 
-    def step(self, loss):
-        for var in loss._prev:
-            if var.requires_grad:
-                var.data -= var.grad * self.lr
+    def step(self):
+        for name, param in self.model.parameters().items():
+            if param.grad is None:
+                raise ValueError(f"Gradient for {name} is None. Did you forget to call backward()?")
+
+            self.velocities[name] = (
+                self.momentum * self.velocities[name]
+                - self.lr * (1 - self.dampening) * param.grad
+            )
+            param.values += self.velocities[name]

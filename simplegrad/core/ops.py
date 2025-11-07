@@ -31,7 +31,55 @@ def exp(x):
     def backward_step():
         if x.comp_grad:
             x._init_grad_if_needed()
-            x.grad += out.grad * x.values
+            x.grad += out.grad * np.exp(x.values)
+
+    out.backward_step = backward_step
+    return out
+
+
+def sin(x):
+    out = Tensor(np.sin(x.values))
+    out.prev = {x}
+    out.oper = "sin"
+    out.comp_grad = x.comp_grad
+    out.is_leaf = False
+
+    def backward_step():
+        if x.comp_grad:
+            x._init_grad_if_needed()
+            x.grad += out.grad * np.cos(x.values)
+
+    out.backward_step = backward_step
+    return out
+
+
+def cos(x):
+    out = Tensor(np.cos(x.values))
+    out.prev = {x}
+    out.oper = "cos"
+    out.comp_grad = x.comp_grad
+    out.is_leaf = False
+
+    def backward_step():
+        if x.comp_grad:
+            x._init_grad_if_needed()
+            x.grad += -out.grad * np.sin(x.values)
+
+    out.backward_step = backward_step
+    return out
+
+
+def tan(x):
+    out = Tensor(np.tan(x.values))
+    out.prev = {x}
+    out.oper = "tan"
+    out.comp_grad = x.comp_grad
+    out.is_leaf = False
+
+    def backward_step():
+        if x.comp_grad:
+            x._init_grad_if_needed()
+            x.grad += out.grad / (np.cos(x.values) ** 2)
 
     out.backward_step = backward_step
     return out
@@ -78,4 +126,6 @@ def trace(x):
 
 
 def mean(tensor, dim=None):
-    return tensor / sum(tensor, dim=dim)
+    if dim is None:
+        return sum(tensor) / tensor.values.size
+    return sum(tensor, dim=dim) /tensor.values.shape[dim]
