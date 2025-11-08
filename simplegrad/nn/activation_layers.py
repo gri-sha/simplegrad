@@ -1,6 +1,6 @@
 from simplegrad.core import Tensor
-from .module import Module
-from simplegrad.core.activations import *
+from ..core.module import Module
+from simplegrad.functions.activations import *
 
 
 class ReLU(Module):

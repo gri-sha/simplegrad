@@ -1,6 +1,6 @@
 import numpy as np
 from simplegrad.core.tensor import Tensor
-from simplegrad.core.ops import exp, log, sum
+from .ops import exp, log, sum
 
 
 def relu(x):

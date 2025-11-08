@@ -1,5 +1,5 @@
 import numpy as np
-from .tensor import Tensor
+from simplegrad.core.tensor import Tensor
 
 def zeros(shape, req_grad=True, label=None):
     return Tensor(np.zeros(shape), req_grad, label)

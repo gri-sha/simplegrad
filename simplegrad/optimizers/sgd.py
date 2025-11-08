@@ -1,6 +1,6 @@
 from .optimizer import Optimizer
 from simplegrad.core.tensor import Tensor
-from simplegrad.modules import Module
+from simplegrad.nn import Module
 import numpy as np
 
 

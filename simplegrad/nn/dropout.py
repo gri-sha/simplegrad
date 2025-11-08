@@ -1,5 +1,5 @@
 from simplegrad.core.tensor import Tensor
-from .module import Module
+from ..core.module import Module
 import numpy as np
 
 class Dropout(Module):

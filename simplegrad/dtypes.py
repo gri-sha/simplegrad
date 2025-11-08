@@ -34,3 +34,7 @@ def as_array(values, dtype=None, **kwargs):
     return np.array(
         values, dtype=dtype if dtype is not None else get_dtype_class(), **kwargs
     )
+
+def convert_to_dtype(array, dtype=None):
+    """Convert a numpy array to the global default dtype."""
+    return array.astype(get_dtype_class() if dtype is None else DTYPES[dtype])

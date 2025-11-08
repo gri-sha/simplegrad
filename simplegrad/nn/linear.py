@@ -1,6 +1,7 @@
 import numpy as np
 from simplegrad.core.tensor import Tensor
-from .module import Module
+from ..core.module import Module
+from simplegrad.dtypes import convert_to_dtype 
 
 
 class Linear(Module):
@@ -20,7 +21,8 @@ class Linear(Module):
         weight=None,
         bias=None,
         use_bias=True,
-        init_multiplier=0.01,
+        init_multiplier=0.01,  # random init by default with this multiplier
+        init_dtype=None,  # use global dtype if None
         zeros_init=False,
         ones_init=False,
         weight_label="W",
@@ -40,7 +42,7 @@ class Linear(Module):
             weight
             if weight is not None
             else self._init_weights(
-                init_multiplier, zeros_init, ones_init, weight_label
+                init_multiplier, init_dtype, zeros_init, ones_init, weight_label
             )
         )
 
@@ -48,10 +50,10 @@ class Linear(Module):
             self.bias = (
                 bias
                 if bias is not None
-                else self._init_bias(init_multiplier, zeros_init, ones_init, bias_label)
+                else self._init_bias(init_multiplier, init_dtype, zeros_init, ones_init, bias_label)
             )
 
-    def _init_weights(self, multiplier, zeros_init, ones_init, weight_label):
+    def _init_weights(self, multiplier, dtype, zeros_init, ones_init, weight_label):
         if zeros_init:
             data = np.zeros((self.in_features, self.out_features))
         elif ones_init:
@@ -59,16 +61,16 @@ class Linear(Module):
         else:
             data = np.random.randn(self.in_features, self.out_features) * multiplier
 
-        return Tensor(data, label=weight_label)
+        return Tensor(convert_to_dtype(array=data, dtype=dtype), label=weight_label)
 
-    def _init_bias(self, multiplier, zeros_init, ones_init, bias_label):
+    def _init_bias(self, multiplier, dtype, zeros_init, ones_init, bias_label):
         if zeros_init:
             data = np.zeros((1, self.out_features))
         elif ones_init:
             data = np.ones((1, self.out_features))
         else:
             data = np.random.randn(1, self.out_features) * multiplier
-        return Tensor(data, label=bias_label)
+        return Tensor(convert_to_dtype(array=data, dtype=dtype), label=bias_label)
 
     def forward(self, x):
         # print("Weights:", self.weight.shape, "Inputs:", input.shape)

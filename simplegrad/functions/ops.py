@@ -1,5 +1,5 @@
 import numpy as np
-from .tensor import Tensor
+from simplegrad.core.tensor import Tensor
 
 
 def log(x):

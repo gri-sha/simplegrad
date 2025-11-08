@@ -1,5 +1,5 @@
-from simplegrad.modules import Module
-from simplegrad.core.losses import ce_loss, mse_loss
+from simplegrad.nn import Module
+from simplegrad.functions.losses import ce_loss, mse_loss
 
 
 class CrossEntropyLoss(Module):

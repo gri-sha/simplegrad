@@ -1,5 +1,4 @@
 import numpy as np
-from simplegrad.core.ops import sum, log
 from simplegrad.core.tensor import Tensor
 
 def ce_loss(z, y, dim=-1, reduction='mean'):
@@ -34,6 +33,7 @@ def ce_loss(z, y, dim=-1, reduction='mean'):
     # Backward step
     def backward_step():
         if z.comp_grad:
+            z._init_grad_if_needed()
             grad = s - y.values
             if reduction == 'mean':
                 grad = grad / z.values.shape[0]  # normalize by batch size
@@ -68,6 +68,7 @@ def mse_loss(p, y, reduction='mean'):
     # Backward step
     def backward_step():
         if p.comp_grad:
+            p._init_grad_if_needed()
             grad = 2 * (p.values - y.values)
             if reduction == 'mean':
                 grad = grad / p.values.shape[0]  # normalize by batch size
