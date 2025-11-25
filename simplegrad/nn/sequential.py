@@ -10,3 +10,10 @@ class Sequential(Module):
         for module in self.modules:
             x = module(x)
         return x
+    
+    def __str__(self):
+        res = "Sequential(\n"
+        for module in self.modules:
+            res += f"  {str(module)},\n"
+        res += ")"
+        return res

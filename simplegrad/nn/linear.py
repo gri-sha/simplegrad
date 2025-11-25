@@ -80,3 +80,6 @@ class Linear(Module):
             # print("Bias:", self.bias.shape)
             res = res + self.bias
         return res
+
+    def __str__(self):
+        return f"{self.label}(in={self.in_features}, out={self.out_features}, bias={self.use_bias})"

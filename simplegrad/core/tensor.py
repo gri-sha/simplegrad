@@ -26,6 +26,9 @@ class Tensor:
         self.grad = None
         self.backward_step = lambda: None
 
+    def __len__(self):
+        return len(self.values)
+
     def __eq__(self, other):
         return id(self) == id(other)
 

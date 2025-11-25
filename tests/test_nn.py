@@ -8,7 +8,7 @@ from .utils import compare2tensors
 def test_linear_layer():
     """Test single linear layer forward and backward pass"""
     in_features, out_features = 4, 3
-    linear = sg.mod.Linear(
+    linear = sg.nn.Linear(
         in_features, out_features, init_dtype="float64", init_multiplier=0.1
     )
 
@@ -48,19 +48,19 @@ def test_neural_network():
     batch_size = 3
 
     # Create SimpleNet model
-    model = sg.mod.Sequential(
-        sg.mod.Linear(
+    model = sg.nn.Sequential(
+        sg.nn.Linear(
             input_size, hidden_size, init_dtype="float64", init_multiplier=0.1
         ),
-        sg.mod.ReLU(),
-        sg.mod.Linear(
+        sg.nn.ReLU(),
+        sg.nn.Linear(
             hidden_size, hidden_size, init_dtype="float64", init_multiplier=0.1
         ),
-        sg.mod.ReLU(),
-        sg.mod.Linear(
+        sg.nn.ReLU(),
+        sg.nn.Linear(
             hidden_size, output_size, init_dtype="float64", init_multiplier=0.1
         ),
-        sg.mod.Softmax(dim=1),
+        sg.nn.Softmax(dim=1),
     )
 
     # Create input
@@ -145,9 +145,9 @@ def test_neural_network_with_optimizer():
     class SimpleNet(sg.Module):
         def __init__(self, input_size, hidden_size, output_size):
             super().__init__()
-            self.fc1 = sg.mod.Linear(input_size, hidden_size, init_multiplier=0.1)
-            self.fc2 = sg.mod.Linear(hidden_size, hidden_size, init_multiplier=0.1)
-            self.fc3 = sg.mod.Linear(hidden_size, output_size, init_multiplier=0.1)
+            self.fc1 = sg.nn.Linear(input_size, hidden_size, init_multiplier=0.1)
+            self.fc2 = sg.nn.Linear(hidden_size, hidden_size, init_multiplier=0.1)
+            self.fc3 = sg.nn.Linear(hidden_size, output_size, init_multiplier=0.1)
 
         def forward(self, x):
             x = sg.relu(self.fc1(x))

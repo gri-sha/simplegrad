@@ -1,4 +1,4 @@
-import graphviz
+import numpy as np
 from simplegrad.core.tensor import Tensor
 
 
@@ -42,3 +42,19 @@ class Module:
                         params.update(module_params)
 
         return params
+    
+    def __str__(self):
+        return f"{self.label} Module"
+    
+    def summary(self):
+        print(f"Parameters of {self.label}\n")
+        print(f"{'Parameter':<20} {'Shape':<15} {'Trainable Parameters':<40}")
+        print("-" * 60)
+        params = self.parameters()
+        tot = 0
+        for name, tensor in params.items():
+            tr = np.prod(tensor.values.shape)
+            tot += tr
+            print(f"{name:<20} {str(tensor.values.shape):<15} {str(tr):<40}")
+        print("-" * 60)
+        print(f"Total trainable parameters: {tot}")

@@ -125,7 +125,23 @@ def trace(x):
     return out
 
 
-def mean(tensor, dim=None):
+def mean(x, dim=None):
     if dim is None:
-        return sum(tensor) / tensor.values.size
-    return sum(tensor, dim=dim) /tensor.values.shape[dim]
+        return sum(x) / x.values.size
+    return sum(x, dim=dim) / x.values.shape[dim]
+
+
+def argmax(x, dim=None):
+    out = Tensor(np.argmax(x.values, axis=dim))
+    out.prev = {x}
+    out.oper = f"argmax(d={dim})"
+    out.comp_grad = False
+    out.is_leaf = False
+
+    def backward_step():
+        raise RuntimeError(
+            "argmax is not differentiable and does not support backpropagation"
+        )
+
+    out.backward_step = backward_step
+    return out

@@ -171,3 +171,171 @@ def test_broadcastiong_2():
     compare2tensors(sg=b.grad, pt=bt.grad)
     compare2tensors(sg=c.grad, pt=ct.grad)
     compare2tensors(sg=d.grad, pt=dt.grad)
+
+
+def test_mse():
+    array1 = np.array([[0.2, 0.8, 0.5], [1.5, 0.3, 0.7]])
+    array2 = np.array([[0, 1, 0], [1, 0, 0]])
+
+    # Test reduction='mean' (default)
+    predictions = sg.Tensor(array1, dtype="float64")
+    targets = sg.Tensor(array2, dtype="float64")
+
+    predictions_t = torch.from_numpy(array1).to(torch.float64).requires_grad_(True)
+    targets_t = torch.from_numpy(array2).to(torch.float64)
+
+    mse_loss = sg.mse_loss(predictions, targets, reduction="mean")
+    mse_loss.zero_grad()
+    mse_loss.backward()
+
+    print("Sg:", mse_loss.values)
+    print("Sg Grad:\n", predictions.grad)
+
+    mse_loss_t = torch.nn.functional.mse_loss(
+        predictions_t, targets_t, reduction="mean"
+    )
+    mse_loss_t.backward()
+
+    print("Pt:", mse_loss_t.item())
+    print("Pt Grad:\n", predictions_t.grad)
+
+    compare2tensors(sg=mse_loss, pt=mse_loss_t)
+    compare2tensors(sg=predictions.grad, pt=predictions_t.grad)
+
+    # Test reduction='sum'
+    predictions = sg.Tensor(array1, dtype="float64")
+    targets = sg.Tensor(array2, dtype="float64")
+
+    predictions_t = torch.from_numpy(array1).to(torch.float64).requires_grad_(True)
+    targets_t = torch.from_numpy(array2).to(torch.float64)
+
+    mse_loss = sg.mse_loss(predictions, targets, reduction="sum")
+    mse_loss.zero_grad()
+    mse_loss.backward()
+
+    print("Sg:", mse_loss.values)
+    print("Sg Grad:\n", predictions.grad)
+
+    mse_loss_t = torch.nn.functional.mse_loss(predictions_t, targets_t, reduction="sum")
+    mse_loss_t.backward()
+
+    print("Pt:", mse_loss_t.item())
+    print("Pt Grad:\n", predictions_t.grad)
+
+    compare2tensors(sg=mse_loss, pt=mse_loss_t)
+    compare2tensors(sg=predictions.grad, pt=predictions_t.grad)
+
+    # Test reduction=None
+    predictions = sg.Tensor(array1, dtype="float64")
+    targets = sg.Tensor(array2, dtype="float64")
+
+    predictions_t = torch.from_numpy(array1).to(torch.float64).requires_grad_(True)
+    targets_t = torch.from_numpy(array2).to(torch.float64)
+
+    mse_loss = sg.mse_loss(predictions, targets, reduction=None)
+    mse_loss_sum = sg.sum(mse_loss)  # Sum to get scalar for backward
+    mse_loss_sum.zero_grad()
+    mse_loss_sum.backward()
+
+    print("Sg shape:", mse_loss.values.shape)
+    print("Sg values:\n", mse_loss.values)
+    print("Sg Grad:\n", predictions.grad)
+
+    mse_loss_t = torch.nn.functional.mse_loss(
+        predictions_t, targets_t, reduction="none"
+    )
+    mse_loss_sum_t = torch.sum(mse_loss_t)
+    mse_loss_sum_t.backward()
+
+    print("Pt shape:", mse_loss_t.shape)
+    print("Pt values:\n", mse_loss_t.detach())
+    print("Pt Grad:\n", predictions_t.grad)
+
+    compare2tensors(sg=mse_loss, pt=mse_loss_t)
+    compare2tensors(sg=predictions.grad, pt=predictions_t.grad)
+
+
+def test_ce():
+    array1 = np.array(
+        [[0.2, 0.8, 0.5, 0.1], [1.5, 0.3, 0.7, 3.76], [0.22, 0.28, 0.25, 9.1]]
+    )
+    array2 = np.array([[0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]])
+
+    # Test reduction='mean' (default)
+    predictions = sg.Tensor(array1, dtype="float64")
+    targets = sg.Tensor(array2, dtype="float64")
+
+    predictions_t = torch.from_numpy(array1).to(torch.float64).requires_grad_(True)
+    targets_t = torch.from_numpy(array2).to(torch.float64)
+
+    ce_loss = sg.ce_loss(predictions, targets, reduction="mean")
+    ce_loss.zero_grad()
+    ce_loss.backward()
+
+    print("Sg:", ce_loss.values)
+    print("Sg Grad:\n", predictions.grad)
+
+    ce_loss_t = torch.nn.functional.cross_entropy(
+        predictions_t, targets_t, reduction="mean"
+    )
+    ce_loss_t.backward()
+
+    print("Pt:", ce_loss_t.item())
+    print("Pt Grad:\n", predictions_t.grad)
+
+    compare2tensors(sg=ce_loss, pt=ce_loss_t)
+    compare2tensors(sg=predictions.grad, pt=predictions_t.grad)
+
+    # Test reduction='sum'
+    predictions = sg.Tensor(array1, dtype="float64")
+    targets = sg.Tensor(array2, dtype="float64")
+
+    predictions_t = torch.from_numpy(array1).to(torch.float64).requires_grad_(True)
+    targets_t = torch.from_numpy(array2).to(torch.float64)
+
+    ce_loss = sg.ce_loss(predictions, targets, reduction="sum")
+    ce_loss.zero_grad()
+    ce_loss.backward()
+
+    print("Sg:", ce_loss.values)
+    print("Sg Grad:\n", predictions.grad)
+
+    ce_loss_t = torch.nn.functional.cross_entropy(
+        predictions_t, targets_t, reduction="sum"
+    )
+    ce_loss_t.backward()
+
+    print("Pt:", ce_loss_t.item())
+    print("Pt Grad:\n", predictions_t.grad)
+
+    compare2tensors(sg=ce_loss, pt=ce_loss_t)
+    compare2tensors(sg=predictions.grad, pt=predictions_t.grad)
+
+    # Test reduction=None
+    predictions = sg.Tensor(array1, dtype="float64")
+    targets = sg.Tensor(array2, dtype="float64")
+
+    predictions_t = torch.from_numpy(array1).to(torch.float64).requires_grad_(True)
+    targets_t = torch.from_numpy(array2).to(torch.float64)
+
+    ce_loss = sg.ce_loss(predictions, targets, reduction=None)
+    ce_loss_sum = sg.sum(ce_loss)  # Sum to get scalar for backward
+    ce_loss_sum.zero_grad()
+    ce_loss_sum.backward()
+
+    print("Sg shape:", ce_loss.values.shape)
+    print("Sg values:\n", ce_loss.values)
+    print("Sg Grad:\n", predictions.grad)
+
+    ce_loss_t = torch.nn.functional.cross_entropy(
+        predictions_t, targets_t, reduction="none"
+    )
+    ce_loss_sum_t = torch.sum(ce_loss_t)
+    ce_loss_sum_t.backward()
+
+    print("Pt shape:", ce_loss_t.shape)
+    print("Pt values:\n", ce_loss_t.detach())
+    print("Pt Grad:\n", predictions_t.grad)
+
+    compare2tensors(sg=ce_loss, pt=ce_loss_t)
+    compare2tensors(sg=predictions.grad, pt=predictions_t.grad)

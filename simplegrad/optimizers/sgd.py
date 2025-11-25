@@ -19,7 +19,7 @@ class SGD(Optimizer):
         }
 
     def zero_grad(self):
-        for name, param in self.model.parameters().items():
+        for _, param in self.model.parameters().items():
             param.grad = np.zeros_like(param.values)
 
     def step(self):

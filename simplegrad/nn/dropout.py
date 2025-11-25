@@ -3,8 +3,8 @@ from ..core.module import Module
 import numpy as np
 
 class Dropout(Module):
-    def __init__(self, p=0.5, label="Dropout"):
-        super().__init__(label=label)
+    def __init__(self, p=0.5):
+        super().__init__()
         if not 0 <= p < 1:
             raise ValueError("Dropout probability must be in the range [0, 1).")
         self.p = p
@@ -28,7 +28,11 @@ class Dropout(Module):
         # Backward step
         def backward_step():
             if x.comp_grad and self.mask is not None:
+                x._init_grad_if_needed()
                 x.grad += out.grad * self.mask.values
 
         out.backward_step = backward_step
         return out
+    
+    def __str__(self):
+        return f"Dropout(p={self.p})"
