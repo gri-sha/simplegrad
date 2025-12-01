@@ -193,7 +193,8 @@ def pad(
                     print(pad)
                 slices = tuple(
                     # remember: the stop index of slice is not included when using the slice
-                    slice(pad[0], out.grad.shape[i] - pad[1]) for i, pad in enumerate(width)
+                    slice(pad[0], out.grad.shape[i] - pad[1])
+                    for i, pad in enumerate(width)
                 )
                 print(grad.shape, out.grad.shape, slices)
                 print(out.grad[slices].shape)
@@ -253,7 +254,9 @@ def _convd2d(
             1,
             weight.values.shape[0],
         ), f"Bias shape mismatch: expected (1, out_channels), got {bias.shape}"
-        out_array += bias.values[:, :, None, None]  # Reshape from (1, C) to (1, C, 1, 1) for broadcasting
+        out_array += bias.values[
+            :, :, None, None
+        ]  # Reshape from (1, C) to (1, C, 1, 1) for broadcasting
 
     out_tensor = Tensor(out_array)
     out_tensor.prev = {padded_input, weight}
@@ -306,12 +309,13 @@ def _convd2d(
                                     j : j + out_w * sw : sw,
                                 ]
                                 * out_tensor.grad[:, k, :, :],
-                                axis=(0, 1, 2)
+                                axis=(0, 1, 2),
                             )
 
         if bias is not None and bias.comp_grad:
             bias._init_grad_if_needed()
             bias.grad += np.sum(out_tensor.grad, axis=(0, -1, -2))
+
     out_tensor.backward_step = backward_step
     return out_tensor
 
@@ -362,3 +366,99 @@ def conv2d(
 
     out = _convd2d(padded_input=padded_input, weight=weight, bias=bias, stride=stride)
     return out
+
+
+def max_pool2d(
+    x: Tensor,
+    kernel_size: Union[int, tuple],
+    stride: Union[int, tuple] = None,
+    # 2 options for padding:
+    # int - same dimention for all directions
+    # tuple - (top, bottom, left, right)
+    pad_width: Union[int, tuple] = 0,
+    pad_mode: str = "constant",
+    pad_value: int = 0,
+) -> Tensor:
+    assert (
+        x.values.ndim == 4 or x.values.ndim == 3
+    ), "Input tensor must be 4-dimensional (batch_size, in_channels, height, width) or 3-dimensional (in_channels, height, width)"
+    sh, sw = (stride, stride) if isinstance(stride, int) else stride
+
+    if pad_width == 0 or pad_width == (0, 0, 0, 0):
+        padded_input = x
+    else:
+        if isinstance(pad_width, int):
+            pad_width_np = (
+                (0, 0),
+                (0, 0),
+                (pad_width, pad_width),
+                (pad_width, pad_width),
+            )
+        elif isinstance(pad_width, tuple) and len(pad_width) == 4:
+            # (top, bottom, left, right)
+            pad_width_np = (
+                (0, 0),
+                (0, 0),
+                (pad_width[0], pad_width[1]),
+                (pad_width[2], pad_width[3]),
+            )
+        else:
+            raise ValueError(
+                "pad_width must be an int or a tuple of 4 ints (top, bottom, left, right)"
+            )
+
+        padded_input = pad(x=x, width=pad_width_np, mode=pad_mode, value=pad_value)
+
+    in_h, in_w = padded_input.values.shape[-2:]
+    kh, kw = (kernel_size, kernel_size) if isinstance(kernel_size, int) else kernel_size
+    out_h = (in_h - kh) // sh + 1
+    out_w = (in_w - kw) // sw + 1
+    out_array = np.zeros(
+        (
+            padded_input.values.shape[0] if padded_input.values.ndim == 4 else 1,
+            padded_input.values.shape[1],
+            out_h,
+            out_w,
+        )
+    )
+
+    mask = np.zeros_like(padded_input.values, dtype=bool)
+
+    for i in range(out_h):
+        for j in range(out_w):
+            h_start = i * sh
+            h_end = h_start + kh
+            w_start = j * sw
+            w_end = w_start + kw
+            input_slice = padded_input.values[:, :, h_start:h_end, w_start:w_end]
+
+            # Get max value
+            out_array[:, :, i, j] = np.max(input_slice, axis=(-1, -2))
+
+            # Create mask for max positions
+            max_val = out_array[:, :, i, j][:, :, None, None]  # make 2d array of shape (B, C, 1, 1) (for broadcasting)
+            mask[:, :, h_start:h_end, w_start:w_end] |= np.isclose(input_slice, max_val)
+
+    out_tensor = Tensor(out_array)
+    out_tensor.prev = {padded_input}
+    out_tensor.oper = "max_pool2d"
+    out_tensor.comp_grad = padded_input.comp_grad
+    out_tensor.is_leaf = False
+
+    def backward_step():
+        if padded_input.comp_grad:
+            padded_input._init_grad_if_needed()
+            for i in range(out_h):
+                for j in range(out_w):
+                    h_start = i * sh
+                    h_end = h_start + kh
+                    w_start = j * sw
+                    w_end = w_start + kw
+                    # Gradient only goes to max positions
+                    padded_input.grad[:, :, h_start:h_end, w_start:w_end] += (
+                        mask[:, :, h_start:h_end, w_start:w_end]
+                        * out_tensor.grad[:, :, i, j][:, :, None, None]
+                    )
+
+    out_tensor.backward_step = backward_step
+    return out_tensor

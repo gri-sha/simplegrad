@@ -39,3 +39,19 @@ def tanh(x: Tensor) -> Tensor:
 
     out.backward_step = backward_step
     return out
+
+def sigmoid(x: Tensor) -> Tensor:
+    out = Tensor(1 / (1 + np.exp(-x.values)))
+    out.prev = {x}
+    out.oper = "Sigmoid"
+    out.comp_grad = x.comp_grad
+    out.is_leaf = False
+
+    def backward_step():
+        if x.comp_grad:
+            x._init_grad_if_needed()
+            sigmoid_x = 1 / (1 + np.exp(-x.values))
+            x.grad += out.grad * sigmoid_x * (1 - sigmoid_x)
+
+    out.backward_step = backward_step
+    return out

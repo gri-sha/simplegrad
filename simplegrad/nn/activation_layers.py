@@ -28,3 +28,10 @@ class Tanh(Module):
     
     def __str__(self):
         return "Tanh"
+    
+class Sigmoid(Module):
+    def forward(self, x):
+        return sigmoid(x)
+    
+    def __str__(self):
+        return "Sigmoid"

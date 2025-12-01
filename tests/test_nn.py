@@ -234,6 +234,35 @@ def test_convolution_layer_batch_processing():
     )
 
 
+# Test MaxPool2d layer
+def test_max_pool2d():
+    """Test MaxPool2d layer forward and backward pass"""
+    batch_size, channels, height, width = 2, 3, 8, 8
+    kernel_size = 2
+    stride = 2
+
+    pool = sg.nn.MaxPool2d(kernel_size=kernel_size, stride=stride)
+
+    x = sg.Tensor(
+        np.random.randn(batch_size, channels, height, width).astype(np.float64),
+        dtype="float64",
+    )
+    y = pool(x)
+    y.zero_grad()
+    y.backward()
+
+    # PyTorch equivalent
+    x_pt = torch.from_numpy(x.values).requires_grad_(True).to(torch.float64)
+    pool_pt = torch.nn.MaxPool2d(kernel_size=kernel_size, stride=stride)
+
+    y_pt = pool_pt(x_pt)
+    loss_pt = y_pt.sum()
+    loss_pt.backward()
+
+    compare2tensors(sg=y, pt=y_pt)
+    compare2tensors(sg=x.grad, pt=x_pt.grad)
+
+
 # Test Linear layer
 def test_linear_layer():
     """Test single linear layer forward and backward pass"""
