@@ -1,9 +1,10 @@
 import numpy as np
 from simplegrad.core.tensor import Tensor
 import simplegrad as sg
+from typing import Optional
 
 
-def ce_loss(z, y, dim=-1, reduction="mean"):
+def ce_loss(z: Tensor, y: Tensor, dim: Optional[int]=-1, reduction: str="mean") -> Tensor:
     # z - layer output (logits, Tensor)
     # y - target probability distribution (Tensor)
 
@@ -45,7 +46,7 @@ def ce_loss(z, y, dim=-1, reduction="mean"):
         raise ValueError(f"Invalid reduction: {reduction}")
 
 
-def mse_loss(p, y, reduction="mean"):
+def mse_loss(p: Tensor, y: Tensor, reduction: str="mean") -> Tensor:
     if reduction == "mean":
         return sg.mean((p - y) ** 2)
     elif reduction == "sum":

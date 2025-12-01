@@ -20,7 +20,9 @@ class TrainingTracker:
             self.metrics[name].add(self.step, value)
         self.step += 1
 
-    def plot(self, figsize=None, show=True, num_cols: int = 5, cell_h=4, cell_w=6, path=None):
+    def plot(
+        self, figsize=None, show=True, num_cols: int = 5, cell_h=4, cell_w=6, path=None
+    ):
         n_metrics = len(self.metrics)
         if n_metrics == 0:
             raise ValueError("No metrics to plot.")
@@ -47,7 +49,11 @@ class TrainingTracker:
             visualizer.plot(ax, metric)
             ax.set_xlabel("Step")
             ax.set_ylabel(name.capitalize())
-            ax.set_title(name.capitalize())
+            ax.set_title(
+                name,
+                fontsize=10,
+                fontweight="bold",
+            )
             ax.grid(True, alpha=0.3)
             ax.legend()
 
@@ -55,7 +61,7 @@ class TrainingTracker:
         for idx in range(n_metrics, len(axes)):
             axes[idx].set_visible(False)
 
-        fig.suptitle(self.title, fontsize=16)
+        fig.suptitle(self.title, fontsize=14, fontweight="bold", y=0.995)
         # plt.tight_layout()
 
         if show:

@@ -1,15 +1,22 @@
 import numpy as np
 import graphviz
-from simplegrad.dtypes import as_array
+from typing import Union, Optional
+from simplegrad.dtypes import as_array, convert_to_dtype
 
 
 class Tensor:
     def __init__(
-        self, values=None, comp_grad=True, label=None, dtype=None, column=False
-    ):
+        self,
+        values: Optional[Union[np.ndarray, list]] = None,
+        comp_grad: bool = True,
+        label: Optional[str] = None,
+        dtype: Optional[str] = None,
+        column: bool = False,
+    ) -> None:
+        self.dtype = dtype if dtype is not None else "float32"
         if values is None:
             values = np.array([])
-        self.values = as_array(values, dtype)
+        self.values = as_array(values, self.dtype)
 
         if self.values.ndim == 0:
             self.values = self.values.reshape(1, 1)
@@ -26,16 +33,32 @@ class Tensor:
         self.grad = None
         self.backward_step = lambda: None
 
-    def __len__(self):
+    def convert_to_dtype(self, dtype: str, inplace: bool = True) -> Optional["Tensor"]:
+        if inplace:
+            self.dtype = dtype
+            self.values = convert_to_dtype(self.values, dtype)
+            if self.grad is not None:
+                self.grad = convert_to_dtype(self.grad, dtype)
+        else:
+            new_tensor = Tensor(
+                values=convert_to_dtype(self.values, dtype),
+                comp_grad=self.comp_grad,
+                label=self.label,
+            )
+            if self.grad is not None:
+                new_tensor.grad = convert_to_dtype(self.grad, dtype)
+            return new_tensor
+
+    def __len__(self) -> int:
         return len(self.values)
 
-    def __eq__(self, other):
+    def __eq__(self, other: any) -> bool:
         return id(self) == id(other)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(id(self))
 
-    def __getitem__(self, idxs):
+    def __getitem__(self, idxs) -> tuple:
         return (
             self.values.__getitem__(idxs),
             self.grad.__getitem__(idxs) if self.grad is not None else None,
@@ -46,14 +69,12 @@ class Tensor:
 
     def __str__(self):
         # Determine grad info based on comp_grad and is_leaf
-        if not self.comp_grad:
-            grad_info = "\ngrad: (comp_grad=False)"
-        elif self.grad is not None:
+        if self.grad is not None:
             grad_info = f"\ngrad:\n{self.grad}"
         else:
             grad_info = "\ngrad: None"
 
-        return f"Tensor '{self.label}', shape: {self.shape}, is_leaf: {self.is_leaf}:\nvalues:\n{self.values}{grad_info}"
+        return f"Tensor '{self.label}'\nshape: {self.shape}\nis_leaf: {self.is_leaf}\ndtype: {self.dtype}\ncomp_grad: {self.comp_grad}\nvalues:\n{self.values}{grad_info}"
 
     def zero_grad(self):
         # Initialize gradients only on leaf nodes
@@ -180,7 +201,7 @@ class Tensor:
             def backward_step():
                 if self.comp_grad:
                     self._init_grad_if_needed()
-                    self.grad +=  self._reduce_broadcasted_dims(
+                    self.grad += self._reduce_broadcasted_dims(
                         delta=out.grad * other.values
                     )
 
@@ -302,12 +323,12 @@ class Tensor:
         node_attrs = {"shape": "record", "style": "rounded,filled"}
         if self.is_leaf:
             node_attrs["fillcolor"] = "lightblue"
-            node_attrs["fontname"]="monospace"
-            node_attrs["fontsize"]="10"
+            node_attrs["fontname"] = "monospace"
+            node_attrs["fontsize"] = "10"
         else:
             node_attrs["fillcolor"] = "white"
-            node_attrs["fontname"]="monospace"
-            node_attrs["fontsize"]="10"
+            node_attrs["fontname"] = "monospace"
+            node_attrs["fontsize"] = "10"
         graph.node(self._str_id, self._node_signature, **node_attrs)
         if self.oper is not None:
             oper_id = self._str_id + self.oper

@@ -1,11 +1,21 @@
 import numpy as np
 from simplegrad.core.tensor import Tensor
+from typing import Optional
 
-def zeros(shape, req_grad=True, label=None):
+
+def zeros(
+    shape: tuple[int], req_grad: bool = True, label: Optional[bool] = None
+) -> Tensor:
     return Tensor(np.zeros(shape), req_grad, label)
 
-def ones(shape, req_grad=True, label=None):
+
+def ones(
+    shape: tuple[int], req_grad: bool = True, label: Optional[bool] = None
+) -> Tensor:
     return Tensor(np.ones(shape), req_grad, label)
 
-def random(shape, req_grad=True, label=None):
+
+def random(
+    shape: tuple[int], req_grad: bool = True, label: Optional[bool] = None
+) -> Tensor:
     return Tensor(np.random.standard_normal(shape), req_grad, label)

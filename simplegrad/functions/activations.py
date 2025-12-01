@@ -1,9 +1,10 @@
 import numpy as np
 from simplegrad.core.tensor import Tensor
 from .ops import exp, log, sum
+from typing import Optional
 
 
-def relu(x):
+def relu(x: Tensor) -> Tensor:
     out = Tensor(np.maximum(0, x.values))
     out.prev = {x}
     out.oper = "ReLU"
@@ -19,11 +20,12 @@ def relu(x):
     return out
 
 
-def softmax(x, dim=None):
+def softmax(x: Tensor, dim: Optional[int] = None) -> Tensor:
     exps = exp(x)
     return exps / sum(exps, dim)
 
-def tanh(x):
+
+def tanh(x: Tensor) -> Tensor:
     out = Tensor(np.tanh(x.values))
     out.prev = {x}
     out.oper = "Tanh"
