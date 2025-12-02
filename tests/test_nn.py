@@ -411,7 +411,7 @@ def test_neural_network_with_optimizer():
 
     # Create model
     model = SimpleNet(input_size, hidden_size, output_size)
-    optimizer = sg.optim.SGD(model, lr=0.01, momentum=0.9)
+    optimizer = sg.opt.SGD(model, lr=0.01, momentum=0.9)
 
     # Create input and target
     x = sg.Tensor(

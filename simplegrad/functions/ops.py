@@ -214,49 +214,88 @@ def pad(
     return out
 
 
-# convolution without padding
+# the idea of the following functions is to organize the convolution operation as a single matrix multiplication
+# (read more here: https://cs231n.github.io/convolutional-networks/#conv)
+# this allows us to avoid nested loops and speed up the computation significantly
+
+
+# this function will conver the image input to a matrix rows of wich are the flattened receptive fields
+def _get_rec_fields_from_img(img, kh, kw, sh, sw):
+    # get dimensions of input image
+    batch_size, channels, in_h, in_w = img.shape
+
+    # get output dimensions
+    out_h = (in_h - kh) // sh + 1
+    out_w = (in_w - kw) // sw + 1
+
+    rec_fields = np.zeros((batch_size, channels, kh, kw, out_h, out_w))
+
+    # here the idea is to mininze the number of loops
+    # so we loop over the kernel height and width
+    # and get all the values for that kernel neurons positioned at the specific height and width at once
+    for h in range(kh):
+        h_max = h + sh * out_h
+        for w in range(kw):
+            w_max = w + sw * out_w
+            # reminder: las part of the slice is not included
+            rec_fields[:, :, h, w, :, :] = img[:, :, h:h_max:sh, w:w_max:sw]
+
+    # Reshape to (batch_size, channels * kh * kw, out_h * out_w)
+    rec_fields = rec_fields.transpose(0, 4, 5, 1, 2, 3).reshape(
+        batch_size * out_h * out_w, -1
+    )
+    return rec_fields
+
+
+# this function does exactly opposite of get_rec_fields_from_img
+# it reconstructs the image from the matrix of receptive fields
+def _get_img_from_rec_fields(rec_fields, img_shape, kh, kw, sh, sw):
+    batch_size, channels, in_h, in_w = img_shape
+    out_h = (in_h - kh) // sh + 1
+    out_w = (in_w - kw) // sw + 1
+
+    rec_fields = rec_fields.reshape(
+        batch_size, out_h, out_w, channels, kh, kw
+    ).transpose(0, 3, 4, 5, 1, 2)
+
+    img = np.zeros(img_shape)
+    for h in range(kh):
+        h_max = h + sh * out_h
+        for w in range(kw):
+            w_max = w + sw * out_w
+            img[:, :, h:h_max:sh, w:w_max:sw] += rec_fields[:, :, h, w, :, :]
+
+    return img
+
+
 def _convd2d(
     padded_input: Tensor,
     weight: Tensor,
     bias: Optional[Tensor] = None,
     stride: Union[int, tuple] = 1,
 ):
+    batch_size = padded_input.values.shape[0] if padded_input.values.ndim == 4 else 1
     in_h, in_w = padded_input.values.shape[-2:]
+    out_channels, in_channels, kh, kw = weight.values.shape
     sh, sw = (stride, stride) if isinstance(stride, int) else stride
-    out_h = (in_h - weight.values.shape[-2]) // sh + 1
-    out_w = (in_w - weight.values.shape[-1]) // sw + 1
+    out_h = (in_h - kh) // sh + 1
+    out_w = (in_w - kw) // sw + 1
 
-    # we can predict output shape here
-    out_array = np.zeros(
-        (
-            padded_input.values.shape[0] if padded_input.values.ndim == 4 else 1,
-            weight.values.shape[0],
-            out_h,
-            out_w,
-        )
+    rec_fields = _get_rec_fields_from_img(
+        padded_input.values, kh, kw, sh, sw
+    )  # (batch*out_h*out_w, in_channels*kh*kw)
+    weight_col = weight.values.reshape(
+        out_channels, -1
+    ).T  # (in_channels*kh*kw, out_channels)
+
+    # Single matrix multiplication instead of loops!
+    out_array = rec_fields @ weight_col  # (batch*out_h*out_w, out_channels)
+    out_array = out_array.reshape(batch_size, out_h, out_w, out_channels).transpose(
+        0, 3, 1, 2
     )
 
-    for i in range(out_h):
-        for j in range(out_w):
-            h_start = i * sh
-            h_end = h_start + weight.values.shape[-2]
-            w_start = j * sw
-            w_end = w_start + weight.values.shape[-1]
-            input_slice = padded_input.values[:, :, h_start:h_end, w_start:w_end]
-            for k in range(weight.values.shape[0]):
-                # the convolution operation is done for k-th channel on the whole input batch
-                out_array[:, k, i, j] = np.sum(
-                    input_slice * weight.values[k, :, :, :], axis=(1, 2, 3)
-                )  # sum over in_channels, kernel_height, kernel_width
-
     if bias is not None:
-        assert bias.shape == (
-            1,
-            weight.values.shape[0],
-        ), f"Bias shape mismatch: expected (1, out_channels), got {bias.shape}"
-        out_array += bias.values[
-            :, :, None, None
-        ]  # Reshape from (1, C) to (1, C, 1, 1) for broadcasting
+        out_array += bias.values[:, :, None, None]
 
     out_tensor = Tensor(out_array)
     out_tensor.prev = {padded_input, weight}
@@ -270,51 +309,28 @@ def _convd2d(
     )
     out_tensor.is_leaf = False
 
-    # backprop only for convolution operation (for padding we have separate function)
+    # backprop only for _convd2d, for padding the gradient is computed separately (in pad())
     def backward_step():
-        if padded_input.comp_grad:
-            padded_input._init_grad_if_needed()
-            # Gradient computation for input
-            for i in range(out_h):
-                for j in range(out_w):
-                    h_start = i * sh
-                    h_end = h_start + weight.values.shape[-2]
-                    w_start = j * sw
-                    w_end = w_start + weight.values.shape[-1]
-                    for k in range(weight.values.shape[0]):
-                        padded_input.grad[
-                            :,
-                            :,
-                            h_start:h_end,
-                            w_start:w_end,
-                        ] += (
-                            # Add 3 dimensions
-                            out_tensor.grad[:, k, i, j][:, None, None, None]
-                            # Add 1 dimension
-                            * weight.values[k, :, :, :][None, :, :, :]
-                        )
+        # Reshape output gradient
+        dout = out_tensor.grad.transpose(0, 2, 3, 1).reshape(-1, out_channels)
 
+        # compute gradiesnt as for usual matrix multiplication
         if weight.comp_grad:
             weight._init_grad_if_needed()
-            # Gradient computation for weights
-            for k in range(weight.values.shape[0]):
-                for c in range(weight.values.shape[1]):
-                    for i in range(weight.values.shape[2]):
-                        for j in range(weight.values.shape[3]):
-                            weight.grad[k, c, i, j] += np.sum(
-                                padded_input.values[
-                                    :,
-                                    c,
-                                    i : i + out_h * sh : sh,
-                                    j : j + out_w * sw : sw,
-                                ]
-                                * out_tensor.grad[:, k, :, :],
-                                axis=(0, 1, 2),
-                            )
+            d_w = rec_fields.T @ dout  # (in_channels*kh*kw, out_channels)
+            weight.grad += d_w.T.reshape(weight.values.shape)
+
+        # compute gradiesnt as for usual matrix multiplication
+        if padded_input.comp_grad:
+            padded_input._init_grad_if_needed()
+            d_rec_fields = dout @ weight_col.T
+            padded_input.grad += _get_img_from_rec_fields(
+                d_rec_fields, padded_input.values.shape, kh, kw, sh, sw
+            )
 
         if bias is not None and bias.comp_grad:
             bias._init_grad_if_needed()
-            bias.grad += np.sum(out_tensor.grad, axis=(0, -1, -2))
+            bias.grad += np.sum(out_tensor.grad, axis=(0, 2, 3))
 
     out_tensor.backward_step = backward_step
     return out_tensor
@@ -436,7 +452,9 @@ def max_pool2d(
             out_array[:, :, i, j] = np.max(input_slice, axis=(-1, -2))
 
             # Create mask for max positions
-            max_val = out_array[:, :, i, j][:, :, None, None]  # make 2d array of shape (B, C, 1, 1) (for broadcasting)
+            max_val = out_array[:, :, i, j][
+                :, :, None, None
+            ]  # make 2d array of shape (B, C, 1, 1) (for broadcasting)
             mask[:, :, h_start:h_end, w_start:w_end] |= np.isclose(input_slice, max_val)
 
     out_tensor = Tensor(out_array)
