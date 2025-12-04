@@ -55,12 +55,7 @@ def test_operations_1():
 
     at = torch.from_numpy(array1).to(torch.float64).requires_grad_(True)
     bt = torch.from_numpy(array2).to(torch.float64).requires_grad_(True)
-    ct = (
-        torch.exp(at) * torch.log(bt)
-        + torch.sin(at * bt)
-        + torch.cos(at + 1)
-        - torch.tan(at - bt)
-    )
+    ct = torch.exp(at) * torch.log(bt) + torch.sin(at * bt) + torch.cos(at + 1) - torch.tan(at - bt)
     loss = ct.sum()
     loss.backward()
 
@@ -78,11 +73,7 @@ def test_operations_2():
     c.backward()
 
     at = torch.from_numpy(array1).to(torch.float64).requires_grad_(True)
-    ct = (
-        torch.sum(at, dim=1, keepdim=True)
-        + torch.mean(at, dim=0, keepdim=True)
-        + torch.trace(at)
-    )
+    ct = torch.sum(at, dim=1, keepdim=True) + torch.mean(at, dim=0, keepdim=True) + torch.trace(at)
     loss = ct.sum()
     loss.backward()
 
@@ -191,9 +182,7 @@ def test_mse():
     print("Sg:", mse_loss.values)
     print("Sg Grad:\n", predictions.grad)
 
-    mse_loss_t = torch.nn.functional.mse_loss(
-        predictions_t, targets_t, reduction="mean"
-    )
+    mse_loss_t = torch.nn.functional.mse_loss(predictions_t, targets_t, reduction="mean")
     mse_loss_t.backward()
 
     print("Pt:", mse_loss_t.item())
@@ -241,9 +230,7 @@ def test_mse():
     print("Sg values:\n", mse_loss.values)
     print("Sg Grad:\n", predictions.grad)
 
-    mse_loss_t = torch.nn.functional.mse_loss(
-        predictions_t, targets_t, reduction="none"
-    )
+    mse_loss_t = torch.nn.functional.mse_loss(predictions_t, targets_t, reduction="none")
     mse_loss_sum_t = torch.sum(mse_loss_t)
     mse_loss_sum_t.backward()
 
@@ -256,9 +243,7 @@ def test_mse():
 
 
 def test_ce():
-    array1 = np.array(
-        [[0.2, 0.8, 0.5, 0.1], [1.5, 0.3, 0.7, 3.76], [0.22, 0.28, 0.25, 9.1]]
-    )
+    array1 = np.array([[0.2, 0.8, 0.5, 0.1], [1.5, 0.3, 0.7, 3.76], [0.22, 0.28, 0.25, 9.1]])
     array2 = np.array([[0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]])
 
     # Test reduction='mean' (default)
@@ -275,9 +260,7 @@ def test_ce():
     print("Sg:", ce_loss.values)
     print("Sg Grad:\n", predictions.grad)
 
-    ce_loss_t = torch.nn.functional.cross_entropy(
-        predictions_t, targets_t, reduction="mean"
-    )
+    ce_loss_t = torch.nn.functional.cross_entropy(predictions_t, targets_t, reduction="mean")
     ce_loss_t.backward()
 
     print("Pt:", ce_loss_t.item())
@@ -300,9 +283,7 @@ def test_ce():
     print("Sg:", ce_loss.values)
     print("Sg Grad:\n", predictions.grad)
 
-    ce_loss_t = torch.nn.functional.cross_entropy(
-        predictions_t, targets_t, reduction="sum"
-    )
+    ce_loss_t = torch.nn.functional.cross_entropy(predictions_t, targets_t, reduction="sum")
     ce_loss_t.backward()
 
     print("Pt:", ce_loss_t.item())
@@ -327,9 +308,7 @@ def test_ce():
     print("Sg values:\n", ce_loss.values)
     print("Sg Grad:\n", predictions.grad)
 
-    ce_loss_t = torch.nn.functional.cross_entropy(
-        predictions_t, targets_t, reduction="none"
-    )
+    ce_loss_t = torch.nn.functional.cross_entropy(predictions_t, targets_t, reduction="none")
     ce_loss_sum_t = torch.sum(ce_loss_t)
     ce_loss_sum_t.backward()
 

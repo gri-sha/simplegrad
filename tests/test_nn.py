@@ -29,7 +29,6 @@ def _test_conv2d_helper(
 
     x = sg.Tensor(np.random.randn(*input_shape).astype(np.float64), dtype="float64")
     y = conv(x)
-    print(y.shape)
     y.zero_grad()
     y.backward()
 
@@ -37,11 +36,7 @@ def _test_conv2d_helper(
     x_pt = torch.from_numpy(x.values).requires_grad_(True).to(torch.float64)
 
     # Handle asymmetric padding for PyTorch
-    if (
-        isinstance(pad_width, tuple)
-        and len(pad_width) == 4
-        and pad_width != (0, 0, 0, 0)
-    ):
+    if isinstance(pad_width, tuple) and len(pad_width) == 4 and pad_width != (0, 0, 0, 0):
         # Asymmetric padding: (top, bottom, left, right)
         x_padded = torch.from_numpy(x.values)
         x_padded = torch.nn.functional.pad(
@@ -76,18 +71,11 @@ def _test_conv2d_helper(
         x_pt_for_conv = x_pt
         is_asymmetric = False
 
-    conv_pt.weight.data = (
-        torch.from_numpy(conv.weight.values).to(torch.float64).requires_grad_(True)
-    )
+    conv_pt.weight.data = torch.from_numpy(conv.weight.values).to(torch.float64).requires_grad_(True)
     if use_bias:
-        conv_pt.bias.data = (
-            torch.from_numpy(conv.bias.values.flatten())
-            .to(torch.float64)
-            .requires_grad_(True)
-        )
+        conv_pt.bias.data = torch.from_numpy(conv.bias.values.flatten()).to(torch.float64).requires_grad_(True)
 
     y_pt = conv_pt(x_pt_for_conv)
-    print(y_pt.shape)
     loss_pt = y_pt.sum()
     loss_pt.backward()
 
@@ -98,9 +86,7 @@ def _test_conv2d_helper(
         # Extract gradient for original input from padded gradient
         # pad_width is (top, bottom, left, right)
         top, bottom, left, right = pad_width
-        h_end = (
-            x_padded.grad.shape[2] - bottom if bottom > 0 else x_padded.grad.shape[2]
-        )
+        h_end = x_padded.grad.shape[2] - bottom if bottom > 0 else x_padded.grad.shape[2]
         w_end = x_padded.grad.shape[3] - right if right > 0 else x_padded.grad.shape[3]
         x_pt_grad_inner = x_padded.grad[:, :, top:h_end, left:w_end]
         compare2tensors(sg=x.grad, pt=x_pt_grad_inner)
@@ -277,14 +263,8 @@ def test_linear_layer():
     # PyTorch equivalent
     x_pt = torch.from_numpy(x.values).requires_grad_(True).to(torch.float64)
     linear_pt = torch.nn.Linear(in_features, out_features, bias=True)
-    linear_pt.weight.data = (
-        torch.from_numpy(linear.weight.values.T).to(torch.float64).requires_grad_(True)
-    )
-    linear_pt.bias.data = (
-        torch.from_numpy(linear.bias.values.flatten())
-        .to(torch.float64)
-        .requires_grad_(True)
-    )
+    linear_pt.weight.data = torch.from_numpy(linear.weight.values.T).to(torch.float64).requires_grad_(True)
+    linear_pt.bias.data = torch.from_numpy(linear.bias.values.flatten()).to(torch.float64).requires_grad_(True)
 
     y_pt = linear_pt(x_pt)
     loss_pt = y_pt.sum()
@@ -312,9 +292,7 @@ def test_neural_network():
     )
 
     # Create input
-    x = sg.Tensor(
-        np.random.randn(batch_size, input_size).astype(np.float64), dtype="float64"
-    )
+    x = sg.Tensor(np.random.randn(batch_size, input_size).astype(np.float64), dtype="float64")
 
     # Forward pass
     output = model(x)
@@ -335,36 +313,12 @@ def test_neural_network():
     )
 
     # Copy weights
-    model_pt[0].weight.data = (
-        torch.from_numpy(model.modules[0].weight.values.T)
-        .to(torch.float64)
-        .requires_grad_(True)
-    )
-    model_pt[0].bias.data = (
-        torch.from_numpy(model.modules[0].bias.values.flatten())
-        .to(torch.float64)
-        .requires_grad_(True)
-    )
-    model_pt[2].weight.data = (
-        torch.from_numpy(model.modules[2].weight.values.T)
-        .to(torch.float64)
-        .requires_grad_(True)
-    )
-    model_pt[2].bias.data = (
-        torch.from_numpy(model.modules[2].bias.values.flatten())
-        .to(torch.float64)
-        .requires_grad_(True)
-    )
-    model_pt[4].weight.data = (
-        torch.from_numpy(model.modules[4].weight.values.T)
-        .to(torch.float64)
-        .requires_grad_(True)
-    )
-    model_pt[4].bias.data = (
-        torch.from_numpy(model.modules[4].bias.values.flatten())
-        .to(torch.float64)
-        .requires_grad_(True)
-    )
+    model_pt[0].weight.data = torch.from_numpy(model.modules[0].weight.values.T).to(torch.float64).requires_grad_(True)
+    model_pt[0].bias.data = torch.from_numpy(model.modules[0].bias.values.flatten()).to(torch.float64).requires_grad_(True)
+    model_pt[2].weight.data = torch.from_numpy(model.modules[2].weight.values.T).to(torch.float64).requires_grad_(True)
+    model_pt[2].bias.data = torch.from_numpy(model.modules[2].bias.values.flatten()).to(torch.float64).requires_grad_(True)
+    model_pt[4].weight.data = torch.from_numpy(model.modules[4].weight.values.T).to(torch.float64).requires_grad_(True)
+    model_pt[4].bias.data = torch.from_numpy(model.modules[4].bias.values.flatten()).to(torch.float64).requires_grad_(True)
 
     # Forward pass
     print(model_pt)
@@ -378,17 +332,11 @@ def test_neural_network():
     # Compare gradients
     compare2tensors(sg=x.grad, pt=x_pt.grad)
     compare2tensors(sg=model.modules[0].weight.grad, pt=model_pt[0].weight.grad.T)
-    compare2tensors(
-        sg=model.modules[0].bias.grad, pt=model_pt[0].bias.grad.unsqueeze(0)
-    )
+    compare2tensors(sg=model.modules[0].bias.grad, pt=model_pt[0].bias.grad.unsqueeze(0))
     compare2tensors(sg=model.modules[2].weight.grad, pt=model_pt[2].weight.grad.T)
-    compare2tensors(
-        sg=model.modules[2].bias.grad, pt=model_pt[2].bias.grad.unsqueeze(0)
-    )
+    compare2tensors(sg=model.modules[2].bias.grad, pt=model_pt[2].bias.grad.unsqueeze(0))
     compare2tensors(sg=model.modules[4].weight.grad, pt=model_pt[4].weight.grad.T)
-    compare2tensors(
-        sg=model.modules[4].bias.grad, pt=model_pt[4].bias.grad.unsqueeze(0)
-    )
+    compare2tensors(sg=model.modules[4].bias.grad, pt=model_pt[4].bias.grad.unsqueeze(0))
 
 
 def test_neural_network_with_optimizer():
@@ -414,9 +362,7 @@ def test_neural_network_with_optimizer():
     optimizer = sg.opt.SGD(model, lr=0.01, momentum=0.9)
 
     # Create input and target
-    x = sg.Tensor(
-        np.random.randn(batch_size, input_size).astype(np.float64), dtype="float64"
-    )
+    x = sg.Tensor(np.random.randn(batch_size, input_size).astype(np.float64), dtype="float64")
     target = np.random.randn(batch_size, output_size).astype(np.float64)
 
     # Forward pass
@@ -433,15 +379,11 @@ def test_neural_network_with_optimizer():
     optimizer.step()
 
     # Check that weights were updated
-    assert not np.allclose(
-        old_fc1_weights, model.fc1.weight.values
-    ), "Weights should be updated"
+    assert not np.allclose(old_fc1_weights, model.fc1.weight.values), "Weights should be updated"
 
     # Zero gradients
     optimizer.zero_grad()
 
     # Check gradients are zeroed
     for name, param in model.parameters().items():
-        assert np.allclose(
-            param.grad, 0
-        ), f"Gradient for {name} should be zero after zero_grad()"
+        assert np.allclose(param.grad, 0), f"Gradient for {name} should be zero after zero_grad()"

@@ -1,6 +1,7 @@
 import numpy as np
 from simplegrad.core.tensor import Tensor
-from .ops import exp, log, sum
+from .math import exp, log
+from .reduction import sum
 from typing import Optional
 
 
@@ -39,6 +40,7 @@ def tanh(x: Tensor) -> Tensor:
 
     out.backward_step = backward_step
     return out
+
 
 def sigmoid(x: Tensor) -> Tensor:
     out = Tensor(1 / (1 + np.exp(-x.values)))

@@ -20,9 +20,7 @@ class TrainingTracker:
             self.metrics[name].add(self.step, value)
         self.step += 1
 
-    def plot(
-        self, figsize=None, show=True, num_cols: int = 5, cell_h=4, cell_w=6, path=None
-    ):
+    def plot(self, figsize=None, show=True, num_cols: int = 5, cell_h=4, cell_w=6, path=None):
         n_metrics = len(self.metrics)
         if n_metrics == 0:
             raise ValueError("No metrics to plot.")
@@ -49,20 +47,16 @@ class TrainingTracker:
             visualizer.plot(ax, metric)
             ax.set_xlabel("Step")
             ax.set_ylabel(name.capitalize())
-            ax.set_title(
-                name,
-                fontsize=10,
-                fontweight="bold",
-            )
-            ax.grid(True, alpha=0.3)
+            ax.set_title(name)
+            ax.grid(True)
             ax.legend()
 
         # Hide extra subplots
         for idx in range(n_metrics, len(axes)):
             axes[idx].set_visible(False)
 
-        fig.suptitle(self.title, fontsize=14, fontweight="bold", y=0.995)
-        # plt.tight_layout()
+        fig.suptitle(self.title)
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
         if show:
             plt.show()
@@ -99,8 +93,4 @@ class TrainingTracker:
         """Print summary of all metrics"""
         for name, metric in self.metrics.items():
             if metric.values:
-                print(
-                    f"{name}: min={min(metric.values):.4f}, "
-                    f"max={max(metric.values):.4f}, "
-                    f"final={metric.values[-1]:.4f}"
-                )
+                print(f"{name}: min={min(metric.values):.4f}, " f"max={max(metric.values):.4f}, " f"final={metric.values[-1]:.4f}")

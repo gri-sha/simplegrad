@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from simplegrad.core.tensor import Tensor
 from simplegrad.dtypes import convert_to_dtype
 
@@ -19,7 +20,7 @@ class Module:
             params = self._get_parameters()
             self._parameters = params
         return self._parameters
-    
+
     @staticmethod
     def _init_param(shape, label, k, dtype):
         limit = np.sqrt(k)
@@ -65,3 +66,38 @@ class Module:
             print(f"{name:<20} {str(tensor.values.shape):<15} {str(tr):<40}")
         print("-" * 60)
         print(f"Total trainable parameters: {tot}")
+
+    def _get_submodules(self) -> list:
+        submodules = []
+        for attr_name, attr_value in self.__dict__.items():
+            if attr_name in ("label", "_parameters"):
+                continue
+            if isinstance(attr_value, Module):
+                submodules.append((attr_name, attr_value))
+            elif isinstance(attr_value, (list, tuple)):
+                for i, item in enumerate(attr_value):
+                    if isinstance(item, Module):
+                        submodules.append((f"{attr_name}.{i}", item))
+        return submodules
+
+    def visualize(self, what: str = "values", cmap: str = "viridis") -> None:
+        print(f"{self.label} has no parameters to visualize.")
+
+    def visualize_params(self, what: str = "values", cmap: str = "viridis") -> None:
+        submodules = self._get_submodules()
+
+        if not submodules:
+            # No submodules, try to visualize self
+            self.visualize(what=what, cmap=cmap)
+            return
+
+        # Filter to only modules with parameters
+        modules_with_params = [(name, mod) for name, mod in submodules if mod.parameters(force_refresh=True)]
+
+        if not modules_with_params:
+            print(f"{self.label} has no submodules with parameters to visualize.")
+            return
+
+        for name, module in modules_with_params:
+            print(f"--- {name}: {module.label} ---")
+            module.visualize(what=what, cmap=cmap, module_name=name)

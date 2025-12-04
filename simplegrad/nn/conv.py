@@ -1,6 +1,7 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from simplegrad.core.module import Module, Tensor
-from simplegrad.functions.ops import conv2d
+from simplegrad.functions.conv import conv2d
 from typing import Union, Optional
 
 
@@ -42,11 +43,7 @@ class Conv2d(Module):
             assert ((isinstance(kernel_size, int)) and kernel_size > 0) or (
                 (isinstance(kernel_size, tuple) and all(k > 0 for k in kernel_size))
             ), "kernel_size must be a positive integer or a tuple of positive integers"
-            self.kernel_size = (
-                kernel_size
-                if isinstance(kernel_size, tuple)
-                else (kernel_size, kernel_size)
-            )
+            self.kernel_size = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
             weight_shape = (out_channels, in_channels, *self.kernel_size)
             self.weight = self._init_param(
                 weight_shape,
@@ -57,10 +54,7 @@ class Conv2d(Module):
 
         if use_bias:
             if bias is not None:
-                assert bias.shape == (out_channels,), (
-                    "Bias shape must be (out_channels,), "
-                    f"but got {bias.shape} instead."
-                )
+                assert bias.shape == (out_channels,), "Bias shape must be (out_channels,), " f"but got {bias.shape} instead."
                 self.bias = bias
                 self.bias.label = bias_label
             else:
@@ -79,15 +73,9 @@ class Conv2d(Module):
         self.stride = stride if isinstance(stride, tuple) else (stride, stride)
 
         assert ((isinstance(pad_width, int)) and pad_width >= 0) or (
-            isinstance(pad_width, tuple)
-            and len(pad_width) == 4
-            and all(isinstance(p, int) and p >= 0 for p in pad_width)
+            isinstance(pad_width, tuple) and len(pad_width) == 4 and all(isinstance(p, int) and p >= 0 for p in pad_width)
         ), "padding must be a non-negative integer or a tuple of 4 non-negative integers"
-        self.pad_width = (
-            (pad_width, pad_width, pad_width, pad_width)
-            if isinstance(pad_width, int)
-            else pad_width
-        )
+        self.pad_width = (pad_width, pad_width, pad_width, pad_width) if isinstance(pad_width, int) else pad_width
         self.pad_mode = pad_mode
         self.pad_value = pad_value
 
@@ -95,9 +83,7 @@ class Conv2d(Module):
         assert (
             x.values.ndim == 4 or x.values.ndim == 3
         ), "Input tensor must be 4-dimensional (batch_size, in_channels, height, width) or 3-dimensional (in_channels, height, width)"
-        assert (
-            x.values.shape[-3] == self.in_channels
-        ), f"Expected input with {self.in_channels} channels, got {x.values.shape[-3]}"
+        assert x.values.shape[-3] == self.in_channels, f"Expected input with {self.in_channels} channels, got {x.values.shape[-3]}"
 
         return conv2d(
             x=x,
@@ -112,6 +98,6 @@ class Conv2d(Module):
     def __str__(self):
         return (
             f"Conv2D(in_channels={self.in_channels}, out_channels={self.out_channels}, "
-            f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}, "
+            f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.pad_width}, "
             f"bias={'True' if self.bias is not None else 'False'})"
         )

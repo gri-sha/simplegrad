@@ -2,6 +2,7 @@ from simplegrad.core.tensor import Tensor
 from ..core.module import Module
 import numpy as np
 
+
 class Dropout(Module):
     def __init__(self, p=0.5):
         super().__init__()
@@ -33,6 +34,6 @@ class Dropout(Module):
 
         out.backward_step = backward_step
         return out
-    
+
     def __str__(self):
         return f"Dropout(p={self.p})"

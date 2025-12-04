@@ -4,22 +4,18 @@ import simplegrad as sg
 from typing import Optional
 
 
-def ce_loss(z: Tensor, y: Tensor, dim: Optional[int]=-1, reduction: str="mean") -> Tensor:
+def ce_loss(z: Tensor, y: Tensor, dim: Optional[int] = -1, reduction: str = "mean") -> Tensor:
     # z - layer output (logits, Tensor)
     # y - target probability distribution (Tensor)
 
     # Softmax
-    exps = np.exp(
-        z.values - np.max(z.values, axis=dim, keepdims=True)
-    )  # for numerical stability
+    exps = np.exp(z.values - np.max(z.values, axis=dim, keepdims=True))  # for numerical stability
     s = exps / np.sum(exps, axis=dim, keepdims=True)
 
     # print(s.shape, y.values.shape)
 
     # Cross-entropy loss per sample
-    losses = -np.sum(
-        y.values * np.log(s + 1e-12), axis=dim
-    )  # small epsilon for stability
+    losses = -np.sum(y.values * np.log(s + 1e-12), axis=dim)  # small epsilon for stability
 
     out = Tensor(losses)
     out.prev = {z, y}
@@ -46,7 +42,7 @@ def ce_loss(z: Tensor, y: Tensor, dim: Optional[int]=-1, reduction: str="mean") 
         raise ValueError(f"Invalid reduction: {reduction}")
 
 
-def mse_loss(p: Tensor, y: Tensor, reduction: str="mean") -> Tensor:
+def mse_loss(p: Tensor, y: Tensor, reduction: str = "mean") -> Tensor:
     if reduction == "mean":
         return sg.mean((p - y) ** 2)
     elif reduction == "sum":

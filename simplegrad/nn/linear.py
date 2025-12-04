@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from simplegrad.core import Tensor, Module
 from simplegrad.dtypes import convert_to_dtype
 from typing import Optional
@@ -26,7 +27,7 @@ class Linear(Module):
                 self.weight = weight
             else:
                 self.weight = weight.convert_to_dtype(dtype, inplace=False)
-            self.weight.label = weight_label 
+            self.weight.label = weight_label
             self.in_features = weight.shape[0]
             self.out_features = weight.shape[1]
         else:
@@ -44,10 +45,7 @@ class Linear(Module):
 
         if self.use_bias:
             if bias is not None:
-                assert bias.shape == (1, self.out_features), (
-                    "Bias shape must be (1, out_features), "
-                    f"but got {bias.shape} instead."
-                )
+                assert bias.shape == (1, self.out_features), "Bias shape must be (1, out_features), " f"but got {bias.shape} instead."
                 self.bias = bias
                 self.bias.label = bias_label
             else:

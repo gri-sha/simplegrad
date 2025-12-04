@@ -21,9 +21,7 @@ class Tensor:
         if self.values.ndim == 0:
             self.values = self.values.reshape(1, 1)
         elif self.values.ndim == 1:
-            self.values = (
-                self.values.reshape(-1, 1) if column else self.values.reshape(1, -1)
-            )
+            self.values = self.values.reshape(-1, 1) if column else self.values.reshape(1, -1)
         self.shape = self.values.shape
         self.label = label
         self.prev = set()
@@ -85,13 +83,9 @@ class Tensor:
 
     def _check_can_backward(self):
         if not self.comp_grad:
-            raise RuntimeError(
-                f"Cannot call backward() on tensor {self.label or ''} with comp_grad=False."
-            )
+            raise RuntimeError(f"Cannot call backward() on tensor {self.label or ''} with comp_grad=False.")
         if self.grad is not None and not self.is_leaf:
-            raise RuntimeError(
-                "backward() can only be called once on non-leaf tensors, or you need to use retain_grad()"
-            )
+            raise RuntimeError("backward() can only be called once on non-leaf tensors, or you need to use retain_grad()")
         if self.values.size == 0:
             raise RuntimeError("Cannot call backward() on an empty tensor")
 
@@ -201,15 +195,11 @@ class Tensor:
             def backward_step():
                 if self.comp_grad:
                     self._init_grad_if_needed()
-                    self.grad += self._reduce_broadcasted_dims(
-                        delta=out.grad * other.values
-                    )
+                    self.grad += self._reduce_broadcasted_dims(delta=out.grad * other.values)
 
                 if other.comp_grad:
                     other._init_grad_if_needed()
-                    other.grad += other._reduce_broadcasted_dims(
-                        delta=out.grad * self.values
-                    )
+                    other.grad += other._reduce_broadcasted_dims(delta=out.grad * self.values)
 
             out.backward_step = backward_step
             return out
@@ -220,9 +210,7 @@ class Tensor:
     def __pow__(self, other):
         if isinstance(other, (float, int)):
             if np.any(self.values < 0) and not float(other).is_integer():
-                raise ValueError(
-                    f"Invalid: {self.label if self.label else 'Tensor'} ** {other} would be complex."
-                )
+                raise ValueError(f"Invalid: {self.label if self.label else 'Tensor'} ** {other} would be complex.")
             out = Tensor(self.values**other)
             out.prev = {self}
             out.oper = f"^{other:.2f}"
@@ -238,9 +226,7 @@ class Tensor:
 
             return out
         else:
-            raise ValueError(
-                f"Only 'float' or 'int' exponents are supported, got {type(other)}"
-            )
+            raise ValueError(f"Only 'float' or 'int' exponents are supported, got {type(other)}")
 
     def __matmul__(self, other):
         if isinstance(other, Tensor):
@@ -259,16 +245,12 @@ class Tensor:
                     )
                 if other.comp_grad:
                     other._init_grad_if_needed()
-                    other.grad += other._reduce_broadcasted_dims(
-                        np.matmul(self.values.swapaxes(-1, -2), out.grad)
-                    )
+                    other.grad += other._reduce_broadcasted_dims(np.matmul(self.values.swapaxes(-1, -2), out.grad))
 
             out.backward_step = backward_step
             return out
         else:
-            raise ValueError(
-                f"Only 'Tensor' operands are supported for matmul, got {type(other)}"
-            )
+            raise ValueError(f"Only 'Tensor' operands are supported for matmul, got {type(other)}")
 
     @property
     def T(self):

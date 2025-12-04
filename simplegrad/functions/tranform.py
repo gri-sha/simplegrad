@@ -1,5 +1,6 @@
 from simplegrad.core.tensor import Tensor
 
+
 # both start abd end are flattened
 def flatten(x, start_dim=0, end_dim=-1):
     if end_dim < 0:
@@ -7,11 +8,7 @@ def flatten(x, start_dim=0, end_dim=-1):
     if start_dim < 0:
         start_dim = len(x.values.shape) + start_dim
 
-    out = Tensor(
-        x.values.reshape(
-            *x.values.shape[:start_dim], -1, *x.values.shape[end_dim + 1 :]
-        )
-    )
+    out = Tensor(x.values.reshape(*x.values.shape[:start_dim], -1, *x.values.shape[end_dim + 1 :]))
     out.prev = {x}
     out.oper = "Flatten"
     out.comp_grad = x.comp_grad
