@@ -15,10 +15,6 @@ class SGD(Optimizer):
         self.dampening = dampening
         self.velocities = {name: np.zeros_like(param.values) for name, param in model.parameters().items()}
 
-    def zero_grad(self):
-        for _, param in self.model.parameters().items():
-            param.grad = np.zeros_like(param.values)
-
     def step(self):
         for name, param in self.model.parameters().items():
             if param.grad is None:

@@ -1,5 +1,5 @@
 import numpy as np
-from simplegrad.core.tensor import Tensor
+from simplegrad.core.tensor import Tensor, _should_compute_grad
 import simplegrad as sg
 from typing import Optional
 
@@ -20,17 +20,17 @@ def ce_loss(z: Tensor, y: Tensor, dim: Optional[int] = -1, reduction: str = "mea
     out = Tensor(losses)
     out.prev = {z, y}
     out.oper = f"CELoss(dim={dim})"
-    out.comp_grad = z.comp_grad
+    out.comp_grad = _should_compute_grad(z)
     out.is_leaf = False
 
-    # Backward step
-    def backward_step():
-        if z.comp_grad:
-            z._init_grad_if_needed()
-            grad = s - y.values
-            z.grad += grad * out.grad.T
+    if out.comp_grad:
+        def backward_step():
+            if z.comp_grad:
+                z._init_grad_if_needed()
+                grad = s - y.values
+                z.grad += grad * out.grad.T
 
-    out.backward_step = backward_step
+        out.backward_step = backward_step
 
     if reduction == "mean":
         return sg.mean(out)

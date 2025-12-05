@@ -1,5 +1,5 @@
 import numpy as np
-from simplegrad.core.tensor import Tensor
+from simplegrad.core.tensor import Tensor, _should_compute_grad
 from typing import Optional, Union
 
 
@@ -15,28 +15,29 @@ def pad(x: Tensor, width: Union[int, tuple], mode: str = "constant", value: int 
     )
     out.prev = {x}
     out.oper = f"pad(width={width}, mode={mode})"
-    out.comp_grad = x.comp_grad
+    out.comp_grad = _should_compute_grad(x)
     out.is_leaf = False
 
-    if mode == "constant":
+    if out.comp_grad:
+        if mode == "constant":
 
-        def backward_step():
-            if x.comp_grad:
-                x._init_grad_if_needed()
-                slices = tuple(
-                    # remember: the stop index of slice is not included when using the slice
-                    slice(p[0], out.grad.shape[i] - p[1])
-                    for i, p in enumerate(width)
-                )
-                x.grad += out.grad[slices]
+            def backward_step():
+                if x.comp_grad:
+                    x._init_grad_if_needed()
+                    slices = tuple(
+                        # remember: the stop index of slice is not included when using the slice
+                        slice(p[0], out.grad.shape[i] - p[1])
+                        for i, p in enumerate(width)
+                    )
+                    x.grad += out.grad[slices]
 
-        out.backward_step = backward_step
-    else:
+            out.backward_step = backward_step
+        else:
 
-        def backward_step():
-            raise NotImplementedError(f"Backward pass for padding mode '{mode}' is not implemented.")
+            def backward_step():
+                raise NotImplementedError(f"Backward pass for padding mode '{mode}' is not implemented.")
 
-        out.backward_step = backward_step
+            out.backward_step = backward_step
 
     return out
 
@@ -47,9 +48,9 @@ def pad(x: Tensor, width: Union[int, tuple], mode: str = "constant", value: int 
 # also these functions are used in max pooling implementation
 
 
-def _get_rec_fields_from_img(img, kh, kw, sh, sw):
+def _get_rec_fields_from_img(img: np.ndarray, kh: int, kw: int, sh: int, sw: int):
     """
-    Extract receptive fields from image using strided slicing.
+    Extract receptive fields from image using numpy strides (no Python loops).
 
     Args:
         img: numpy array of shape (batch_size, channels, in_h, in_w)
@@ -63,18 +64,23 @@ def _get_rec_fields_from_img(img, kh, kw, sh, sw):
     out_h = (in_h - kh) // sh + 1
     out_w = (in_w - kw) // sw + 1
 
-    rec_fields = np.zeros((batch_size, channels, kh, kw, out_h, out_w))
+    # Get strides of the input array
+    s_batch, s_channel, s_h, s_w = img.strides
 
-    for h in range(kh):
-        h_max = h + sh * out_h
-        for w in range(kw):
-            w_max = w + sw * out_w
-            rec_fields[:, :, h, w, :, :] = img[:, :, h:h_max:sh, w:w_max:sw]
+    # Create strided view: (batch, channels, out_h, out_w, kh, kw)
+    strided_shape = (batch_size, channels, out_h, out_w, kh, kw)
+    strided_strides = (s_batch, s_channel, s_h * sh, s_w * sw, s_h, s_w)
 
-    return rec_fields
+    rec_fields = np.lib.stride_tricks.as_strided(img, shape=strided_shape, strides=strided_strides)
+
+    # Transpose to (batch, channels, kh, kw, out_h, out_w)
+    rec_fields = rec_fields.transpose(0, 1, 4, 5, 2, 3)
+
+    # Make a copy to avoid issues with non-contiguous memory in downstream operations
+    return np.ascontiguousarray(rec_fields)
 
 
-def _get_img_from_rec_fields(rec_fields, img_shape, kh, kw, sh, sw):
+def _get_img_from_rec_fields(rec_fields: np.ndarray, img_shape: tuple[int], kh: int, kw: int, sh: int, sw: int):
     """
     Reconstruct image from receptive fields (inverse of _get_rec_fields_from_img).
     Used in backward pass to compute gradient w.r.t. input image.
@@ -148,31 +154,32 @@ def _convd2d(
     if bias is not None:
         out_tensor.prev.add(bias)
     out_tensor.oper = "conv2d"
-    out_tensor.comp_grad = bool(padded_input.comp_grad or weight.comp_grad or (bias.comp_grad if bias is not None else False))
+    out_tensor.comp_grad = _should_compute_grad(padded_input, weight, bias)
     out_tensor.is_leaf = False
 
-    def backward_step():
-        # Reshape output gradient: (batch * out_h * out_w, out_channels)
-        out_grad = out_tensor.grad.transpose(0, 2, 3, 1).reshape(-1, out_channels)
+    if out_tensor.comp_grad:
+        def backward_step():
+            # Reshape output gradient: (batch * out_h * out_w, out_channels)
+            out_grad = out_tensor.grad.transpose(0, 2, 3, 1).reshape(-1, out_channels)
 
-        if weight.comp_grad:
-            weight._init_grad_if_needed()
-            weight_flat_grad = rec_fields_flat.T @ out_grad  # weight_flat_grad.shape: (in_channels * kh * kw, out_channels)
-            weight.grad += weight_flat_grad.T.reshape(weight.values.shape)
+            if weight.comp_grad:
+                weight._init_grad_if_needed()
+                weight_flat_grad = rec_fields_flat.T @ out_grad  # weight_flat_grad.shape: (in_channels * kh * kw, out_channels)
+                weight.grad += weight_flat_grad.T.reshape(weight.values.shape)
 
-        if padded_input.comp_grad:
-            padded_input._init_grad_if_needed()
-            # (batch * out_h * out_w, in_channels * kh * kw)
-            rec_fields_grad = out_grad @ weight_flat.T
-            # Reshape back: (batch, in_channels, kh, kw, out_h, out_w)
-            rec_fields_grad = rec_fields_grad.reshape(batch_size, out_h, out_w, in_channels, kh, kw).transpose(0, 3, 4, 5, 1, 2)
-            padded_input.grad += _get_img_from_rec_fields(rec_fields_grad, padded_input.values.shape, kh, kw, sh, sw)
+            if padded_input.comp_grad:
+                padded_input._init_grad_if_needed()
+                # (batch * out_h * out_w, in_channels * kh * kw)
+                rec_fields_grad = out_grad @ weight_flat.T
+                # Reshape back: (batch, in_channels, kh, kw, out_h, out_w)
+                rec_fields_grad = rec_fields_grad.reshape(batch_size, out_h, out_w, in_channels, kh, kw).transpose(0, 3, 4, 5, 1, 2)
+                padded_input.grad += _get_img_from_rec_fields(rec_fields_grad, padded_input.values.shape, kh, kw, sh, sw)
 
-        if bias is not None and bias.comp_grad:
-            bias._init_grad_if_needed()
-            bias.grad += np.sum(out_tensor.grad, axis=(0, 2, 3))
+            if bias is not None and bias.comp_grad:
+                bias._init_grad_if_needed()
+                bias.grad += np.sum(out_tensor.grad, axis=(0, 2, 3))
 
-    out_tensor.backward_step = backward_step
+        out_tensor.backward_step = backward_step
     return out_tensor
 
 

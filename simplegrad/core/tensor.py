@@ -1,17 +1,57 @@
 import numpy as np
-import graphviz
+from contextlib import contextmanager
 from typing import Union, Optional
 from simplegrad.dtypes import as_array, convert_to_dtype
+
+_COMP_GRAD = True
+
+
+@contextmanager
+def no_grad():
+    global _COMP_GRAD
+    prev_comp_grad = _COMP_GRAD
+    _COMP_GRAD = False
+    try:
+        print(_COMP_GRAD)
+        yield
+    finally:
+        _COMP_GRAD = prev_comp_grad
+
+
+def _should_compute_grad(*inputs) -> bool:
+    """
+    Determine if gradient computation is needed for an operation.
+
+    Args:
+        *inputs: Any number of inputs (Tensors, scalars, etc.)
+
+    Returns:
+        False if:
+            - Global _COMP_GRAD is False (inside no_grad() context)
+            - No input Tensor has comp_grad=True
+        True if:
+            - At least one input Tensor has comp_grad=True
+    """
+    # Check global flag first
+    if not _COMP_GRAD:
+        return False
+
+    # Check if any input tensor requires gradient
+    for inp in inputs:
+        if isinstance(inp, Tensor) and inp.comp_grad:
+            return True
+
+    return False
 
 
 class Tensor:
     def __init__(
         self,
         values: Optional[Union[np.ndarray, list]] = None,
-        comp_grad: bool = True,
+        comp_grad: bool = None,  # None means "use global _COMP_GRAD"
         label: Optional[str] = None,
         dtype: Optional[str] = None,
-        column: bool = False,
+        column: Optional[bool] = False,
     ) -> None:
         self.dtype = dtype if dtype is not None else "float32"
         if values is None:
@@ -26,7 +66,7 @@ class Tensor:
         self.label = label
         self.prev = set()
         self.oper = None  # Operation name (no spaces allowed)
-        self.comp_grad = comp_grad
+        self.comp_grad = comp_grad if comp_grad is not None else _COMP_GRAD  # Check global at runtime
         self.is_leaf = True
         self.grad = None
         self.backward_step = lambda: None
@@ -131,15 +171,17 @@ class Tensor:
             out = Tensor(self.values + other)
             out.prev = {self}
             out.oper = f"+({other:.2f})"
-            out.comp_grad = self.comp_grad  # Scalars don't have comp_grad attribute
+            out.comp_grad = _should_compute_grad(self)
             out.is_leaf = False
 
-            def backward_step():
-                if self.comp_grad:
-                    self._init_grad_if_needed()
-                    self.grad += self._reduce_broadcasted_dims(delta=out.grad)
+            if out.comp_grad:
 
-            out.backward_step = backward_step
+                def backward_step():
+                    if self.comp_grad:
+                        self._init_grad_if_needed()
+                        self.grad += self._reduce_broadcasted_dims(delta=out.grad)
+
+                out.backward_step = backward_step
             return out
 
         elif isinstance(other, Tensor):
@@ -149,18 +191,20 @@ class Tensor:
             out = Tensor(self.values + other.values)
             out.prev = {self, other}
             out.oper = "+"
-            out.comp_grad = self.comp_grad or other.comp_grad
+            out.comp_grad = _should_compute_grad(self, other)
             out.is_leaf = False
 
-            def backward_step():
-                if self.comp_grad:
-                    self._init_grad_if_needed()
-                    self.grad += self._reduce_broadcasted_dims(delta=out.grad)
-                if other.comp_grad:
-                    other._init_grad_if_needed()
-                    other.grad += other._reduce_broadcasted_dims(delta=out.grad)
+            if out.comp_grad:
 
-            out.backward_step = backward_step
+                def backward_step():
+                    if self.comp_grad:
+                        self._init_grad_if_needed()
+                        self.grad += self._reduce_broadcasted_dims(delta=out.grad)
+                    if other.comp_grad:
+                        other._init_grad_if_needed()
+                        other.grad += other._reduce_broadcasted_dims(delta=out.grad)
+
+                out.backward_step = backward_step
             return out
 
         else:
@@ -171,15 +215,17 @@ class Tensor:
             out = Tensor(self.values * other)
             out.prev = {self}
             out.oper = f"*({other:.2f})"
-            out.comp_grad = self.comp_grad  # Scalars don't have comp_grad attribute
+            out.comp_grad = _should_compute_grad(self)  # Scalars don't have comp_grad attribute
             out.is_leaf = False
 
-            def backward_step():
-                if self.comp_grad:
-                    self._init_grad_if_needed()
-                    self.grad += out.grad * other
+            if out.comp_grad:
 
-            out.backward_step = backward_step
+                def backward_step():
+                    if self.comp_grad:
+                        self._init_grad_if_needed()
+                        self.grad += out.grad * other
+
+                out.backward_step = backward_step
             return out
 
         elif isinstance(other, Tensor):
@@ -189,19 +235,21 @@ class Tensor:
             out = Tensor(self.values * other.values)
             out.prev = {self, other}
             out.oper = "*"
-            out.comp_grad = self.comp_grad or other.comp_grad
+            out.comp_grad = _should_compute_grad(self, other)
             out.is_leaf = False
 
-            def backward_step():
-                if self.comp_grad:
-                    self._init_grad_if_needed()
-                    self.grad += self._reduce_broadcasted_dims(delta=out.grad * other.values)
+            if out.comp_grad:
 
-                if other.comp_grad:
-                    other._init_grad_if_needed()
-                    other.grad += other._reduce_broadcasted_dims(delta=out.grad * self.values)
+                def backward_step():
+                    if self.comp_grad:
+                        self._init_grad_if_needed()
+                        self.grad += self._reduce_broadcasted_dims(delta=out.grad * other.values)
 
-            out.backward_step = backward_step
+                    if other.comp_grad:
+                        other._init_grad_if_needed()
+                        other.grad += other._reduce_broadcasted_dims(delta=out.grad * self.values)
+
+                out.backward_step = backward_step
             return out
 
         else:
@@ -214,15 +262,17 @@ class Tensor:
             out = Tensor(self.values**other)
             out.prev = {self}
             out.oper = f"^{other:.2f}"
-            out.comp_grad = self.comp_grad
+            out.comp_grad = _should_compute_grad(self)
             out.is_leaf = False
 
-            def backward_step():
-                if self.comp_grad:
-                    self._init_grad_if_needed()
-                    self.grad += out.grad * other * (self.values ** (other - 1))
+            if out.comp_grad:
 
-            out.backward_step = backward_step
+                def backward_step():
+                    if self.comp_grad:
+                        self._init_grad_if_needed()
+                        self.grad += out.grad * other * (self.values ** (other - 1))
+
+                out.backward_step = backward_step
 
             return out
         else:
@@ -233,21 +283,23 @@ class Tensor:
             out = Tensor(self.values @ other.values)
             out.prev = {self, other}
             out.oper = "@"
-            out.comp_grad = self.comp_grad or other.comp_grad
+            out.comp_grad = _should_compute_grad(self, other)
             out.is_leaf = False
 
-            def backward_step():
-                if self.comp_grad:
-                    self._init_grad_if_needed()
-                    self.grad += self._reduce_broadcasted_dims(
-                        # smart way to transpose matrices in the batches
-                        np.matmul(out.grad, other.values.swapaxes(-1, -2))
-                    )
-                if other.comp_grad:
-                    other._init_grad_if_needed()
-                    other.grad += other._reduce_broadcasted_dims(np.matmul(self.values.swapaxes(-1, -2), out.grad))
+            if out.comp_grad:
 
-            out.backward_step = backward_step
+                def backward_step():
+                    if self.comp_grad:
+                        self._init_grad_if_needed()
+                        self.grad += self._reduce_broadcasted_dims(
+                            # smart way to transpose matrices in the batches
+                            np.matmul(out.grad, other.values.swapaxes(-1, -2))
+                        )
+                    if other.comp_grad:
+                        other._init_grad_if_needed()
+                        other.grad += other._reduce_broadcasted_dims(np.matmul(self.values.swapaxes(-1, -2), out.grad))
+
+                out.backward_step = backward_step
             return out
         else:
             raise ValueError(f"Only 'Tensor' operands are supported for matmul, got {type(other)}")
@@ -257,15 +309,17 @@ class Tensor:
         out = Tensor(self.values.T)
         out.prev = {self}
         out.oper = "T"
-        out.comp_grad = self.comp_grad
+        out.comp_grad = _should_compute_grad(self)
         out.is_leaf = False
 
-        def backward_step():
-            if self.comp_grad:
-                self._init_grad_if_needed()
-                self.grad += out.grad.T
+        if out.comp_grad:
 
-        out.backward_step = backward_step
+            def backward_step():
+                if self.comp_grad:
+                    self._init_grad_if_needed()
+                    self.grad += out.grad.T
+
+            out.backward_step = backward_step
         return out
 
     def __sub__(self, other):
@@ -293,59 +347,3 @@ class Tensor:
     @property
     def _str_id(self):
         return str(id(self))
-
-    @property
-    def _node_signature(self):
-        if self.label:
-            return f"Tensor '{self.label}' | shape: {self.shape} | comp_grad: {self.comp_grad}"
-        else:
-            return f"shape: {self.shape} | comp_grad: {self.comp_grad}"
-
-    def _add_graph_vertices(self, graph):
-        node_attrs = {"shape": "record", "style": "rounded,filled"}
-        if self.is_leaf:
-            node_attrs["fillcolor"] = "lightblue"
-            node_attrs["fontname"] = "monospace"
-            node_attrs["fontsize"] = "10"
-        else:
-            node_attrs["fillcolor"] = "white"
-            node_attrs["fontname"] = "monospace"
-            node_attrs["fontsize"] = "10"
-        graph.node(self._str_id, self._node_signature, **node_attrs)
-        if self.oper is not None:
-            oper_id = self._str_id + self.oper
-            graph.node(
-                oper_id,
-                self.oper,
-                shape="box",
-                style="rounded,filled",
-                fillcolor="lightgrey",
-                fontname="monospace",
-                fontsize="10",
-            )
-            graph.edge(oper_id, self._str_id, arrowhead="vee")
-            for t in self.prev:
-                t._add_graph_vertices(graph)
-
-    def _add_graph_edges(self, graph):
-        for t in self.prev:
-            graph.edge(t._str_id, self._str_id + self.oper, arrowhead="vee")
-        for sc in self.prev:
-            sc._add_graph_edges(graph)
-
-    def display_graph(self, path=None):
-        g = graphviz.Digraph(
-            format="svg",
-            graph_attr={
-                "rankdir": "LR",
-                "nodesep": "0.5",
-                "ranksep": "0.7",
-                "bgcolor": "white",
-            },
-        )
-        g.strict = True
-        self._add_graph_vertices(graph=g)
-        self._add_graph_edges(graph=g)
-        if path:
-            g.render(filename=path, format="svg", cleanup=True)
-        return g

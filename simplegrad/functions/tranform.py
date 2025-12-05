@@ -1,4 +1,4 @@
-from simplegrad.core.tensor import Tensor
+from simplegrad.core.tensor import Tensor, _should_compute_grad
 
 
 # both start abd end are flattened
@@ -11,14 +11,14 @@ def flatten(x, start_dim=0, end_dim=-1):
     out = Tensor(x.values.reshape(*x.values.shape[:start_dim], -1, *x.values.shape[end_dim + 1 :]))
     out.prev = {x}
     out.oper = "Flatten"
-    out.comp_grad = x.comp_grad
+    out.comp_grad = _should_compute_grad(x)
     out.is_leaf = False
+    if out.comp_grad:
+        def backward_step():
+            if x.comp_grad:
+                x.grad = out.grad.reshape(x.values.shape)
 
-    def backward_step():
-        if x.comp_grad:
-            x.grad = out.grad.reshape(x.values.shape)
-
-    out.backward_step = backward_step
+        out.backward_step = backward_step
     return out
 
 
@@ -26,12 +26,13 @@ def reshape(x, shape):
     out = Tensor(x.values.reshape(shape))
     out.prev = {x}
     out.oper = f"Reshape({shape})"
-    out.comp_grad = x.comp_grad
+    out.comp_grad = _should_compute_grad(x)
     out.is_leaf = False
+    
+    if out.comp_grad:
+        def backward_step():
+            if x.comp_grad:
+                x.grad = out.grad.reshape(x.values.shape)
 
-    def backward_step():
-        if x.comp_grad:
-            x.grad = out.grad.reshape(x.values.shape)
-
-    out.backward_step = backward_step
+        out.backward_step = backward_step
     return out

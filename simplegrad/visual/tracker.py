@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from .core import MetricHistory, Visualizer, LineVisualizer, ScatterVisualizer
+from .visualizer import MetricHistory, Visualizer, LineVisualizer, ScatterVisualizer
 
 
 class TrainingTracker:

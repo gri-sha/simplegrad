@@ -1,5 +1,5 @@
 import numpy as np
-from simplegrad.core.tensor import Tensor
+from simplegrad.core.tensor import Tensor, _should_compute_grad
 from typing import Union
 from .conv import pad, _get_rec_fields_from_img, _get_img_from_rec_fields
 
@@ -60,32 +60,33 @@ def max_pool2d(
     out_tensor = Tensor(out_array)
     out_tensor.prev = {padded_input}
     out_tensor.oper = "max_pool2d"
-    out_tensor.comp_grad = padded_input.comp_grad
+    out_tensor.comp_grad = _should_compute_grad(padded_input)
     out_tensor.is_leaf = False
 
-    def backward_step():
-        if padded_input.comp_grad:
-            padded_input._init_grad_if_needed()
+    if out_tensor.comp_grad:
+        def backward_step():
+            if padded_input.comp_grad:
+                padded_input._init_grad_if_needed()
 
-            # Create one-hot mask for max positions: (batch, channels, kh * kw, out_h, out_w)
-            mask = np.zeros((batch_size, channels, kh * kw, out_h, out_w))
+                # Create one-hot mask for max positions: (batch, channels, kh * kw, out_h, out_w)
+                mask = np.zeros((batch_size, channels, kh * kw, out_h, out_w))
 
-            # Use advanced indexing to set 1s at max positions
-            b_idx = np.arange(batch_size)[:, None, None, None]
-            c_idx = np.arange(channels)[None, :, None, None]
-            h_idx = np.arange(out_h)[None, None, :, None]
-            w_idx = np.arange(out_w)[None, None, None, :]
+                # Use advanced indexing to set 1s at max positions
+                b_idx = np.arange(batch_size)[:, None, None, None]
+                c_idx = np.arange(channels)[None, :, None, None]
+                h_idx = np.arange(out_h)[None, None, :, None]
+                w_idx = np.arange(out_w)[None, None, None, :]
 
-            mask[b_idx, c_idx, max_idx, h_idx, w_idx] = 1.0
+                mask[b_idx, c_idx, max_idx, h_idx, w_idx] = 1.0
 
-            # Multiply mask by output gradient: (batch, channels, kh * kw, out_h, out_w)
-            rec_fields_grad = mask * out_tensor.grad[:, :, None, :, :]
+                # Multiply mask by output gradient: (batch, channels, kh * kw, out_h, out_w)
+                rec_fields_grad = mask * out_tensor.grad[:, :, None, :, :]
 
-            # Reshape back to (batch, channels, kh, kw, out_h, out_w) for _get_img_from_rec_fields
-            rec_fields_grad = rec_fields_grad.reshape(batch_size, channels, kh, kw, out_h, out_w)
+                # Reshape back to (batch, channels, kh, kw, out_h, out_w) for _get_img_from_rec_fields
+                rec_fields_grad = rec_fields_grad.reshape(batch_size, channels, kh, kw, out_h, out_w)
 
-            # Convert back to image space
-            padded_input.grad += _get_img_from_rec_fields(rec_fields_grad, padded_input.values.shape, kh, kw, sh, sw)
+                # Convert back to image space
+                padded_input.grad += _get_img_from_rec_fields(rec_fields_grad, padded_input.values.shape, kh, kw, sh, sw)
 
-    out_tensor.backward_step = backward_step
+        out_tensor.backward_step = backward_step
     return out_tensor

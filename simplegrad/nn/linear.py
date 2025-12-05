@@ -39,7 +39,7 @@ class Linear(Module):
             self.weight = self._init_param(
                 shape=(self.in_features, self.out_features),
                 dtype=self.dtype,
-                label=bias_label,
+                label=weight_label,
                 k=1 / self.in_features,
             )
 

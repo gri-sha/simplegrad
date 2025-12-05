@@ -1,5 +1,5 @@
 import numpy as np
-from simplegrad.core.tensor import Tensor
+from simplegrad.core.tensor import Tensor, _should_compute_grad
 from typing import Optional
 from simplegrad.dtypes import get_dtype_class
 
@@ -11,15 +11,16 @@ def sum(x: Tensor, dim: Optional[int] = None) -> Tensor:
     out = Tensor(np.sum(x.values, axis=dim, keepdims=True))
     out.prev = {x}
     out.oper = f"sum(d={dim})"
-    out.comp_grad = x.comp_grad
+    out.comp_grad = _should_compute_grad(x)
     out.is_leaf = False
+    
+    if out.comp_grad:
+        def backward_step():
+            if x.comp_grad:
+                x._init_grad_if_needed()
+                x.grad += np.ones_like(x.values) * out.grad
 
-    def backward_step():
-        if x.comp_grad:
-            x._init_grad_if_needed()
-            x.grad += np.ones_like(x.values) * out.grad
-
-    out.backward_step = backward_step
+        out.backward_step = backward_step
     return out
 
 
@@ -30,17 +31,18 @@ def trace(x: Tensor) -> Tensor:
     out = Tensor(np.array([[np.trace(x.values)]]))
     out.prev = {x}
     out.oper = "trace"
-    out.comp_grad = x.comp_grad
+    out.comp_grad = _should_compute_grad(x)
     out.is_leaf = False
 
-    def backward_step():
-        if x.comp_grad:
-            x._init_grad_if_needed()
-            grad_matrix = np.zeros_like(x.values)
-            np.fill_diagonal(grad_matrix, out.grad.flatten())
-            x.grad += grad_matrix
+    if out.comp_grad:
+        def backward_step():
+            if x.comp_grad:
+                x._init_grad_if_needed()
+                grad_matrix = np.zeros_like(x.values)
+                np.fill_diagonal(grad_matrix, out.grad.flatten())
+                x.grad += grad_matrix
 
-    out.backward_step = backward_step
+        out.backward_step = backward_step
     return out
 
 
@@ -57,10 +59,11 @@ def argmax(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor
     out.comp_grad = False
     out.is_leaf = False
 
-    def backward_step():
-        raise RuntimeError("argmax is not differentiable and does not support backpropagation")
+    if out.comp_grad:
+        def backward_step():
+            raise RuntimeError("argmax is not differentiable and does not support backpropagation")
 
-    out.backward_step = backward_step
+        out.backward_step = backward_step
     return out
 
 
@@ -71,8 +74,9 @@ def argmin(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor
     out.comp_grad = False
     out.is_leaf = False
 
-    def backward_step():
-        raise RuntimeError("argmin is not differentiable and does not support backpropagation")
+    if out.comp_grad:
+        def backward_step():
+            raise RuntimeError("argmin is not differentiable and does not support backpropagation")
 
-    out.backward_step = backward_step
+        out.backward_step = backward_step
     return out
