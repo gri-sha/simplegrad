@@ -14,9 +14,20 @@ class Dropout(Module):
     def forward(self, x):
         if not isinstance(x, Tensor):
             raise TypeError("Input must be a Tensor.")
+        
+        if self.eval_mode or self.p == 0:
+            out = Tensor(x.values.copy())
+            out.prev = {x}
+            out.comp_grad = x.comp_grad
+            out.is_leaf = False
+            out.oper = f"Dropout(0)"
 
-        if self.p == 0:
-            return x  # No dropout applied
+            def backward_step():
+                if x.comp_grad:
+                    x._init_grad_if_needed()
+                    x.grad += out.grad  # No dropout applied in eval mode
+            out.backward_step = backward_step
+            return out
 
         # Create dropout mask
         self.mask = Tensor(np.random.rand(*x.values.shape) >= self.p, comp_grad=False)

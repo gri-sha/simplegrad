@@ -4,9 +4,11 @@ import simplegrad as sg
 from typing import Optional
 
 
-def ce_loss(z: Tensor, y: Tensor, dim: Optional[int] = -1, reduction: str = "mean") -> Tensor:
+def ce_loss(z: Tensor, y: Tensor, dim: int = -1, reduction: str = "mean") -> Tensor:
     # z - layer output (logits, Tensor)
     # y - target probability distribution (Tensor)
+    if dim > 0:
+        dim = dim - len(z.values.shape)  # convert to negative dim
 
     # Softmax
     exps = np.exp(z.values - np.max(z.values, axis=dim, keepdims=True))  # for numerical stability
@@ -15,7 +17,10 @@ def ce_loss(z: Tensor, y: Tensor, dim: Optional[int] = -1, reduction: str = "mea
     # print(s.shape, y.values.shape)
 
     # Cross-entropy loss per sample
-    losses = -np.sum(y.values * np.log(s + 1e-12), axis=dim)  # small epsilon for stability
+    losses = -np.sum(y.values * np.log(s + 1e-12), axis=dim, keepdims=True)  # small epsilon for stability
+    # print(dim)
+    # print('input', z.shape)
+    # print("losses shape:", losses.shape)
 
     out = Tensor(losses)
     out.prev = {z, y}
@@ -24,11 +29,18 @@ def ce_loss(z: Tensor, y: Tensor, dim: Optional[int] = -1, reduction: str = "mea
     out.is_leaf = False
 
     if out.comp_grad:
+
         def backward_step():
             if z.comp_grad:
                 z._init_grad_if_needed()
                 grad = s - y.values
-                z.grad += grad * out.grad.T
+                # это костыль, не могу понять почему в некоторых случаях неправильный upstream_grad.shape
+                # upstream_grad = out.grad.T if out.grad.ndim <= 2 and out.grad.shape[0] == 1 else np.expand_dims(out.grad, axis=dim)
+                # print('out.grad', out.grad.shape)
+                # upstream_grad = np.expand_dims(out.grad, axis=dim)
+                # print('upstream', upstream_grad.shape)
+                # print('grad', grad.shape)
+                z.grad += grad * out.grad
 
         out.backward_step = backward_step
 

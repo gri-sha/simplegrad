@@ -4,5 +4,6 @@ from .dropout import Dropout
 from .conv import Conv2d
 from .pooling import MaxPool2d
 from .transform import Flatten
+from .embedding import Embedding
 from .activation_layers import *
 from .loss_layers import *

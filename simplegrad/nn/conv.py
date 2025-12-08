@@ -1,6 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from simplegrad.core.module import Module, Tensor
+from simplegrad.core import Module, Tensor, uniform
 from simplegrad.functions.conv import conv2d
 from typing import Union, Optional
 
@@ -26,9 +25,11 @@ class Conv2d(Module):
         bias_label: str = "b",
     ):
         super().__init__()
+        self.dtype = dtype if dtype is not None else "float32"
         if weight is not None:
             assert weight.values.ndim == 4, "Weight tensor must be 4-dimensional"
-            self.weight = weight
+            assert isinstance(weight, Tensor), "Weight must be a sg.Tensor"
+            self.weight = weight.convert_to_dtype(self.dtype, inplace=False)
             self.in_channels = weight.shape[1]
             self.out_channels = weight.shape[0]
             self.kernel_size = weight.shape[2:]
@@ -45,11 +46,12 @@ class Conv2d(Module):
             ), "kernel_size must be a positive integer or a tuple of positive integers"
             self.kernel_size = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
             weight_shape = (out_channels, in_channels, *self.kernel_size)
-            self.weight = self._init_param(
-                weight_shape,
-                dtype=dtype or "float32",
+            self.weight = uniform(
+                shape=weight_shape,
+                dtype=self.dtype,
                 label=weight_label,
-                k=1 / (in_channels * np.prod(self.kernel_size)),
+                high=np.sqrt(1 / (in_channels * np.prod(self.kernel_size))),
+                low=-np.sqrt(1 / (in_channels * np.prod(self.kernel_size))),
             )
 
         if use_bias:
@@ -58,11 +60,12 @@ class Conv2d(Module):
                 self.bias = bias
                 self.bias.label = bias_label
             else:
-                self.bias = self._init_param(
-                    (out_channels,),
-                    dtype=dtype or "float32",
-                    label=bias_label,
-                    k=1 / (in_channels * np.prod(self.kernel_size)),
+                self.bias = uniform(
+                    shape=(out_channels,),
+                    dtype=self.dtype,
+                    label=weight_label,
+                    high=np.sqrt(1 / (in_channels * np.prod(self.kernel_size))),
+                    low=-np.sqrt(1 / (in_channels * np.prod(self.kernel_size))),
                 )
         else:
             self.bias = None

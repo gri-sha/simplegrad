@@ -5,3 +5,8 @@ __pycache__
 .DS_Store
 .vscode
 datasets/
+node_modules/
+runs/
+dashboard/
+demo_dashboard.py
+try.ipynb

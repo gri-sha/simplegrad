@@ -242,9 +242,10 @@ def test_mse():
     compare2tensors(sg=predictions.grad, pt=predictions_t.grad)
 
 
-def test_ce():
-    array1 = np.array([[0.2, 0.8, 0.5, 0.1], [1.5, 0.3, 0.7, 3.76], [0.22, 0.28, 0.25, 9.1]])
-    array2 = np.array([[0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]])
+def _test_ce_helper(array1=None, array2=None, dim=-1):
+    # Use manual cross-entropy calculation to match simplegrad's implementation
+    # simplegrad uses one-hot targets and computes CE along specified dim
+    # PyTorch's cross_entropy expects class indices or handles soft labels differently
 
     # Test reduction='mean' (default)
     predictions = sg.Tensor(array1, dtype="float64")
@@ -253,21 +254,19 @@ def test_ce():
     predictions_t = torch.from_numpy(array1).to(torch.float64).requires_grad_(True)
     targets_t = torch.from_numpy(array2).to(torch.float64)
 
-    ce_loss = sg.ce_loss(predictions, targets, reduction="mean")
+    ce_loss = sg.ce_loss(predictions, targets, dim=dim, reduction="mean")
     ce_loss.zero_grad()
     ce_loss.backward()
 
-    print("Sg:", ce_loss.values)
-    print("Sg Grad:\n", predictions.grad)
-
-    ce_loss_t = torch.nn.functional.cross_entropy(predictions_t, targets_t, reduction="mean")
+    # Manual cross-entropy matching simplegrad's implementation
+    log_softmax_t = torch.log_softmax(predictions_t, dim=dim)
+    ce_loss_t = -torch.sum(targets_t * log_softmax_t, dim=dim, keepdim=True).mean()
     ce_loss_t.backward()
 
-    print("Pt:", ce_loss_t.item())
-    print("Pt Grad:\n", predictions_t.grad)
-
     compare2tensors(sg=ce_loss, pt=ce_loss_t)
+    print("mean forward: ok")
     compare2tensors(sg=predictions.grad, pt=predictions_t.grad)
+    print("mean backward: ok")
 
     # Test reduction='sum'
     predictions = sg.Tensor(array1, dtype="float64")
@@ -276,21 +275,19 @@ def test_ce():
     predictions_t = torch.from_numpy(array1).to(torch.float64).requires_grad_(True)
     targets_t = torch.from_numpy(array2).to(torch.float64)
 
-    ce_loss = sg.ce_loss(predictions, targets, reduction="sum")
+    ce_loss = sg.ce_loss(predictions, targets, dim=dim, reduction="sum")
     ce_loss.zero_grad()
     ce_loss.backward()
 
-    print("Sg:", ce_loss.values)
-    print("Sg Grad:\n", predictions.grad)
-
-    ce_loss_t = torch.nn.functional.cross_entropy(predictions_t, targets_t, reduction="sum")
+    # Manual cross-entropy matching simplegrad's implementation
+    log_softmax_t = torch.log_softmax(predictions_t, dim=dim)
+    ce_loss_t = -torch.sum(targets_t * log_softmax_t, dim=dim, keepdim=True).sum()
     ce_loss_t.backward()
 
-    print("Pt:", ce_loss_t.item())
-    print("Pt Grad:\n", predictions_t.grad)
-
     compare2tensors(sg=ce_loss, pt=ce_loss_t)
+    print("sum forward: ok")
     compare2tensors(sg=predictions.grad, pt=predictions_t.grad)
+    print("sum backward: ok")
 
     # Test reduction=None
     predictions = sg.Tensor(array1, dtype="float64")
@@ -299,25 +296,129 @@ def test_ce():
     predictions_t = torch.from_numpy(array1).to(torch.float64).requires_grad_(True)
     targets_t = torch.from_numpy(array2).to(torch.float64)
 
-    ce_loss = sg.ce_loss(predictions, targets, reduction=None)
+    ce_loss = sg.ce_loss(predictions, targets, dim=dim, reduction=None)
     ce_loss_sum = sg.sum(ce_loss)  # Sum to get scalar for backward
     ce_loss_sum.zero_grad()
     ce_loss_sum.backward()
 
-    print("Sg shape:", ce_loss.values.shape)
-    print("Sg values:\n", ce_loss.values)
-    print("Sg Grad:\n", predictions.grad)
-
-    ce_loss_t = torch.nn.functional.cross_entropy(predictions_t, targets_t, reduction="none")
+    # Manual cross-entropy matching simplegrad's implementation
+    log_softmax_t = torch.log_softmax(predictions_t, dim=dim)
+    ce_loss_t = -torch.sum(targets_t * log_softmax_t, dim=dim, keepdim=True)
     ce_loss_sum_t = torch.sum(ce_loss_t)
     ce_loss_sum_t.backward()
-
-    print("Pt shape:", ce_loss_t.shape)
-    print("Pt values:\n", ce_loss_t.detach())
-    print("Pt Grad:\n", predictions_t.grad)
-
+    print("ce_loss shape sg:", ce_loss.values.shape)
+    print("ce_loss shape pt:", ce_loss_t.shape)
     compare2tensors(sg=ce_loss, pt=ce_loss_t)
+    print("none forward: ok")
     compare2tensors(sg=predictions.grad, pt=predictions_t.grad)
+    print("none backward: ok")
+
+
+def test_ce_1():
+    array1 = np.array([[0.2, 0.8, 0.5, 0.1], [1.5, 0.3, 0.7, 3.76], [0.22, 0.28, 0.25, 9.1]])
+    array2 = np.array([[0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]])
+    _test_ce_helper(array1=array1, array2=array2)
+
+
+def test_ce_2():
+    shape = (3, 4, 5)
+    array1 = np.random.randn(*shape)
+    array2 = np.zeros(shape)
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            target_index = np.random.randint(0, shape[2])
+            array2[i, j, target_index] = 1
+    _test_ce_helper(array1=array1, array2=array2)
+
+
+def test_ce_3():
+    shape = (3, 4, 5, 6)
+    array1 = np.random.randn(*shape)
+    array2 = np.zeros(shape)
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            for k in range(shape[2]):
+                target_index = np.random.randint(0, shape[3])
+                array2[i, j, k, target_index] = 1
+    _test_ce_helper(array1=array1, array2=array2)
+
+
+def test_ce_dim_0():
+    """Test ce_loss with dim=0 (softmax over first dimension)"""
+    shape = (6, 3, 4)  # 6 classes along dim 0
+    array1 = np.random.randn(*shape)
+    array2 = np.zeros(shape)
+    # One-hot along dim 0
+    for j in range(shape[1]):
+        for k in range(shape[2]):
+            target_index = np.random.randint(0, shape[0])
+            array2[target_index, j, k] = 1
+    _test_ce_helper(array1=array1, array2=array2, dim=0)
+
+
+def test_ce_dim_1():
+    """Test ce_loss with dim=1 (softmax over second dimension)"""
+    shape = (3, 6, 4)  # 6 classes along dim 1
+    array1 = np.random.randn(*shape)
+    array2 = np.zeros(shape)
+    # One-hot along dim 1
+    for i in range(shape[0]):
+        for k in range(shape[2]):
+            target_index = np.random.randint(0, shape[1])
+            array2[i, target_index, k] = 1
+    _test_ce_helper(array1=array1, array2=array2, dim=1)
+
+
+def test_ce_dim_2():
+    """Test ce_loss with dim=2 (softmax over third dimension)"""
+    shape = (3, 4, 6)  # 6 classes along dim 2
+    array1 = np.random.randn(*shape)
+    array2 = np.zeros(shape)
+    # One-hot along dim 2
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            target_index = np.random.randint(0, shape[2])
+            array2[i, j, target_index] = 1
+    _test_ce_helper(array1=array1, array2=array2, dim=2)
+
+
+def test_ce_dim_negative_1():
+    """Test ce_loss with dim=-1 (last dimension, same as default)"""
+    shape = (3, 4, 6)  # 6 classes along dim -1
+    array1 = np.random.randn(*shape)
+    array2 = np.zeros(shape)
+    # One-hot along dim -1
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            target_index = np.random.randint(0, shape[2])
+            array2[i, j, target_index] = 1
+    _test_ce_helper(array1=array1, array2=array2, dim=-1)
+
+
+def test_ce_dim_negative_2():
+    """Test ce_loss with dim=-2 (second to last dimension)"""
+    shape = (3, 6, 4)  # 6 classes along dim -2 (which is dim 1)
+    array1 = np.random.randn(*shape)
+    array2 = np.zeros(shape)
+    # One-hot along dim -2 (same as dim 1)
+    for i in range(shape[0]):
+        for k in range(shape[2]):
+            target_index = np.random.randint(0, shape[1])
+            array2[i, target_index, k] = 1
+    _test_ce_helper(array1=array1, array2=array2, dim=-2)
+
+
+def test_ce_dim_negative_3():
+    """Test ce_loss with dim=-3 (third to last dimension)"""
+    shape = (6, 3, 4)  # 6 classes along dim -3 (which is dim 0)
+    array1 = np.random.randn(*shape)
+    array2 = np.zeros(shape)
+    # One-hot along dim -3 (same as dim 0)
+    for j in range(shape[1]):
+        for k in range(shape[2]):
+            target_index = np.random.randint(0, shape[0])
+            array2[target_index, j, k] = 1
+    _test_ce_helper(array1=array1, array2=array2, dim=-3)
 
 
 def test_flatten():

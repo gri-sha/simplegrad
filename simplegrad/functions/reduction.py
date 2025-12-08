@@ -51,6 +51,35 @@ def mean(x: Tensor, dim: Optional[int] = None) -> Tensor:
         return sum(x) / x.values.size
     return sum(x, dim=dim) / x.values.shape[dim]
 
+# def max(x: Tensor, dim: Optional[int] = None) -> Tensor:
+#     out = Tensor(np.max(x.values, axis=dim), dtype=x.dtype)
+#     mask_idxs = np.argmax(x.values, axis=dim)
+#     out.prev = {x}
+#     out.oper = f"max(d={dim})"
+#     out.comp_grad = False
+#     out.is_leaf = False
+
+#     if out.comp_grad:
+#         def backward_step():
+#             if x.comp_grad:
+#                 x._init_grad_if_needed()
+#                 # Create a mask for the max indices
+#                 grad_values = np.zeros_like(x.values)
+#                 if dim is None:
+#                     grad_values.flat[mask_idxs] = out.grad
+#                 else:
+#                     it = np.nditer(mask_idxs, flags=['multi_index'])
+#                     while not it.finished:
+#                         idx = list(it.multi_index)
+#                         if dim is not None:
+#                             idx.insert(dim, it[0])
+#                         grad_values[tuple(idx)] = out.grad[it.multi_index]
+#                         it.iternext()
+#                 x.grad += grad_values
+
+#         out.backward_step = backward_step
+#     return out
+
 
 def argmax(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor:
     out = Tensor(np.argmax(x.values, axis=dim), dtype=get_dtype_class(dtype))

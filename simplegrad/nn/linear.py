@@ -1,6 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from simplegrad.core import Tensor, Module
+from simplegrad.core import Tensor, Module, uniform
 from simplegrad.dtypes import convert_to_dtype
 from typing import Optional
 
@@ -22,11 +21,7 @@ class Linear(Module):
         self.use_bias = use_bias
 
         if weight is not None:
-            if dtype is None:
-                dtype = weight.dtype
-                self.weight = weight
-            else:
-                self.weight = weight.convert_to_dtype(dtype, inplace=False)
+            self.weight = weight.convert_to_dtype(dtype, inplace=False)
             self.weight.label = weight_label
             self.in_features = weight.shape[0]
             self.out_features = weight.shape[1]
@@ -36,11 +31,12 @@ class Linear(Module):
             assert out_features > 0, "out_features must be a positive integer"
             self.out_features = out_features
 
-            self.weight = self._init_param(
+            self.weight = uniform(
                 shape=(self.in_features, self.out_features),
                 dtype=self.dtype,
                 label=weight_label,
-                k=1 / self.in_features,
+                high=np.sqrt(1 / self.in_features),
+                low=-np.sqrt(1 / self.in_features),
             )
 
         if self.use_bias:
@@ -49,11 +45,12 @@ class Linear(Module):
                 self.bias = bias
                 self.bias.label = bias_label
             else:
-                self.bias = self._init_param(
+                self.bias = uniform(
                     shape=(1, self.out_features),
                     dtype=self.dtype,
-                    label=weight_label,
-                    k=1 / self.in_features,
+                    label=bias_label,
+                    high=np.sqrt(1 / self.in_features),
+                    low=-np.sqrt(1 / self.in_features),
                 )
 
     def forward(self, x: Tensor) -> Tensor:
