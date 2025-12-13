@@ -1,5 +1,5 @@
 from simplegrad.core import Tensor
-from ..core.module import Module
+from .module import Module
 from simplegrad.functions.activations import *
 
 

@@ -1,4 +1,4 @@
-from simplegrad.nn import Module
+from .module import Module
 from simplegrad.functions.losses import ce_loss, mse_loss
 
 

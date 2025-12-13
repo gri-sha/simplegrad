@@ -1,5 +1,6 @@
-from simplegrad.core import Tensor, Module, normal, _should_compute_grad
+from simplegrad.core import Tensor, normal, _should_compute_grad
 from typing import Optional
+from .module import Module
 
 
 class Embedding(Module):

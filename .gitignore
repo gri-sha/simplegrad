@@ -1,7 +1,6 @@
 .venv
 .env
 .pytest*
-__pycache__
 .DS_Store
 .vscode
 datasets/
@@ -10,3 +9,10 @@ runs/
 dashboard/
 demo_dashboard.py
 try.ipynb
+*.egg-info/
+build/
+dist/
+*.pyc
+__pycache__/
+*.db 
+experiments/

@@ -1,5 +1,5 @@
 """
-CLI launcher for the SimpleGrad visualization dashboard.
+CLI launcher for the simpleboard.
 """
 
 import argparse
@@ -8,18 +8,21 @@ import sys
 import webbrowser
 import time
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Launch SimpleGrad visualization dashboard")
+    parser = argparse.ArgumentParser(description="Launch simpleboard.")
     parser.add_argument("--port", "-p", type=int, default=8000, help="Port to run the server on (default: 8000)")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind to (default: 127.0.0.1)")
-    parser.add_argument("--logdir", "-l", type=str, default="./runs", help="Directory containing run data (default: ./runs)")
+    parser.add_argument(
+        "--all-exp-dir", "-e", type=str, default="./experiments", help="Directory containing experiment databases (default: ./experiments)"
+    )
     parser.add_argument("--no-browser", action="store_true", help="Don't automatically open browser")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
 
     args = parser.parse_args()
 
-    # Set environment variable for logdir
-    os.environ["SIMPLEGRAD_LOGDIR"] = args.logdir
+    # Set environment variables for the server
+    os.environ["SG_EXPERIMENTS_DIR"] = args.all_exp_dir
 
     # Import uvicorn here to avoid import errors if not installed
     try:
@@ -38,8 +41,8 @@ def main():
         sys.exit(1)
 
     url = f"http://{args.host}:{args.port}"
-    print(f"Starting SimpleBoard...")
-    print(f"Log directory: {args.logdir}")
+    print(f"Starting simpleboard...")
+    print(f"All experiments directory: {args.all_exp_dir}")
     print(f"Server URL: {url}")
 
     # Open browser after a short delay
@@ -54,7 +57,7 @@ def main():
         threading.Thread(target=open_browser, daemon=True).start()
 
     # Run the server
-    uvicorn.run("simplegrad.visual.server:app", host=args.host, port=args.port, reload=args.reload, log_level="info")
+    uvicorn.run("simplegrad.simpleboard.server:app", host=args.host, port=args.port, reload=args.reload, log_level="info")
 
 
 if __name__ == "__main__":

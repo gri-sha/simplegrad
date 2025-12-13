@@ -1,5 +1,6 @@
 import numpy as np
-from simplegrad.core import Module, Tensor, uniform
+from simplegrad.core import Tensor, uniform
+from .module import Module
 from simplegrad.functions.conv import conv2d
 from typing import Union, Optional
 

@@ -1,4 +1,5 @@
-from ..core import Module, Tensor
+from ..core import Tensor
+from .module import Module
 from ..functions.pooling import max_pool2d
 from typing import Union, Optional
 

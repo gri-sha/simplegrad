@@ -1,4 +1,5 @@
-from ..core import Tensor, Module
+from ..core import Tensor
+from .module import Module
 from ..functions import flatten
 
 class Flatten(Module):

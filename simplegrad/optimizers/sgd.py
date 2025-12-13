@@ -14,8 +14,10 @@ class SGD(Optimizer):
         self.momentum = momentum
         self.dampening = dampening
         self.velocities = {name: np.zeros_like(param.values) for name, param in model.parameters().items()}
+        self.step_count = 0
 
     def step(self):
+        self.step_count += 1
         for name, param in self.model.parameters().items():
             if param.grad is None:
                 raise ValueError(f"Gradient for {name} is None. Did you forget to call backward()?")

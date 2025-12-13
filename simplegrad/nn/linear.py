@@ -1,6 +1,7 @@
 import numpy as np
-from simplegrad.core import Tensor, Module, uniform
+from simplegrad.core import Tensor, uniform
 from simplegrad.dtypes import convert_to_dtype
+from .module import Module
 from typing import Optional
 
 

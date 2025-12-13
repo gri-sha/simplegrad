@@ -1,5 +1,5 @@
 from simplegrad.core.tensor import Tensor
-from ..core.module import Module
+from .module import Module
 import numpy as np
 
 

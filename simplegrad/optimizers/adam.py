@@ -11,10 +11,10 @@ class Adam(Optimizer):
         self.eps = eps
         self.moments1 = {name: np.zeros_like(param.values) for name, param in self.model.parameters().items()}
         self.moments2 = {name: np.zeros_like(param.values) for name, param in self.model.parameters().items()}
-        self.t = 0
+        self.step_count = 0
 
     def step(self):
-        self.t += 1
+        self.step_count += 1
         for name, param in self.model.parameters().items():
             if param.grad is None:
                 raise ValueError(f"Gradient for {name} is None. Did you forget to call backward()?")
@@ -26,10 +26,10 @@ class Adam(Optimizer):
             self.moments2[name] = self.beta_2 * self.moments2[name] + (1 - self.beta_2) * (param.grad ** 2)
 
             # Compute bias-corrected first moment estimate
-            m_hat = self.moments1[name] / (1 - self.beta_1 ** self.t)
+            m_hat = self.moments1[name] / (1 - self.beta_1 ** self.step_count)
 
             # Compute bias-corrected second raw moment estimate
-            v_hat = self.moments2[name] / (1 - self.beta_2 ** self.t)
+            v_hat = self.moments2[name] / (1 - self.beta_2 ** self.step_count)
 
             # Update parameters
             param.values -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)

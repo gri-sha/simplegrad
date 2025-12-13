@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
+
+:root {
+  --bg-color: #FAFAFA;
+  --card-bg: #ffffff;
+  --text-color: #1B1E20;
+  --border-color: #1B1E20;
+  --accent-color: #F7733C;
+  --secondary-accent: #528AC5;
+  --success-color: #3EC291;
+  --warning-color: #FFC515;
+  --error-color: #F7733C;
+  --pink-accent: #F7B7CF;
+  --border-width: 3px;
+  --shadow-offset: 4px;
+}
+
+body {
+  margin: 0;
+  font-family: 'Open Sans', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Neo-Brutalist Utilities */
+.nb-box {
+  background: var(--card-bg);
+  border: var(--border-width) solid var(--border-color);
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0px var(--border-color);
+  transition: all 0.1s ease;
+}
+
+.nb-button {
+  background: var(--accent-color);
+  color: white;
+  border: var(--border-width) solid var(--border-color);
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0px var(--border-color);
+  padding: 8px 16px;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.nb-button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: calc(var(--shadow-offset) + 1px) calc(var(--shadow-offset) + 1px) 0px var(--border-color);
+}
+
+.nb-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px var(--border-color);
+}
+
+.nb-button.secondary {
+  background: var(--secondary-accent);
+}
+
+.nb-button.ghost {
+  background: transparent;
+  box-shadow: none;
+  border-color: transparent;
+}
+.nb-button.ghost:hover {
+    background: rgba(0,0,0,0.05);
+    box-shadow: none;
+    transform: none;
+    border-color: var(--border-color);
+}
+
+.nb-input {
+  border: var(--border-width) solid var(--border-color);
+  padding: 8px;
+  font-family: 'Open Sans', sans-serif;
+  outline: none;
+  background: white;
+  box-shadow: 2px 2px 0px var(--border-color);
+  width: 100%;
+}
+
+.nb-input:focus {
+  background: #fff;
+  box-shadow: 4px 4px 0px var(--border-color);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FAFAFA;
+  border-left: 3px solid #1B1E20;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1B1E20;
+  border: 2px solid #FAFAFA;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
