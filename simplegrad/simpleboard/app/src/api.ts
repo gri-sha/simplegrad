@@ -1,73 +1,67 @@
-export const DEFAULT_API_URL = 'http://localhost:8000';
+/**
+ * API client for simpleboard
+ */
 
-export const getApiUrl = () => {
-  return localStorage.getItem('simplegrad_api_url') || DEFAULT_API_URL;
+import type { 
+  RunInfo, 
+  DatabaseInfo, 
+  MetricsResponse, 
+  MetricNamesResponse,
+  CompGraphsResponse 
+} from './types';
+
+const DEFAULT_API_URL = 'http://localhost:8000';
+
+export const getApiUrl = (): string => {
+  return localStorage.getItem('simpleboard_api_url') || DEFAULT_API_URL;
 };
 
-export const setApiUrl = (url: string) => {
-  localStorage.setItem('simplegrad_api_url', url);
+export const setApiUrl = (url: string): void => {
+  localStorage.setItem('simpleboard_api_url', url);
 };
 
-export interface RunInfo {
-  run_id: number;
-  name: string;
-  created_at: number;
-  status: string;
-  config: Record<string, any>;
-}
+class ApiClient {
+  private getBaseUrl(): string {
+    return getApiUrl();
+  }
 
-export interface RunRecords {
-  run_id: number;
-  metrics: Record<string, Array<{ step: number; value: number; wall_time: number }>>;
-}
-
-export interface MetricListResponse {
-  run_id: number;
-  metrics: string[];
-}
-
-export interface DatabaseInfo {
-  available_databases: string[];
-  current_database: string | null;
-}
-
-export const api = {
-  getDatabases: async (): Promise<DatabaseInfo> => {
-    const res = await fetch(`${getApiUrl()}/api/databases`);
+  async getDatabases(): Promise<DatabaseInfo> {
+    console.log('Fetching databases from', this.getBaseUrl());
+    const res = await fetch(`${this.getBaseUrl()}/api/databases`);
     if (!res.ok) throw new Error('Failed to fetch databases');
     return res.json();
-  },
+  }
 
-  selectDatabase: async (dbName: string): Promise<{ message: string }> => {
-    const res = await fetch(`${getApiUrl()}/api/databases/select`, {
+  async selectDatabase(dbName: string): Promise<{ message: string }> {
+    const res = await fetch(`${this.getBaseUrl()}/api/databases/select`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ db_name: dbName })
     });
     if (!res.ok) throw new Error('Failed to select database');
     return res.json();
-  },
+  }
 
-  listRuns: async (): Promise<RunInfo[]> => {
-    const res = await fetch(`${getApiUrl()}/api/runs`);
+  async getRuns(): Promise<RunInfo[]> {
+    const res = await fetch(`${this.getBaseUrl()}/api/runs`);
     if (!res.ok) throw new Error('Failed to fetch runs');
     return res.json();
-  },
+  }
 
-  getRun: async (runId: number): Promise<RunInfo> => {
-    const res = await fetch(`${getApiUrl()}/api/runs/${runId}`);
+  async getRun(runId: number): Promise<RunInfo> {
+    const res = await fetch(`${this.getBaseUrl()}/api/runs/${runId}`);
     if (!res.ok) throw new Error('Failed to fetch run');
     return res.json();
-  },
+  }
 
-  getMetrics: async (runId: number): Promise<MetricListResponse> => {
-    const res = await fetch(`${getApiUrl()}/api/runs/${runId}/metrics`);
-    if (!res.ok) throw new Error('Failed to fetch metrics');
+  async getMetricNames(runId: number): Promise<MetricNamesResponse> {
+    const res = await fetch(`${this.getBaseUrl()}/api/runs/${runId}/metrics`);
+    if (!res.ok) throw new Error('Failed to fetch metric names');
     return res.json();
-  },
+  }
 
-  getRecords: async (runId: number, metricName?: string): Promise<RunRecords> => {
-    const url = new URL(`${getApiUrl()}/api/runs/${runId}/records`);
+  async getRecords(runId: number, metricName?: string): Promise<MetricsResponse> {
+    const url = new URL(`${this.getBaseUrl()}/api/runs/${runId}/records`);
     if (metricName) {
       url.searchParams.append('metric_name', metricName);
     }
@@ -75,4 +69,17 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch records');
     return res.json();
   }
-};
+
+  async getGraphs(runId: number): Promise<CompGraphsResponse> {
+    const res = await fetch(`${this.getBaseUrl()}/api/runs/${runId}/graphs`);
+    if (!res.ok) throw new Error('Failed to fetch graphs');
+    return res.json();
+  }
+
+  createWebSocket(runId: number): WebSocket {
+    const wsUrl = this.getBaseUrl().replace('http', 'ws');
+    return new WebSocket(`${wsUrl}/ws/${runId}`);
+  }
+}
+
+export const api = new ApiClient();

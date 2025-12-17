@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { getApiUrl, setApiUrl } from '../api';
+/**
+ * Settings modal component
+ */
+
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { getApiUrl, setApiUrl } from '../api';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -8,68 +12,65 @@ interface SettingsModalProps {
   onSave: () => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }) => {
-  const [url, setUrl] = useState('');
+export function SettingsModal({ isOpen, onClose, onSave }: SettingsModalProps) {
+  const [apiUrlInput, setApiUrlInput] = useState('');
 
   useEffect(() => {
     if (isOpen) {
-      setUrl(getApiUrl());
+      setApiUrlInput(getApiUrl());
     }
   }, [isOpen]);
 
   const handleSave = () => {
-    setApiUrl(url);
+    setApiUrl(apiUrlInput);
     onSave();
     onClose();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000
-    }}>
-      <div className="nb-box" style={{ width: '400px', padding: '24px', position: 'relative' }}>
-        <button 
-          onClick={onClose}
-          className="nb-button ghost"
-          style={{ position: 'absolute', top: '8px', right: '8px', padding: '4px' }}
-        >
-          <X size={20} />
-        </button>
-        
-        <h2 style={{ marginTop: 0, marginBottom: '24px' }}>SETTINGS</h2>
-        
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-            API Base URL
-          </label>
-          <input 
-            type="text" 
-            className="nb-input"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="http://localhost:8000"
-          />
-          <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '8px' }}>
-            Point this to your running SimpleGrad server.
-          </p>
+    <div className="modal-overlay" onClick={onClose} onKeyDown={handleKeyDown}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Settings</h2>
+          <button className="modal-close" onClick={onClose}>
+            <X size={20} />
+          </button>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-          <button onClick={onClose} className="nb-button ghost">Cancel</button>
-          <button onClick={handleSave} className="nb-button">Save Changes</button>
+        <div className="modal-body">
+          <div className="form-group">
+            <label htmlFor="api-url">API Base URL</label>
+            <input
+              id="api-url"
+              type="text"
+              className="form-input"
+              value={apiUrlInput}
+              onChange={(e) => setApiUrlInput(e.target.value)}
+              placeholder="http://localhost:8000"
+            />
+            <p className="form-help">
+              The URL where the simpleboard server is running.
+            </p>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn btn-primary" onClick={handleSave}>
+            Save Changes
+          </button>
         </div>
       </div>
     </div>
   );
-};
+}

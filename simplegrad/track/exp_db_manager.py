@@ -274,18 +274,19 @@ class ExperimentDBManager:
                 (run_id, json.dumps(graph_data), time.time()),
             )
 
-    def get_comp_graphs(self, graph_id: str) -> Optional[dict]:
-        """Get computation graph for a run."""
+    def get_comp_graph(self, graph_id: int) -> Optional[dict]:
+        """Get a single computation graph by its ID."""
         with self._get_connection(readonly=True) as conn:
-            row = conn.execute("SELECT graph_json FROM graphs WHERE run_id = ?", (graph_id,)).fetchone()
+            row = conn.execute("SELECT graph_json FROM graphs WHERE id = ?", (graph_id,)).fetchone()
             if row:
                 return json.loads(row["graph_json"])
         return None
 
-    def get_comp_graph(self, graph_id: str) -> Optional[dict]:
-        """Get computation graph for a run."""
+    def get_comp_graphs(self, run_id: int) -> list[dict]:
+        """Get all computation graphs for a run."""
         with self._get_connection(readonly=True) as conn:
-            row = conn.execute("SELECT graph_json FROM graphs WHERE run_id = ?", (graph_id,)).fetchone()
-            if row:
-                return json.loads(row["graph_json"])
-        return None
+            rows = conn.execute(
+                "SELECT id, graph_json, created_at FROM graphs WHERE run_id = ? ORDER BY created_at",
+                (run_id,),
+            ).fetchall()
+            return [{"id": row["id"], "graph": json.loads(row["graph_json"]), "created_at": row["created_at"]} for row in rows]

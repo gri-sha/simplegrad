@@ -1,160 +1,123 @@
-import React, { useState } from 'react';
-import type { RunInfo } from '../api';
-import { Activity, Clock, CheckCircle, XCircle, PlayCircle, Database } from 'lucide-react';
+/**
+ * Sidebar component showing runs list
+ */
+
+import { ChevronLeft, ChevronRight, Play, CheckCircle, XCircle, Clock, Database } from 'lucide-react';
+import type { RunInfo } from '../types';
 
 interface SidebarProps {
   runs: RunInfo[];
   selectedRunId: number | null;
   onSelectRun: (runId: number) => void;
   isOpen: boolean;
+  onToggle: () => void;
   databases: string[];
-  selectedDatabase: string | null;
+  currentDatabase: string | null;
   onSelectDatabase: (dbName: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
-  runs, 
-  selectedRunId, 
-  onSelectRun, 
+export function Sidebar({
+  runs,
+  selectedRunId,
+  onSelectRun,
   isOpen,
+  onToggle,
   databases,
-  selectedDatabase,
+  currentDatabase,
   onSelectDatabase
-}) => {
-  const [showDatabaseMenu, setShowDatabaseMenu] = useState(false);
-
-  if (!isOpen) return null;
-
+}: SidebarProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed': return <CheckCircle size={16} color="#3EC291" />;
-      case 'failed': return <XCircle size={16} color="#F7733C" />;
-      case 'running': return <PlayCircle size={16} color="#FFC515" />;
-      default: return <Activity size={16} />;
+      case 'completed':
+        return <CheckCircle size={14} className="status-icon status-completed" />;
+      case 'failed':
+        return <XCircle size={14} className="status-icon status-failed" />;
+      case 'running':
+        return <Play size={14} className="status-icon status-running" />;
+      default:
+        return null;
     }
   };
 
-  return (
-    <div className="nb-box" style={{ 
-      width: '300px', 
-      height: '100%', 
-      overflowY: 'auto',
-      display: 'flex',
-      flexDirection: 'column',
-      borderRight: 'none',
-      zIndex: 10
-    }}>
-      {/* Database Section */}
-      <div style={{ padding: '16px', borderBottom: '2px solid #1B1E20', background: '#FAFAFA' }}>
-        <h2 style={{ margin: 0, marginBottom: '8px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Database size={18} /> EXPERIMENT
-        </h2>
-        {databases.length > 0 ? (
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setShowDatabaseMenu(!showDatabaseMenu)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '2px solid #1B1E20',
-                borderRadius: '4px',
-                background: 'white',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                textAlign: 'left',
-                fontSize: '0.9rem'
-              }}
-            >
-              {selectedDatabase || 'Select...'}
-            </button>
-            {showDatabaseMenu && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                background: 'white',
-                border: '2px solid #1B1E20',
-                borderRadius: '4px',
-                marginTop: '4px',
-                zIndex: 20,
-                boxShadow: '2px 2px 8px rgba(27,30,32,0.15)'
-              }}>
-                {databases.map(dbName => (
-                  <button
-                    key={dbName}
-                    onClick={() => {
-                      onSelectDatabase(dbName);
-                      setShowDatabaseMenu(false);
-                    }}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '8px 12px',
-                      textAlign: 'left',
-                      border: 'none',
-                      background: selectedDatabase === dbName ? '#F7B7CF' : 'white',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid #eee',
-                      fontSize: '0.85rem',
-                      fontWeight: selectedDatabase === dbName ? 'bold' : 'normal'
-                    }}
-                  >
-                    {dbName}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div style={{ 
-            padding: '8px 12px', 
-            color: '#666', 
-            fontSize: '0.85rem',
-            fontStyle: 'italic'
-          }}>
-            No databases found
-          </div>
-        )}
-      </div>
+  const hasDatabase = currentDatabase !== null;
+  const hasRuns = runs.length > 0;
 
-      <div style={{ padding: '16px', borderBottom: '3px solid #1B1E20', background: '#FAFAFA' }}>
-        <h2 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Activity /> RUNS
-        </h2>
-      </div>
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {runs.map(run => (
-          <div 
-            key={run.run_id}
-            onClick={() => onSelectRun(run.run_id)}
-            className="nb-box"
-            style={{ 
-              padding: '12px', 
-              cursor: 'pointer',
-              background: selectedRunId === run.run_id ? '#F7B7CF' : 'white',
-              borderColor: '#1B1E20',
-              boxShadow: selectedRunId === run.run_id ? '2px 2px 0px #1B1E20' : '4px 4px 0px #1B1E20',
-              transform: selectedRunId === run.run_id ? 'translate(2px, 2px)' : 'none'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 'bold' }}>#{run.run_id}</span>
-              {getStatusIcon(run.status)}
-            </div>
-            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{run.name}</div>
-            <div style={{ fontSize: '0.8rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Clock size={12} />
-              {run.created_at}
-            </div>
+  return (
+    <>
+      <aside className={`sidebar ${isOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-db-selector">
+            <Database size={16} />
+            <select
+              className="sidebar-select"
+              value={currentDatabase || ''}
+              onChange={(e) => onSelectDatabase(e.target.value)}
+              disabled={databases.length === 0}
+            >
+              <option value="" disabled>
+                {databases.length === 0 ? 'No experiments' : 'Select experiment'}
+              </option>
+              {databases.map((db) => (
+                <option key={db} value={db}>
+                  {db.replace('.db', '')}
+                </option>
+              ))}
+            </select>
           </div>
-        ))}
-        {runs.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
-            No runs found.
-          </div>
-        )}
-      </div>
-    </div>
+          <button className="sidebar-toggle" onClick={onToggle}>
+            <ChevronLeft size={18} />
+          </button>
+        </div>
+        
+        <div className="sidebar-content">
+          {!hasDatabase || !hasRuns ? (
+            <div className="sidebar-empty-centered">
+              <Database size={32} strokeWidth={1.5} />
+              <p>
+                {!hasDatabase 
+                  ? 'Select an experiment to view runs' 
+                  : 'No runs available in this experiment'}
+              </p>
+            </div>
+          ) : (
+            <ul className="runs-list">
+              {runs.map((run) => (
+                <li
+                  key={run.run_id}
+                  className={`run-item ${selectedRunId === run.run_id ? 'run-item-selected' : ''}`}
+                  onClick={() => onSelectRun(run.run_id)}
+                >
+                  <div className="run-item-header">
+                    <span className="run-item-name">{run.name}</span>
+                    {getStatusIcon(run.status)}
+                  </div>
+                  <div className="run-item-meta">
+                    <Clock size={12} />
+                    <span>{run.created_at}</span>
+                  </div>
+                  {run.metrics && run.metrics.length > 0 && (
+                    <div className="run-item-metrics">
+                      {run.metrics.slice(0, 3).map((m) => (
+                        <span key={m} className="run-item-metric-tag">{m}</span>
+                      ))}
+                      {run.metrics.length > 3 && (
+                        <span className="run-item-metric-tag">+{run.metrics.length - 3}</span>
+                      )}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </aside>
+
+      {/* Collapsed toggle button */}
+      {!isOpen && (
+        <button className="sidebar-expand" onClick={onToggle}>
+          <ChevronRight size={18} />
+        </button>
+      )}
+    </>
   );
-};
+}

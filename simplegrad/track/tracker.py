@@ -4,6 +4,8 @@ import subprocess
 import webbrowser
 import time
 from .exp_db_manager import ExperimentDBManager, RunInfo, RecordInfo
+from .comp_graph import _build_graph_data
+from simplegrad.core import Tensor
 
 
 class Tracker:
@@ -93,11 +95,16 @@ class Tracker:
         results = {metric: self.get_records(run_id, metric) for metric in metrics}
         return results
 
-    def save_comp_graph(self, graph_data: dict):
+    def save_comp_graph(self, tensor: Tensor, run_id: Optional[int] = None):
         """Save computation graph for the current run"""
-        if self.current_run_id is None:
+        id = run_id
+        if id is None:
+            id = self.current_run_id
+        if id is None:
             raise RuntimeError("No active run. Call start_run() first.")
-        self.db_manager.save_comp_graph(self.current_run_id, graph_data)
+        print(f"Saving computation graph for run {id}...")
+        graph_data = _build_graph_data(tensor)
+        self.db_manager.save_comp_graph(run_id=id, graph_data=graph_data)
 
     def get_comp_graph(self, graph_id: int) -> Optional[dict]:
         """Get computation graph for a given run"""

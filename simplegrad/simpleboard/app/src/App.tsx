@@ -1,242 +1,267 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import './App.css';
+import { TopBar } from './components/TopBar';
 import { Sidebar } from './components/Sidebar';
-import { Graph } from './components/Graph';
+import { MainContent } from './components/MainContent';
 import { SettingsModal } from './components/SettingsModal';
 import { api } from './api';
-import type { RunInfo } from './api';
-import { Settings, RefreshCw, Layout } from 'lucide-react';
-import simpleGradLogo from '/simplegrad.svg';
+import type { RunInfo, RecordInfo, CompGraphData } from './types';
+
+interface GraphInfo {
+  id: number;
+  graph: CompGraphData;
+  created_at: number;
+}
 
 function App() {
+  // UI state
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'metrics' | 'graphs'>('metrics');
+
+  // Data state
+  const [databases, setDatabases] = useState<string[]>([]);
+  const [selectedDb, setSelectedDb] = useState<string | null>(null);
   const [runs, setRuns] = useState<RunInfo[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
-  const [metrics, setMetrics] = useState<Record<string, any[]>>({});
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [selectedRunName, setSelectedRunName] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<Record<string, RecordInfo[]>>({});
+  const [graphs, setGraphs] = useState<GraphInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [databases, setDatabases] = useState<string[]>([]);
-  const [selectedDatabase, setSelectedDatabase] = useState<string | null>(null);
 
-  const fetchRuns = async () => {
+  // WebSocket ref
+  const wsRef = useRef<WebSocket | null>(null);
+
+  // Fetch databases
+  const fetchDatabases = useCallback(async () => {
     try {
-      setLoading(true);
-      const data = await api.listRuns();
-      setRuns(data);
       setError(null);
-    } catch (err) {
-      setError('Failed to connect to server. Check settings.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchRunData = async (runId: number) => {
-    try {
-      setLoading(true);
-      const metricList = await api.getMetrics(runId);
-      
-      const newMetrics: Record<string, any[]> = {};
-      
-      // Fetch all metrics in parallel
-      await Promise.all(metricList.metrics.map(async (metricName) => {
-        const records = await api.getRecords(runId, metricName);
-        if (records.metrics && records.metrics[metricName]) {
-          newMetrics[metricName] = records.metrics[metricName];
-        }
-      }));
-      
-      setMetrics(newMetrics);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchDatabases = async () => {
-    try {
       const data = await api.getDatabases();
       setDatabases(data.available_databases);
-      setSelectedDatabase(data.current_database);
+      if (data.current_database) {
+        setSelectedDb(data.current_database);
+      }
     } catch (err) {
-      console.error('Failed to fetch databases:', err);
+      setError('Failed to fetch databases');
+      console.error(err);
     }
-  };
-
-  const handleSelectDatabase = async (dbName: string) => {
-    try {
-      await api.selectDatabase(dbName);
-      setSelectedDatabase(dbName);
-      await fetchRuns();
-    } catch (err) {
-      console.error('Failed to select database:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchDatabases();
-    fetchRuns();
   }, []);
 
-  useEffect(() => {
-    if (selectedRunId) {
-      fetchRunData(selectedRunId);
-    } else {
-      setMetrics({});
+  // Fetch runs for selected database
+  const fetchRuns = useCallback(async () => {
+    if (!selectedDb) {
+      setRuns([]);
+      return;
     }
-  }, [selectedRunId]);
+    try {
+      setLoading(true);
+      const data = await api.getRuns();
+      setRuns(data || []);
+    } catch (err) {
+      setError('Failed to fetch runs');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedDb]);
 
-  const handleRunSelect = (runId: number) => {
-    setSelectedRunId(runId);
+  // Fetch metrics and graphs for selected run
+  const fetchRunData = useCallback(async (runId: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch run info
+      const runInfo = await api.getRun(runId);
+      setSelectedRunName(runInfo.name);
+      
+      // Fetch metrics
+      const metricsData = await api.getRecords(runId);
+      setMetrics(metricsData.metrics || {});
+
+      // Fetch graphs
+      const graphsData = await api.getGraphs(runId);
+      setGraphs(graphsData.graphs || []);
+    } catch (err) {
+      setError('Failed to fetch run data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Handle database selection
+  const handleDbSelect = async (dbName: string) => {
+    if (!dbName) {
+      return;
+    }
+    try {
+      await api.selectDatabase(dbName);
+      setSelectedDb(dbName);
+      setSelectedRunId(null);
+      setSelectedRunName(null);
+      setMetrics({});
+      setGraphs([]);
+    } catch (err) {
+      setError('Failed to select database');
+      console.error(err);
+    }
   };
 
-  return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <Sidebar 
-        runs={runs} 
-        selectedRunId={selectedRunId} 
-        onSelectRun={handleRunSelect} 
-        isOpen={isSidebarOpen}
-        databases={databases}
-        selectedDatabase={selectedDatabase}
-        onSelectDatabase={handleSelectDatabase}
-      />
+  // Handle run selection
+  const handleRunSelect = (runId: number) => {
+    setSelectedRunId(runId);
+    fetchRunData(runId);
+    connectWebSocket(runId);
+  };
+
+  // WebSocket connection for real-time updates
+  const connectWebSocket = useCallback((runId: number) => {
+    // Close existing connection
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+
+    const ws = api.createWebSocket(runId);
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'metric_update') {
+          setMetrics(prev => {
+            const updated = { ...prev };
+            const metricName = message.data.metric_name;
+            if (!updated[metricName]) {
+              updated[metricName] = [];
+            }
+            updated[metricName] = [...updated[metricName], message.data];
+            return updated;
+          });
+        } else if (message.type === 'graph_update') {
+          setGraphs(prev => [...prev, message.data]);
+        }
+      } catch (err) {
+        console.error('WebSocket message error:', err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.error('WebSocket error:', err);
+    };
+
+    wsRef.current = ws;
+  }, []);
+
+  // Handle settings save
+  const handleSettingsSave = () => {
+    // Reset state and refetch
+    setDatabases([]);
+    setSelectedDb(null);
+    setRuns([]);
+    setSelectedRunId(null);
+    setSelectedRunName(null);
+    setMetrics({});
+    setGraphs([]);
+    fetchDatabases();
+  };
+
+  // Refresh all data
+  const handleRefresh = () => {
+    fetchDatabases();
+    if (selectedDb) {
+      fetchRuns();
+    }
+    if (selectedRunId) {
+      fetchRunData(selectedRunId);
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchDatabases();
+  }, [fetchDatabases]);
+
+  // Fetch runs when database changes
+  useEffect(() => {
+    fetchRuns();
+  }, [selectedDb, fetchRuns]);
+
+  // Poll for updates when a run is selected (every 2 seconds)
+  useEffect(() => {
+    if (!selectedRunId) return;
+
+    const pollInterval = setInterval(() => {
+      // Silently fetch updated metrics without setting loading state
+      api.getRecords(selectedRunId)
+        .then(metricsData => {
+          setMetrics(metricsData.metrics || {});
+        })
+        .catch(err => {
+          console.error('Polling error:', err);
+        });
       
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Header */}
-        <header style={{ 
-          padding: '16px', 
-          borderBottom: '3px solid #1B1E20', 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          background: 'white',
-          zIndex: 5
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button 
-              className="nb-button ghost" 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              title="Toggle Sidebar"
-            >
-              <Layout size={20} />
-            </button>
-            
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button className="nb-button secondary" onClick={fetchRuns} disabled={loading}>
-                <RefreshCw size={16} className={loading ? 'spin' : ''} /> 
-                <span className="button-text">{loading ? 'Loading...' : 'Refresh'}</span>
-              </button>
-              <button className="nb-button" onClick={() => setIsSettingsOpen(true)}>
-                <Settings size={16} /> <span className="button-text">Config</span>
-              </button>
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <img 
-              src={simpleGradLogo} 
-              alt="SimpleGrad" 
-              style={{ height: '32px', width: 'auto' }}
-              className="logo-img"
-            />
-          </div>
-        </header>
+      // Also fetch graphs
+      api.getGraphs(selectedRunId)
+        .then(graphsData => {
+          setGraphs(graphsData.graphs || []);
+        })
+        .catch(err => {
+          console.error('Polling graphs error:', err);
+        });
+    }, 2000);
 
-        {/* Main Content */}
-        <main style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#FAFAFA' }}>
-          {error && (
-            <div className="nb-box" style={{ padding: '16px', background: '#F7733C', color: 'white', marginBottom: '24px' }}>
-              <strong>Error:</strong> {error}
-            </div>
-          )}
+    return () => clearInterval(pollInterval);
+  }, [selectedRunId]);
 
-          {!selectedRunId ? (
-            <div style={{ 
-              height: '100%', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              flexDirection: 'column',
-              color: '#666'
-            }}>
-              <div style={{ fontSize: '4rem', marginBottom: '16px', opacity: 0.2 }}>
-                <Layout />
-              </div>
-              <p>Select a run from the sidebar to view metrics.</p>
-            </div>
-          ) : (
-            <div>
-              <div style={{ marginBottom: '24px' }}>
-                <h2 style={{ margin: 0, fontSize: '2rem' }}>
-                  Run #{selectedRunId}
-                </h2>
-                <p style={{ color: '#666', marginTop: '4px' }}>
-                  {runs.find(r => r.run_id === selectedRunId)?.name}
-                </p>
-              </div>
+  // Cleanup WebSocket on unmount
+  useEffect(() => {
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-                {Object.entries(metrics).map(([name, data]) => (
-                  <Graph 
-                    key={name} 
-                    metricName={name} 
-                    data={data} 
-                    color={['#528AC5', '#F7733C', '#3EC291', '#FFC515', '#F7B7CF'][Math.abs(name.hashCode() || 0) % 5]}
-                  />
-                ))}
-              </div>
-              
-              {Object.keys(metrics).length === 0 && !loading && (
-                <div className="nb-box" style={{ padding: '32px', textAlign: 'center', color: '#666' }}>
-                  No metrics recorded for this run yet.
-                </div>
-              )}
-            </div>
-          )}
-        </main>
+  return (
+    <div className="app">
+      <TopBar
+        onRefresh={handleRefresh}
+        onOpenSettings={() => setSettingsOpen(true)}
+        isLoading={loading}
+      />
+
+      <div className="app-body">
+        <Sidebar
+          runs={runs}
+          selectedRunId={selectedRunId}
+          onSelectRun={handleRunSelect}
+          isOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
+          databases={databases}
+          currentDatabase={selectedDb}
+          onSelectDatabase={handleDbSelect}
+        />
+
+        <MainContent
+          selectedRunId={selectedRunId}
+          runName={selectedRunName}
+          metrics={metrics}
+          graphs={graphs}
+          isLoading={loading}
+          error={error}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
       </div>
 
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-        onSave={() => {
-          fetchRuns();
-          if (selectedRunId) fetchRunData(selectedRunId);
-        }}
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onSave={handleSettingsSave}
       />
-      
-      <style>{`
-        .spin { animation: spin 1s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        
-        @media (max-width: 768px) {
-          .button-text { display: none; }
-          .logo-img { display: none; }
-        }
-      `}</style>
     </div>
   );
 }
-
-// Simple hash function for color generation
-declare global {
-  interface String {
-    hashCode(): number;
-  }
-}
-
-String.prototype.hashCode = function() {
-  var hash = 0, i, chr;
-  if (this.length === 0) return hash;
-  for (i = 0; i < this.length; i++) {
-    chr   = this.charCodeAt(i);
-    hash  = ((hash << 5) - hash) + chr;
-    hash |= 0; // Convert to 32bit integer
-  }
-  return hash;
-};
 
 export default App;
