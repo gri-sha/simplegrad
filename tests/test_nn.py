@@ -402,8 +402,8 @@ def _test_embedding_helper(num_embeddings, embedding_dim, input_shape, dtype="fl
 
     # Check output shape: input_shape -> input_shape + (embedding_dim,)
     expected_shape = input_shape + (embedding_dim,)
-    if len(input_shape) == 1:
-        expected_shape = (1,) + expected_shape
+    # if len(input_shape) == 1:
+    #     expected_shape = (1,) + expected_shape
     assert output.shape == expected_shape, f"Expected shape {expected_shape}, got {output.shape}"
     assert output.dtype == dtype, f"Expected dtype {dtype}, got {output.dtype}"
 

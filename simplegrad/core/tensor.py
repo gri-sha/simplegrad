@@ -51,17 +51,17 @@ class Tensor:
         comp_grad: bool = None,  # None means "use global _COMP_GRAD"
         label: Optional[str] = None,
         dtype: Optional[str] = None,
-        column: Optional[bool] = False,
+        # column: Optional[bool] = False,
     ) -> None:
         self.dtype = dtype if dtype is not None else "float32"
         if values is None:
             values = np.array([])
         self.values = as_array(values, self.dtype)
 
-        if self.values.ndim == 0:
-            self.values = self.values.reshape(1, 1)
-        elif self.values.ndim == 1:
-            self.values = self.values.reshape(-1, 1) if column else self.values.reshape(1, -1)
+        # if self.values.ndim == 0:
+        #     self.values = self.values.reshape(1, 1)
+        # elif self.values.ndim == 1:
+        #     self.values = self.values.reshape(-1, 1) if column else self.values.reshape(1, -1)
         self.shape = self.values.shape
         self.label = label
         self.prev = set()
@@ -70,6 +70,20 @@ class Tensor:
         self.is_leaf = True
         self.grad = None
         self.backward_step = lambda: None
+
+    def reshape(self, new_shape: tuple[int], inplace: bool = True, include_grad: bool = True) -> Optional["Tensor"]:
+        if inplace:
+            self.values = self.values.reshape(new_shape)
+            self.shape = self.values.shape
+            if self.grad is not None and include_grad:
+                self.grad = self.grad.reshape(new_shape)
+        else:
+            new_tensor = Tensor(
+                values=self.values.reshape(new_shape),
+                comp_grad=self.comp_grad,
+                label=self.label,
+            )
+            return new_tensor
 
     def convert_to_dtype(self, dtype: str, inplace: bool = True) -> Optional["Tensor"]:
         if inplace:

@@ -10,39 +10,27 @@ interface TopBarProps {
   isLoading: boolean;
 }
 
-export function TopBar({
-  onRefresh,
-  onOpenSettings,
-  isLoading
-}: TopBarProps) {
+export function TopBar({ onRefresh, onOpenSettings, isLoading }: TopBarProps) {
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <img 
-          src="/simplegrad_v1.svg" 
-          alt="SimpleGrad" 
-          className="topbar-logo"
-        />
+        <img src="/simpleboard_v1.svg" alt="SimpleGrad" className="topbar-logo" />
       </div>
 
       <div className="topbar-right">
         {/* Refresh button */}
-        <button 
+        <button
           className="topbar-button"
           onClick={onRefresh}
           disabled={isLoading}
           title="Refresh data"
         >
-          <RefreshCw size={16} className={isLoading ? 'spinning' : ''} />
+          <RefreshCw size={20} className={isLoading ? 'spinning' : ''} />
         </button>
 
         {/* Settings button */}
-        <button 
-          className="topbar-button"
-          onClick={onOpenSettings}
-          title="Settings"
-        >
-          <Settings size={16} />
+        <button className="topbar-button" onClick={onOpenSettings} title="Settings">
+          <Settings size={20} />
         </button>
       </div>
     </header>

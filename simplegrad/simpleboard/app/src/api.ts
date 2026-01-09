@@ -2,12 +2,12 @@
  * API client for simpleboard
  */
 
-import type { 
-  RunInfo, 
-  DatabaseInfo, 
-  MetricsResponse, 
+import type {
+  RunInfo,
+  DatabaseInfo,
+  MetricsResponse,
   MetricNamesResponse,
-  CompGraphsResponse 
+  CompGraphsResponse,
 } from './types';
 
 const DEFAULT_API_URL = 'http://localhost:8000';
@@ -36,7 +36,7 @@ class ApiClient {
     const res = await fetch(`${this.getBaseUrl()}/api/databases/select`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ db_name: dbName })
+      body: JSON.stringify({ db_name: dbName }),
     });
     if (!res.ok) throw new Error('Failed to select database');
     return res.json();

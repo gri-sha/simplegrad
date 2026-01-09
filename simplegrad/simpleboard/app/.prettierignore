@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+
+# misc
+.env
+*.log
+
+# vscode settings
+.vscode/
+
+# coverage reports (if using testing tools)
+coverage/
+
+# lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

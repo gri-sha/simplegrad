@@ -2,7 +2,15 @@
  * Sidebar component showing runs list
  */
 
-import { ChevronLeft, ChevronRight, Play, CheckCircle, XCircle, Clock, Database } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Database,
+} from 'lucide-react';
 import type { RunInfo } from '../types';
 
 interface SidebarProps {
@@ -24,7 +32,7 @@ export function Sidebar({
   onToggle,
   databases,
   currentDatabase,
-  onSelectDatabase
+  onSelectDatabase,
 }: SidebarProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -68,14 +76,14 @@ export function Sidebar({
             <ChevronLeft size={18} />
           </button>
         </div>
-        
+
         <div className="sidebar-content">
           {!hasDatabase || !hasRuns ? (
             <div className="sidebar-empty-centered">
               <Database size={32} strokeWidth={1.5} />
               <p>
-                {!hasDatabase 
-                  ? 'Select an experiment to view runs' 
+                {!hasDatabase
+                  ? 'Select an experiment to view runs'
                   : 'No runs available in this experiment'}
               </p>
             </div>
@@ -88,8 +96,8 @@ export function Sidebar({
                   onClick={() => onSelectRun(run.run_id)}
                 >
                   <div className="run-item-header">
-                    <span className="run-item-name">{run.name}</span>
                     {getStatusIcon(run.status)}
+                    <span className="run-item-name">{run.name}</span>
                   </div>
                   <div className="run-item-meta">
                     <Clock size={12} />
@@ -98,7 +106,9 @@ export function Sidebar({
                   {run.metrics && run.metrics.length > 0 && (
                     <div className="run-item-metrics">
                       {run.metrics.slice(0, 3).map((m) => (
-                        <span key={m} className="run-item-metric-tag">{m}</span>
+                        <span key={m} className="run-item-metric-tag">
+                          {`'${m}' `}
+                        </span>
                       ))}
                       {run.metrics.length > 3 && (
                         <span className="run-item-metric-tag">+{run.metrics.length - 3}</span>

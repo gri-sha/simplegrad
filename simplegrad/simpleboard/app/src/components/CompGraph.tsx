@@ -34,11 +34,11 @@ interface LayoutLink {
 
 // Node colors matching inline_comp_graph.py style
 const NODE_COLORS: Record<string, string> = {
-  'leaf': '#FFA07A',           // lightsalmon - for leaf tensors (inputs/params)
-  'tensor': '#B0C4DE',         // lightsteelblue - for intermediate tensors
-  'operation': '#FAFAD2',      // lightgoldenrodyellow - for operations
-  'op': '#FAFAD2',
-  'default': '#B0C4DE',
+  leaf: '#FFA07A', // lightsalmon - for leaf tensors (inputs/params)
+  tensor: '#B0C4DE', // lightsteelblue - for intermediate tensors
+  operation: '#FAFAD2', // lightgoldenrodyellow - for operations
+  op: '#FAFAD2',
+  default: '#B0C4DE',
 };
 
 /**
@@ -46,7 +46,7 @@ const NODE_COLORS: Record<string, string> = {
  */
 function formatNodeLabel(node: CompGraphNode): string[] {
   const lines: string[] = [];
-  
+
   if (node.type === 'operation' || node.type === 'op') {
     // Operation nodes just show the operation name
     lines.push(node.label);
@@ -62,7 +62,7 @@ function formatNodeLabel(node: CompGraphNode): string[] {
       lines.push(`comp_grad: ${node.comp_grad}`);
     }
   }
-  
+
   return lines;
 }
 
@@ -72,12 +72,12 @@ function formatNodeLabel(node: CompGraphNode): string[] {
 function calculateNodeSize(node: CompGraphNode): { width: number; height: number } {
   const lines = formatNodeLabel(node);
   const isOp = node.type === 'operation' || node.type === 'op';
-  
+
   // Estimate width based on longest line (tight sizing)
-  const maxLineLen = Math.max(...lines.map(l => l.length), 5);
+  const maxLineLen = Math.max(...lines.map((l) => l.length), 5);
   const width = Math.max(isOp ? 50 : 100, maxLineLen * 6 + 12);
   const height = isOp ? 22 : Math.max(36, lines.length * 12 + 10);
-  
+
   return { width, height };
 }
 
@@ -86,7 +86,7 @@ function calculateNodeSize(node: CompGraphNode): { width: number; height: number
  * Parameters are placed near their consuming operations, not all at the start
  */
 function computeDAGLayout(
-  nodes: CompGraphNode[], 
+  nodes: CompGraphNode[],
   edges: CompGraphEdge[]
 ): { nodes: LayoutNode[]; links: LayoutLink[]; width: number; height: number } {
   // Build adjacency info
@@ -94,13 +94,13 @@ function computeDAGLayout(
   const inEdges = new Map<string, string[]>();
   const outEdges = new Map<string, string[]>();
 
-  nodes.forEach(n => {
+  nodes.forEach((n) => {
     nodeMap.set(n.id, n);
     inEdges.set(n.id, []);
     outEdges.set(n.id, []);
   });
 
-  edges.forEach(e => {
+  edges.forEach((e) => {
     outEdges.get(e.source)?.push(e.target);
     inEdges.get(e.target)?.push(e.source);
   });
@@ -108,36 +108,36 @@ function computeDAGLayout(
   // Assign layers using longest path from each node to output
   // This places parameters closer to where they're used
   const nodeLayer = new Map<string, number>();
-  const visited = new Set<string>();
+  // const visited = new Set<string>();
 
   // Find the output node (no outgoing edges)
-  const outputNodes = nodes.filter(n => (outEdges.get(n.id)?.length || 0) === 0);
-  
+  // const outputNodes = nodes.filter((n) => (outEdges.get(n.id)?.length || 0) === 0);
+
   // BFS from outputs backwards to assign layers
   function assignLayer(nodeId: string): number {
     if (nodeLayer.has(nodeId)) return nodeLayer.get(nodeId)!;
-    
+
     const children = outEdges.get(nodeId) || [];
     if (children.length === 0) {
       // Output node - rightmost layer
       nodeLayer.set(nodeId, 0);
       return 0;
     }
-    
+
     // This node's layer is max of children + 1
     let maxChildLayer = 0;
-    children.forEach(childId => {
+    children.forEach((childId) => {
       const childLayer = assignLayer(childId);
       maxChildLayer = Math.max(maxChildLayer, childLayer);
     });
-    
+
     const layer = maxChildLayer + 1;
     nodeLayer.set(nodeId, layer);
     return layer;
   }
 
   // Assign layers to all nodes
-  nodes.forEach(n => assignLayer(n.id));
+  nodes.forEach((n) => assignLayer(n.id));
 
   // Invert layers so inputs are on left, outputs on right
   const maxLayer = Math.max(...Array.from(nodeLayer.values()));
@@ -157,16 +157,18 @@ function computeDAGLayout(
   // Calculate positions - left to right layout (tight spacing)
   const layerGap = 30;
   const nodeGap = 6;
-  const padding = 10;
+  const paddingLeft = 10;
+  const paddingRight = 40; // Extra padding on right so graph doesn't touch edge
+  const paddingY = 10;
 
   // First pass: calculate node sizes
   const nodeSizes = new Map<string, { width: number; height: number }>();
-  nodes.forEach(n => {
+  nodes.forEach((n) => {
     nodeSizes.set(n.id, calculateNodeSize(n));
   });
 
   // Calculate layer widths and max height per layer
-  const layerHeights: number[] = layers.map(layer => {
+  const layerHeights: number[] = layers.map((layer) => {
     return layer.reduce((sum, id) => sum + nodeSizes.get(id)!.height + nodeGap, -nodeGap);
   });
   const maxLayerHeight = Math.max(...layerHeights, 100);
@@ -175,19 +177,19 @@ function computeDAGLayout(
   const layoutNodes: LayoutNode[] = [];
   const layoutNodeMap = new Map<string, LayoutNode>();
 
-  let currentX = padding;
+  let currentX = paddingLeft;
   layers.forEach((layer, layerIndex) => {
     // Find max width in this layer
-    const layerMaxWidth = Math.max(...layer.map(id => nodeSizes.get(id)!.width));
-    
+    const layerMaxWidth = Math.max(...layer.map((id) => nodeSizes.get(id)!.width));
+
     // Calculate starting Y to center this layer
     const layerHeight = layerHeights[layerIndex];
-    let currentY = padding + (maxLayerHeight - layerHeight) / 2;
+    let currentY = paddingY + (maxLayerHeight - layerHeight) / 2;
 
     layer.forEach((nodeId) => {
       const node = nodeMap.get(nodeId)!;
       const size = nodeSizes.get(nodeId)!;
-      
+
       const layoutNode: LayoutNode = {
         id: node.id,
         label: node.label,
@@ -201,10 +203,10 @@ function computeDAGLayout(
         width: size.width,
         height: size.height,
       };
-      
+
       layoutNodes.push(layoutNode);
       layoutNodeMap.set(nodeId, layoutNode);
-      
+
       currentY += size.height + nodeGap;
     });
 
@@ -213,14 +215,14 @@ function computeDAGLayout(
 
   // Create links
   const layoutLinks: LayoutLink[] = edges
-    .filter(e => layoutNodeMap.has(e.source) && layoutNodeMap.has(e.target))
-    .map(e => ({
+    .filter((e) => layoutNodeMap.has(e.source) && layoutNodeMap.has(e.target))
+    .map((e) => ({
       source: layoutNodeMap.get(e.source)!,
       target: layoutNodeMap.get(e.target)!,
     }));
 
-  const totalWidth = currentX + padding;
-  const totalHeight = maxLayerHeight + padding * 2;
+  const totalWidth = currentX + paddingRight;
+  const totalHeight = maxLayerHeight + paddingY * 2;
 
   return { nodes: layoutNodes, links: layoutLinks, width: totalWidth, height: totalHeight };
 }
@@ -230,27 +232,32 @@ export function CompGraph({ data, title }: CompGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
-    if (!data || !data.nodes || data.nodes.length === 0 || !svgRef.current || !containerRef.current) {
+    if (
+      !data ||
+      !data.nodes ||
+      data.nodes.length === 0 ||
+      !svgRef.current ||
+      !containerRef.current
+    ) {
       return;
     }
 
     const svg = d3.select(svgRef.current);
-    
+
     // Clear previous content
     svg.selectAll('*').remove();
 
     // Compute DAG layout
     const { nodes, links, width, height } = computeDAGLayout(data.nodes, data.edges);
 
-    svg
-      .attr('width', Math.max(width, 400))
-      .attr('height', Math.max(height, 200));
+    svg.attr('width', Math.max(width, 400)).attr('height', Math.max(height, 200));
 
     // Create defs for arrow markers
     const defs = svg.append('defs');
-    
+
     // Arrow marker (small)
-    defs.append('marker')
+    defs
+      .append('marker')
       .attr('id', 'arrow-vee')
       .attr('viewBox', '0 -3 6 6')
       .attr('refX', 6)
@@ -277,10 +284,10 @@ export function CompGraph({ data, title }: CompGraphProps) {
         const sourceY = d.source.y;
         const targetX = d.target.x - d.target.width / 2;
         const targetY = d.target.y;
-        
+
         // Bezier curve for smooth connection
         const midX = (sourceX + targetX) / 2;
-        
+
         return `M${sourceX},${sourceY} C${midX},${sourceY} ${midX},${targetY} ${targetX},${targetY}`;
       })
       .attr('fill', 'none')
@@ -289,7 +296,8 @@ export function CompGraph({ data, title }: CompGraphProps) {
       .attr('marker-end', 'url(#arrow-vee)');
 
     // Draw nodes
-    const nodeGroups = g.append('g')
+    const nodeGroups = g
+      .append('g')
       .attr('class', 'nodes')
       .selectAll('g')
       .data(nodes)
@@ -298,12 +306,12 @@ export function CompGraph({ data, title }: CompGraphProps) {
       .attr('transform', (d: LayoutNode) => `translate(${d.x},${d.y})`);
 
     // Node shapes based on type
-    nodeGroups.each(function(d: LayoutNode) {
+    nodeGroups.each(function (this: SVGGElement, d: LayoutNode) {
       const nodeG = d3.select(this);
       const isOp = d.type === 'operation' || d.type === 'op';
       // Use is_leaf from backend data for accurate coloring
       const isLeaf = d.is_leaf === true;
-      
+
       let fillColor: string;
       if (isOp) {
         fillColor = NODE_COLORS.operation;
@@ -314,7 +322,8 @@ export function CompGraph({ data, title }: CompGraphProps) {
       }
 
       // All nodes are rounded rectangles (like graphviz record shape)
-      nodeG.append('rect')
+      nodeG
+        .append('rect')
         .attr('x', -d.width / 2)
         .attr('y', -d.height / 2)
         .attr('width', d.width)
@@ -327,16 +336,17 @@ export function CompGraph({ data, title }: CompGraphProps) {
     });
 
     // Node labels - multiline support
-    nodeGroups.each(function(d: LayoutNode) {
+    nodeGroups.each(function (this: SVGGElement, d: LayoutNode) {
       const nodeG = d3.select(this);
       const lines = formatNodeLabel(d);
       const isOp = d.type === 'operation' || d.type === 'op';
-      
+
       const lineHeight = 12;
-      const startY = -(lines.length - 1) * lineHeight / 2;
+      const startY = (-(lines.length - 1) * lineHeight) / 2;
 
       lines.forEach((line, i) => {
-        nodeG.append('text')
+        nodeG
+          .append('text')
           .text(line)
           .attr('x', 0)
           .attr('y', startY + i * lineHeight)
@@ -350,14 +360,12 @@ export function CompGraph({ data, title }: CompGraphProps) {
     });
 
     // Tooltip on hover
-    nodeGroups.append('title')
-      .text((d: LayoutNode) => {
-        let tooltip = d.label;
-        if (d.type) tooltip += `\nType: ${d.type}`;
-        if (d.shape) tooltip += `\nShape: [${d.shape.join(', ')}]`;
-        return tooltip;
-      });
-
+    nodeGroups.append('title').text((d: LayoutNode) => {
+      let tooltip = d.label;
+      if (d.type) tooltip += `\nType: ${d.type}`;
+      if (d.shape) tooltip += `\nShape: [${d.shape.join(', ')}]`;
+      return tooltip;
+    });
   }, [data]);
 
   return (

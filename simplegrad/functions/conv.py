@@ -147,7 +147,8 @@ def _convd2d(
     out_array = out_array.reshape(batch_size, out_h, out_w, out_channels).transpose(0, 3, 1, 2)
 
     if bias is not None:
-        out_array += bias.values[:, :, None, None]
+        # if 1d tensors are restricted: out_array += bias.values[:, :, None, None]
+        out_array += bias.values[None, :, None, None]
 
     out_tensor = Tensor(out_array)
     out_tensor.prev = {padded_input, weight}

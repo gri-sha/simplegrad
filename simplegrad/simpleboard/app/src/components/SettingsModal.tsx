@@ -56,9 +56,7 @@ export function SettingsModal({ isOpen, onClose, onSave }: SettingsModalProps) {
               onChange={(e) => setApiUrlInput(e.target.value)}
               placeholder="http://localhost:8000"
             />
-            <p className="form-help">
-              The URL where the simpleboard server is running.
-            </p>
+            <p className="form-help">The URL where the simpleboard server is running.</p>
           </div>
         </div>
 

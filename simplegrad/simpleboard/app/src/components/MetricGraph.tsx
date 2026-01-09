@@ -33,34 +33,33 @@ export function MetricGraph({ metricName, data, color }: MetricGraphProps) {
 
     const container = containerRef.current;
     const svg = d3.select(svgRef.current);
-    
+
     // Clear previous content
     svg.selectAll('*').remove();
 
-    const margin = { top: 20, right: 20, bottom: 40, left: 50 };
+    const margin = { top: 20, right: 30, bottom: 40, left: 50 };
     const width = container.clientWidth - margin.left - margin.right;
     const height = 200 - margin.top - margin.bottom;
 
-    svg
-      .attr('width', container.clientWidth)
-      .attr('height', 200);
+    svg.attr('width', container.clientWidth).attr('height', 200);
 
-    const g = svg
-      .append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
+    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
     // Scales
     const xExtent = d3.extent(data, (d: RecordInfo) => d.step) as [number, number];
     const yExtent = d3.extent(data, (d: RecordInfo) => d.value) as [number, number];
-    
+
     // Add padding to y extent
     const yPadding = (yExtent[1] - yExtent[0]) * 0.1 || 1;
     
-    const x = d3.scaleLinear()
-      .domain(xExtent)
-      .range([0, width]);
+    // Add padding to x extent to keep line away from edges
+    const xRange = xExtent[1] - xExtent[0];
+    const xPadding = xRange * 0.02 || 1;
 
-    const y = d3.scaleLinear()
+    const x = d3.scaleLinear().domain([xExtent[0], xExtent[1] + xPadding]).range([0, width]);
+
+    const y = d3
+      .scaleLinear()
       .domain([yExtent[0] - yPadding, yExtent[1] + yPadding])
       .range([height, 0]);
 
@@ -69,7 +68,8 @@ export function MetricGraph({ metricName, data, color }: MetricGraphProps) {
       .attr('class', 'grid')
       .attr('transform', `translate(0,${height})`)
       .call(
-        d3.axisBottom(x)
+        d3
+          .axisBottom(x)
           .ticks(5)
           .tickSize(-height)
           .tickFormat(() => '')
@@ -81,7 +81,8 @@ export function MetricGraph({ metricName, data, color }: MetricGraphProps) {
     g.append('g')
       .attr('class', 'grid')
       .call(
-        d3.axisLeft(y)
+        d3
+          .axisLeft(y)
           .ticks(5)
           .tickSize(-width)
           .tickFormat(() => '')
@@ -114,7 +115,8 @@ export function MetricGraph({ metricName, data, color }: MetricGraphProps) {
 
     // Line
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const line = (d3 as any).line()
+    const line = (d3 as any)
+      .line()
       .x((d: RecordInfo) => x(d.step))
       .y((d: RecordInfo) => y(d.value))
       .curve(d3.curveMonotoneX);
@@ -147,7 +149,6 @@ export function MetricGraph({ metricName, data, color }: MetricGraphProps) {
       .attr('fill', '#9ca3af')
       .attr('font-size', '11px')
       .text('Step');
-
   }, [data, chartColor]);
 
   // Handle resize
@@ -179,9 +180,7 @@ export function MetricGraph({ metricName, data, color }: MetricGraphProps) {
         )}
       </div>
       <svg ref={svgRef} />
-      {data.length === 0 && (
-        <div className="metric-graph-empty">No data available</div>
-      )}
+      {data.length === 0 && <div className="metric-graph-empty">No data available</div>}
     </div>
   );
 }
@@ -191,7 +190,7 @@ function hashCode(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
   return hash;

@@ -26,7 +26,7 @@ export function MainContent({
   isLoading,
   error,
   activeTab,
-  onTabChange
+  onTabChange,
 }: MainContentProps) {
   const metricNames = Object.keys(metrics);
   const hasMetrics = metricNames.length > 0;
@@ -48,11 +48,7 @@ export function MainContent({
     return (
       <main className="main-content">
         <div className="main-placeholder">
-          <img 
-            src="/simpleboard_v2.svg" 
-            alt="simpleboard" 
-            className="main-placeholder-logo" 
-          />
+          <img src="/simpleboard_v2.svg" alt="simpleboard" className="main-placeholder-logo" />
           <h2>Select a Run</h2>
           <p>Choose an experiment and run from the sidebar to view metrics and graphs.</p>
         </div>
@@ -101,11 +97,7 @@ export function MainContent({
           <div className="metrics-grid">
             {hasMetrics ? (
               metricNames.map((name) => (
-                <MetricGraph
-                  key={name}
-                  metricName={name}
-                  data={metrics[name]}
-                />
+                <MetricGraph key={name} metricName={name} data={metrics[name]} />
               ))
             ) : (
               <div className="main-empty">
@@ -118,11 +110,7 @@ export function MainContent({
           <div className="graphs-container">
             {hasGraphs ? (
               graphs.map((g, index) => (
-                <CompGraph
-                  key={g.id}
-                  data={g.graph}
-                  title={`Computation Graph ${index + 1}`}
-                />
+                <CompGraph key={g.id} data={g.graph} title={`Computation Graph ${index + 1}`} />
               ))
             ) : (
               <div className="main-empty">

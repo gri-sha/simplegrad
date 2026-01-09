@@ -71,11 +71,11 @@ function App() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Fetch run info
       const runInfo = await api.getRun(runId);
       setSelectedRunName(runInfo.name);
-      
+
       // Fetch metrics
       const metricsData = await api.getRecords(runId);
       setMetrics(metricsData.metrics || {});
@@ -129,7 +129,7 @@ function App() {
       try {
         const message = JSON.parse(event.data);
         if (message.type === 'metric_update') {
-          setMetrics(prev => {
+          setMetrics((prev) => {
             const updated = { ...prev };
             const metricName = message.data.metric_name;
             if (!updated[metricName]) {
@@ -139,7 +139,7 @@ function App() {
             return updated;
           });
         } else if (message.type === 'graph_update') {
-          setGraphs(prev => [...prev, message.data]);
+          setGraphs((prev) => [...prev, message.data]);
         }
       } catch (err) {
         console.error('WebSocket message error:', err);
@@ -187,26 +187,61 @@ function App() {
     fetchRuns();
   }, [selectedDb, fetchRuns]);
 
-  // Poll for updates when a run is selected (every 2 seconds)
+  // Poll for databases and runs (every 3 seconds)
+  useEffect(() => {
+    const pollInterval = setInterval(() => {
+      // Silently fetch databases
+      api
+        .getDatabases()
+        .then((data) => {
+          setDatabases(data.available_databases);
+          // Update selected db if it was set on server side
+          if (data.current_database && !selectedDb) {
+            setSelectedDb(data.current_database);
+          }
+        })
+        .catch((err) => {
+          console.error('Polling databases error:', err);
+        });
+
+      // Silently fetch runs if a database is selected
+      if (selectedDb) {
+        api
+          .getRuns()
+          .then((data) => {
+            setRuns(data || []);
+          })
+          .catch((err) => {
+            console.error('Polling runs error:', err);
+          });
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [selectedDb]);
+
+  // Poll for metrics/graphs when a run is selected (every 2 seconds)
   useEffect(() => {
     if (!selectedRunId) return;
 
     const pollInterval = setInterval(() => {
       // Silently fetch updated metrics without setting loading state
-      api.getRecords(selectedRunId)
-        .then(metricsData => {
+      api
+        .getRecords(selectedRunId)
+        .then((metricsData) => {
           setMetrics(metricsData.metrics || {});
         })
-        .catch(err => {
+        .catch((err) => {
           console.error('Polling error:', err);
         });
-      
+
       // Also fetch graphs
-      api.getGraphs(selectedRunId)
-        .then(graphsData => {
+      api
+        .getGraphs(selectedRunId)
+        .then((graphsData) => {
           setGraphs(graphsData.graphs || []);
         })
-        .catch(err => {
+        .catch((err) => {
           console.error('Polling graphs error:', err);
         });
     }, 2000);

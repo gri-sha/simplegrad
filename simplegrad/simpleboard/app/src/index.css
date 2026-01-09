@@ -3,14 +3,15 @@
 
 /* CSS Variables - Color Palette */
 :root {
-  --color-blue: #528AC5;
-  --color-orange: #F7733C;
-  --color-pink: #F7B7CF;
-  --color-yellow: #FFC515;
-  --color-green: #3EC291;
-  --color-offwhite: #FAFAFA;
-  --color-dark: #1B1E20;
-  
+  --color-blue: #528ac5;
+  --color-orange: #f7733c;
+  --color-pink: #f7b7cf;
+  --color-yellow: #ffc515;
+  --color-green: #3ec291;
+  --color-offwhite: #fafafa;
+  --color-dark: #1b1e20;
+  --color-gray: #6b7280;
+
   /* Semantic colors */
   --color-primary: var(--color-blue);
   --color-secondary: var(--color-blue);
@@ -19,9 +20,10 @@
   --color-error: var(--color-orange);
   --color-bg: var(--color-offwhite);
   --color-text: var(--color-dark);
-  --color-border: #E5E7EB;
-  --color-hover: #F3F4F6;
-  
+  --color-text-secondary: var(--color-gray);
+  --color-border: #e5e7eb;
+  --color-hover: #f3f4f6;
+
   /* Typography */
   font-family: 'Open Sans', sans-serif;
   font-size: 14px;
@@ -35,13 +37,17 @@
 }
 
 /* Reset */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
 }
@@ -55,14 +61,25 @@ body {
 }
 
 /* Typography */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 600;
   color: var(--color-text);
 }
 
-h1 { font-size: 1.75rem; }
-h2 { font-size: 1.25rem; }
-h3 { font-size: 1rem; }
+h1 {
+  font-size: 1.75rem;
+}
+h2 {
+  font-size: 1.25rem;
+}
+h3 {
+  font-size: 1rem;
+}
 
 /* Links */
 a {
@@ -82,7 +99,9 @@ button {
   cursor: pointer;
   border: none;
   background: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .btn {
@@ -129,7 +148,9 @@ button {
 }
 
 /* Form elements */
-input, select, textarea {
+input,
+select,
+textarea {
   font-family: 'Open Sans', sans-serif;
   font-size: 0.875rem;
   border: 1px solid var(--color-border);
@@ -141,7 +162,9 @@ input, select, textarea {
   transition: border-color 0.15s ease;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   border-color: var(--color-secondary);
 }
 
@@ -168,7 +191,7 @@ select {
 .form-help {
   margin-top: 0.25rem;
   font-size: 0.75rem;
-  color: #6B7280;
+  color: #6b7280;
 }
 
 /* Scrollbar styling */
@@ -182,17 +205,17 @@ select {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #D1D5DB;
+  background-color: #d1d5db;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #9CA3AF;
+  background-color: #9ca3af;
 }
 
 /* Utility classes */
 .text-muted {
-  color: #6B7280;
+  color: #6b7280;
 }
 
 .text-success {
@@ -209,8 +232,12 @@ select {
 
 /* Animations */
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-spin {
@@ -233,4 +260,3 @@ select {
 .status-failed {
   color: var(--color-error);
 }
-

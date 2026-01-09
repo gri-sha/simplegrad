@@ -42,12 +42,12 @@ class Linear(Module):
 
         if self.use_bias:
             if bias is not None:
-                assert bias.shape == (1, self.out_features), "Bias shape must be (1, out_features), " f"but got {bias.shape} instead."
+                assert bias.shape == (self.out_features, ), "Bias shape must be (out_features,), " f"but got {bias.shape} instead."
                 self.bias = bias
                 self.bias.label = bias_label
             else:
                 self.bias = uniform(
-                    shape=(1, self.out_features),
+                    shape=(self.out_features,),
                     dtype=self.dtype,
                     label=bias_label,
                     high=np.sqrt(1 / self.in_features),
