@@ -1,6 +1,6 @@
+from __future__ import annotations  # make all annotations lazy
 import numpy as np
 from contextlib import contextmanager
-from typing import Union, Optional
 from simplegrad.dtypes import as_array, convert_to_dtype
 
 _COMP_GRAD = True
@@ -12,7 +12,7 @@ def no_grad():
     prev_comp_grad = _COMP_GRAD
     _COMP_GRAD = False
     try:
-        print(_COMP_GRAD)
+        # print(_COMP_GRAD)
         yield
     finally:
         _COMP_GRAD = prev_comp_grad
@@ -47,21 +47,16 @@ def _should_compute_grad(*inputs) -> bool:
 class Tensor:
     def __init__(
         self,
-        values: Optional[Union[np.ndarray, list]] = None,
+        values: np.ndarray | list | None = None,
         comp_grad: bool = None,  # None means "use global _COMP_GRAD"
-        label: Optional[str] = None,
-        dtype: Optional[str] = None,
-        # column: Optional[bool] = False,
+        label: str | None = None,
+        dtype: str | None = None,
     ) -> None:
         self.dtype = dtype if dtype is not None else "float32"
         if values is None:
             values = np.array([])
         self.values = as_array(values, self.dtype)
 
-        # if self.values.ndim == 0:
-        #     self.values = self.values.reshape(1, 1)
-        # elif self.values.ndim == 1:
-        #     self.values = self.values.reshape(-1, 1) if column else self.values.reshape(1, -1)
         self.shape = self.values.shape
         self.label = label
         self.prev = set()
@@ -71,21 +66,7 @@ class Tensor:
         self.grad = None
         self.backward_step = lambda: None
 
-    def reshape(self, new_shape: tuple[int], inplace: bool = True, include_grad: bool = True) -> Optional["Tensor"]:
-        if inplace:
-            self.values = self.values.reshape(new_shape)
-            self.shape = self.values.shape
-            if self.grad is not None and include_grad:
-                self.grad = self.grad.reshape(new_shape)
-        else:
-            new_tensor = Tensor(
-                values=self.values.reshape(new_shape),
-                comp_grad=self.comp_grad,
-                label=self.label,
-            )
-            return new_tensor
-
-    def convert_to_dtype(self, dtype: str, inplace: bool = True) -> Optional["Tensor"]:
+    def convert_to(self, dtype: str, inplace: bool = True) -> "Tensor" | None:
         if inplace:
             self.dtype = dtype
             self.values = convert_to_dtype(self.values, dtype)
@@ -143,7 +124,7 @@ class Tensor:
         if self.values.size == 0:
             raise RuntimeError("Cannot call backward() on an empty tensor")
 
-    def backward(self):
+    def backward(self) -> None:
         self._check_can_backward()
 
         topo_order = []
@@ -167,12 +148,11 @@ class Tensor:
             if not t.is_leaf and t != self:
                 t.grad = None
 
-    def _init_grad_if_needed(self):
+    def _init_grad_if_needed(self) -> None:
         if self.grad is None:
             self.grad = np.zeros(self.shape)
 
-    def _reduce_broadcasted_dims(self, delta):
-
+    def _reduce_broadcasted_dims(self, delta: np.ndarray) -> np.ndarray:
         while delta.ndim > self.grad.ndim:
             delta = delta.sum(axis=0)
         for i, (d, g) in enumerate(zip(delta.shape, self.grad.shape)):
@@ -180,7 +160,7 @@ class Tensor:
                 delta = delta.sum(axis=i, keepdims=True)
         return delta
 
-    def __add__(self, other):
+    def __add__(self, other: int | float | "Tensor") -> "Tensor":
         if isinstance(other, (int, float)):
             out = Tensor(self.values + other)
             out.prev = {self}
@@ -189,13 +169,7 @@ class Tensor:
             out.is_leaf = False
 
             if out.comp_grad:
-
-                def backward_step():
-                    if self.comp_grad:
-                        self._init_grad_if_needed()
-                        self.grad += self._reduce_broadcasted_dims(delta=out.grad)
-
-                out.backward_step = backward_step
+                out.backward_step = lambda: add_const_backward(self, other, out)
             return out
 
         elif isinstance(other, Tensor):
@@ -209,22 +183,13 @@ class Tensor:
             out.is_leaf = False
 
             if out.comp_grad:
-
-                def backward_step():
-                    if self.comp_grad:
-                        self._init_grad_if_needed()
-                        self.grad += self._reduce_broadcasted_dims(delta=out.grad)
-                    if other.comp_grad:
-                        other._init_grad_if_needed()
-                        other.grad += other._reduce_broadcasted_dims(delta=out.grad)
-
-                out.backward_step = backward_step
+                out.backward_step = lambda: _add_backward(self, other, out)
             return out
 
         else:
             raise ValueError(f"Wrong operand type: {type(other)}")
 
-    def __mul__(self, other):
+    def __mul__(self, other: int | float | "Tensor") -> "Tensor":
         if isinstance(other, (int, float)):
             out = Tensor(self.values * other)
             out.prev = {self}
@@ -233,13 +198,7 @@ class Tensor:
             out.is_leaf = False
 
             if out.comp_grad:
-
-                def backward_step():
-                    if self.comp_grad:
-                        self._init_grad_if_needed()
-                        self.grad += out.grad * other
-
-                out.backward_step = backward_step
+                out.backward_step = lambda: mul_const_backward(self, other, out)
             return out
 
         elif isinstance(other, Tensor):
@@ -253,23 +212,13 @@ class Tensor:
             out.is_leaf = False
 
             if out.comp_grad:
-
-                def backward_step():
-                    if self.comp_grad:
-                        self._init_grad_if_needed()
-                        self.grad += self._reduce_broadcasted_dims(delta=out.grad * other.values)
-
-                    if other.comp_grad:
-                        other._init_grad_if_needed()
-                        other.grad += other._reduce_broadcasted_dims(delta=out.grad * self.values)
-
-                out.backward_step = backward_step
+                out.backward_step = lambda: _mul_backward(self, other, out)
             return out
 
         else:
             raise ValueError(f"Wrong operand type: {type(other)}")
 
-    def __pow__(self, other):
+    def __pow__(self, other: int | float) -> "Tensor":
         if isinstance(other, (float, int)):
             if np.any(self.values < 0) and not float(other).is_integer():
                 raise ValueError(f"Invalid: {self.label if self.label else 'Tensor'} ** {other} would be complex.")
@@ -280,19 +229,13 @@ class Tensor:
             out.is_leaf = False
 
             if out.comp_grad:
-
-                def backward_step():
-                    if self.comp_grad:
-                        self._init_grad_if_needed()
-                        self.grad += out.grad * other * (self.values ** (other - 1))
-
-                out.backward_step = backward_step
+                out.backward_step = lambda: _pow_backward(self, other, out)
 
             return out
         else:
             raise ValueError(f"Only 'float' or 'int' exponents are supported, got {type(other)}")
 
-    def __matmul__(self, other):
+    def __matmul__(self, other: "Tensor") -> "Tensor":
         if isinstance(other, Tensor):
             out = Tensor(self.values @ other.values)
             out.prev = {self, other}
@@ -301,25 +244,13 @@ class Tensor:
             out.is_leaf = False
 
             if out.comp_grad:
-
-                def backward_step():
-                    if self.comp_grad:
-                        self._init_grad_if_needed()
-                        self.grad += self._reduce_broadcasted_dims(
-                            # smart way to transpose matrices in the batches
-                            np.matmul(out.grad, other.values.swapaxes(-1, -2))
-                        )
-                    if other.comp_grad:
-                        other._init_grad_if_needed()
-                        other.grad += other._reduce_broadcasted_dims(np.matmul(self.values.swapaxes(-1, -2), out.grad))
-
-                out.backward_step = backward_step
+                out.backward_step = lambda: _matmul_backward(self, other, out)
             return out
         else:
             raise ValueError(f"Only 'Tensor' operands are supported for matmul, got {type(other)}")
 
     @property
-    def T(self):
+    def T(self) -> "Tensor":
         out = Tensor(self.values.T)
         out.prev = {self}
         out.oper = "T"
@@ -327,37 +258,85 @@ class Tensor:
         out.is_leaf = False
 
         if out.comp_grad:
-
-            def backward_step():
-                if self.comp_grad:
-                    self._init_grad_if_needed()
-                    self.grad += out.grad.T
-
-            out.backward_step = backward_step
+            out.backward_step = lambda: _T_backward(self, out)
         return out
 
-    def __sub__(self, other):
+    def __sub__(self, other: int | float | "Tensor") -> "Tensor":
         return self + other * -1
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: int | float | "Tensor") -> "Tensor":
         return self * other**-1
 
-    def __radd__(self, other):
+    def __radd__(self, other: int | float | "Tensor") -> "Tensor":
         return self + other
 
-    def __rsub__(self, other):
+    def __rsub__(self, other: int | float | "Tensor") -> "Tensor":
         return other + self * -1
 
-    def __rmul__(self, other):
+    def __rmul__(self, other: int | float | "Tensor") -> "Tensor":
         return self * other
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(self, other: int | float | "Tensor") -> "Tensor":
         return other * self**-1
 
-    def __neg__(self):
+    def __neg__(self) -> "Tensor":
         return self * -1
 
     # identifier for graphviz
     @property
-    def _str_id(self):
+    def _str_id(self) -> str:
         return str(id(self))
+
+
+def _add_backward(x: Tensor, y: Tensor, out: Tensor) -> None:
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += x._reduce_broadcasted_dims(delta=out.grad)
+    if y.comp_grad:
+        y._init_grad_if_needed()
+        y.grad += y._reduce_broadcasted_dims(delta=out.grad)
+
+
+def add_const_backward(x: Tensor, const: int | float, out: Tensor) -> None:
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += x._reduce_broadcasted_dims(delta=out.grad)
+
+
+def _mul_backward(x: Tensor, y: Tensor, out: Tensor) -> None:
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += x._reduce_broadcasted_dims(delta=out.grad * y.values)
+    if y.comp_grad:
+        y._init_grad_if_needed()
+        y.grad += y._reduce_broadcasted_dims(delta=out.grad * x.values)
+
+
+def mul_const_backward(x: Tensor, const: int | float, out: Tensor) -> None:
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += out.grad * const
+
+
+def _pow_backward(x: Tensor, const: int | float, out: Tensor) -> None:
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += out.grad * const * (x.values ** (const - 1))
+
+
+def _matmul_backward(x: Tensor, y: Tensor, out: Tensor) -> None:
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += x._reduce_broadcasted_dims(
+            # smart way to transpose matrices in the batches
+            np.matmul(out.grad, y.values.swapaxes(-1, -2))
+        )
+    if y.comp_grad:
+        y._init_grad_if_needed()
+        y.grad += y._reduce_broadcasted_dims(np.matmul(x.values.swapaxes(-1, -2), out.grad))
+
+
+def _T_backward(x: Tensor, out: Tensor) -> None:
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += out.grad.T

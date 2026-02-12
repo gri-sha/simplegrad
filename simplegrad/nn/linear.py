@@ -22,7 +22,7 @@ class Linear(Module):
         self.use_bias = use_bias
 
         if weight is not None:
-            self.weight = weight.convert_to_dtype(dtype, inplace=False)
+            self.weight = weight.convert_to(dtype, inplace=False)
             self.weight.label = weight_label
             self.in_features = weight.shape[0]
             self.out_features = weight.shape[1]
@@ -42,7 +42,7 @@ class Linear(Module):
 
         if self.use_bias:
             if bias is not None:
-                assert bias.shape == (self.out_features, ), "Bias shape must be (out_features,), " f"but got {bias.shape} instead."
+                assert bias.shape == (self.out_features,), "Bias shape must be (out_features,), " f"but got {bias.shape} instead."
                 self.bias = bias
                 self.bias.label = bias_label
             else:

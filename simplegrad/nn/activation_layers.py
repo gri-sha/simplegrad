@@ -4,7 +4,7 @@ from simplegrad.functions.activations import *
 
 
 class ReLU(Module):
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return relu(x)
 
     def __str__(self):
@@ -12,11 +12,11 @@ class ReLU(Module):
 
 
 class Softmax(Module):
-    def __init__(self, dim=None):
+    def __init__(self, dim: int | None =None):
         super().__init__()
         self.dim = dim
 
-    def forward(self, x):
+    def forward(self, x: Tensor):
         return softmax(x, self.dim)
 
     def __str__(self):
@@ -24,7 +24,7 @@ class Softmax(Module):
 
 
 class Tanh(Module):
-    def forward(self, x):
+    def forward(self, x: Tensor):
         return tanh(x)
 
     def __str__(self):
@@ -32,7 +32,7 @@ class Tanh(Module):
 
 
 class Sigmoid(Module):
-    def forward(self, x):
+    def forward(self, x: Tensor):
         return sigmoid(x)
 
     def __str__(self):

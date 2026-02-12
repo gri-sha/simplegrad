@@ -14,13 +14,8 @@ def ce_loss(z: Tensor, y: Tensor, dim: int = -1, reduction: str = "mean") -> Ten
     exps = np.exp(z.values - np.max(z.values, axis=dim, keepdims=True))  # for numerical stability
     s = exps / np.sum(exps, axis=dim, keepdims=True)
 
-    # print(s.shape, y.values.shape)
-
     # Cross-entropy loss per sample
     losses = -np.sum(y.values * np.log(s + 1e-12), axis=dim, keepdims=True)  # small epsilon for stability
-    # print(dim)
-    # print('input', z.shape)
-    # print("losses shape:", losses.shape)
 
     out = Tensor(losses)
     out.prev = {z, y}
@@ -29,20 +24,7 @@ def ce_loss(z: Tensor, y: Tensor, dim: int = -1, reduction: str = "mean") -> Ten
     out.is_leaf = False
 
     if out.comp_grad:
-
-        def backward_step():
-            if z.comp_grad:
-                z._init_grad_if_needed()
-                grad = s - y.values
-                # это костыль, не могу понять почему в некоторых случаях неправильный upstream_grad.shape
-                # upstream_grad = out.grad.T if out.grad.ndim <= 2 and out.grad.shape[0] == 1 else np.expand_dims(out.grad, axis=dim)
-                # print('out.grad', out.grad.shape)
-                # upstream_grad = np.expand_dims(out.grad, axis=dim)
-                # print('upstream', upstream_grad.shape)
-                # print('grad', grad.shape)
-                z.grad += grad * out.grad
-
-        out.backward_step = backward_step
+        out.backward_step = lambda: _ce_loss_backward(z=z, s=s, y=y, out=out)
 
     if reduction == "mean":
         return sg.mean(out)
@@ -52,6 +34,12 @@ def ce_loss(z: Tensor, y: Tensor, dim: int = -1, reduction: str = "mean") -> Ten
         return out
     else:
         raise ValueError(f"Invalid reduction: {reduction}")
+
+
+def _ce_loss_backward(z: Tensor, s: np.ndarray, y: Tensor, out: Tensor) -> None:
+    if z.comp_grad:
+        z._init_grad_if_needed()
+        z.grad += (s - y.values) * out.grad
 
 
 def mse_loss(p: Tensor, y: Tensor, reduction: str = "mean") -> Tensor:

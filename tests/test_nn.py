@@ -391,6 +391,7 @@ def test_neural_network_with_optimizer():
 
 def _test_embedding_helper(num_embeddings, embedding_dim, input_shape, dtype="float64"):
     """Helper function to test Embedding layer with different input shapes"""
+    # Create simplegrad embedding
     embedding = sg.nn.Embedding(num_embeddings, embedding_dim, dtype=dtype)
 
     # Create random integer indices
@@ -399,63 +400,23 @@ def _test_embedding_helper(num_embeddings, embedding_dim, input_shape, dtype="fl
 
     # Forward pass
     output = embedding(x)
-
-    # Check output shape: input_shape -> input_shape + (embedding_dim,)
-    expected_shape = input_shape + (embedding_dim,)
-    # if len(input_shape) == 1:
-    #     expected_shape = (1,) + expected_shape
-    assert output.shape == expected_shape, f"Expected shape {expected_shape}, got {output.shape}"
-    assert output.dtype == dtype, f"Expected dtype {dtype}, got {output.dtype}"
-
-    # Verify that embeddings are correctly retrieved
-    flat_indices = indices.flatten()
-    flat_output = output.values.reshape(-1, embedding_dim)
-
-    for i in range(min(10, len(flat_indices))):
-        idx = flat_indices[i]
-        expected_embedding = embedding.weight.values[idx]
-        actual_embedding = flat_output[i]
-        assert np.allclose(expected_embedding, actual_embedding), f"Embedding at flat index {i} doesn't match"
-
-    # Test backward pass
     output.zero_grad()
     output.backward()
 
-    # Check that gradients are accumulated correctly
-    assert embedding.weight.grad is not None, "Weight gradient should be computed"
-    assert (
-        embedding.weight.grad.shape == embedding.weight.shape
-    ), f"Gradient shape {embedding.weight.grad.shape} doesn't match weight shape {embedding.weight.shape}"
+    # PyTorch equivalent
+    torch_dtype = torch.float32 if dtype == "float32" else torch.float64
+    indices_pt = torch.from_numpy(indices).long()
 
-    # Verify gradient accumulation: each index should have gradient from output
-    # Build expected gradient manually
-    expected_grad = np.zeros_like(embedding.weight.values)
-    flat_out_grad = output.grad.reshape(-1, embedding_dim)
-    for idx, grad in zip(flat_indices, flat_out_grad):
-        expected_grad[idx] += grad
+    embedding_pt = torch.nn.Embedding(num_embeddings, embedding_dim)
+    embedding_pt.weight.data = torch.from_numpy(embedding.weight.values).to(torch_dtype).requires_grad_(True)
 
-    assert np.allclose(embedding.weight.grad, expected_grad, rtol=1e-5, atol=1e-8), "Gradient accumulation doesn't match expected values"
+    output_pt = embedding_pt(indices_pt)
+    loss_pt = output_pt.sum()
+    loss_pt.backward()
 
-    # Test with duplicate indices to verify gradient accumulation
-    if input_shape[0] >= 2:
-        # Create input with duplicate indices
-        dup_indices = np.zeros(input_shape, dtype=np.int32)
-        dup_indices[...] = indices.flat[0]  # All same index
-        x_dup = sg.Tensor(dup_indices, dtype="int32" if dtype == "float32" else "int64")
-
-        embedding.weight.zero_grad()
-        output_dup = embedding(x_dup)
-        output_dup.zero_grad()
-        output_dup.backward()
-
-        # The gradient at that index should be sum of all output gradients
-        idx_used = indices.flat[0]
-        expected_grad_at_idx = output_dup.grad.reshape(-1, embedding_dim).sum(axis=0)
-        actual_grad_at_idx = embedding.weight.grad[idx_used]
-
-        assert np.allclose(
-            actual_grad_at_idx, expected_grad_at_idx, rtol=1e-5, atol=1e-8
-        ), "Gradient accumulation for duplicate indices is incorrect"
+    # Compare outputs and gradients
+    compare2tensors(sg=output, pt=output_pt)
+    compare2tensors(sg=embedding.weight.grad, pt=embedding_pt.weight.grad)
 
 
 def test_embedding_1d():

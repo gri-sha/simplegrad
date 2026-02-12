@@ -11,7 +11,7 @@ class Embedding(Module):
         if weight is not None:
             assert weight.ndim == 2, "Weight tensor must be 2-dimensional"
             assert isinstance(weight, Tensor), "Weight must be a sg.Tensor"
-            self.weight = weight.convert_to_dtype(self.dtype, inplace=False)
+            self.weight = weight.convert_to(self.dtype, inplace=False)
             self.dtype = weight.dtype
             self.num_embeddings = weight.shape[0]
             self.embedding_dim = weight.shape[1]

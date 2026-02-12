@@ -2,24 +2,23 @@ import numpy as np
 from simplegrad.core import Tensor, uniform
 from .module import Module
 from simplegrad.functions.conv import conv2d
-from typing import Union, Optional
 
 
 class Conv2d(Module):
     def __init__(
         self,
-        in_channels: Optional[int] = None,
-        out_channels: Optional[int] = None,
-        kernel_size: Optional[Union[int, tuple]] = None,
-        weight: Optional[Tensor] = None,
-        bias: Optional[Tensor] = None,
+        in_channels: int | None = None,
+        out_channels: int | None = None,
+        kernel_size: int | tuple[int, int] = None,
+        weight: Tensor | None = None,
+        bias: Tensor | None = None,
         use_bias: bool = True,
-        dtype: Optional[str] = None,  # use global dtype if None
+        dtype: str | None = None,  # use global dtype if None
         stride: int = 1,
         # 2 options for padding:
         # int - same dimention for all directions
         # tuple - (top, bottom, left, right)
-        pad_width: Union[int, tuple[int]] = 0,
+        pad_width: int | tuple[int, int, int, int] = 0,
         pad_mode: str = "constant",
         pad_value: int = 0,
         weight_label: str = "W",
@@ -30,7 +29,7 @@ class Conv2d(Module):
         if weight is not None:
             assert weight.values.ndim == 4, "Weight tensor must be 4-dimensional"
             assert isinstance(weight, Tensor), "Weight must be a sg.Tensor"
-            self.weight = weight.convert_to_dtype(self.dtype, inplace=False)
+            self.weight = weight.convert_to(self.dtype, inplace=False)
             self.in_channels = weight.shape[1]
             self.out_channels = weight.shape[0]
             self.kernel_size = weight.shape[2:]

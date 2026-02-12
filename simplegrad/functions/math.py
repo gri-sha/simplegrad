@@ -1,7 +1,5 @@
 import numpy as np
 from simplegrad.core.tensor import Tensor, _should_compute_grad
-from typing import Optional
-from simplegrad.dtypes import get_dtype_class
 
 
 def log(x: Tensor) -> Tensor:
@@ -15,13 +13,14 @@ def log(x: Tensor) -> Tensor:
     out.is_leaf = False
 
     if out.comp_grad:
-        def backward_step():
-            if x.comp_grad:
-                x._init_grad_if_needed()
-                x.grad += out.grad / x.values
-
-        out.backward_step = backward_step
+        out.backward_step = lambda: _log_backward(x, out)
     return out
+
+
+def _log_backward(x: Tensor, out: Tensor):
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += out.grad / x.values
 
 
 def exp(x: Tensor) -> Tensor:
@@ -32,13 +31,15 @@ def exp(x: Tensor) -> Tensor:
     out.is_leaf = False
 
     if out.comp_grad:
-        def backward_step():
-            if x.comp_grad:
-                x._init_grad_if_needed()
-                x.grad += out.grad * np.exp(x.values)
+        out.backward_step = lambda: _exp_backward(x, out)
 
-        out.backward_step = backward_step
     return out
+
+
+def _exp_backward(x: Tensor, out: Tensor):
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += out.grad * np.exp(x.values)
 
 
 def sin(x: Tensor) -> Tensor:
@@ -49,13 +50,14 @@ def sin(x: Tensor) -> Tensor:
     out.is_leaf = False
 
     if out.comp_grad:
-        def backward_step():
-            if x.comp_grad:
-                x._init_grad_if_needed()
-                x.grad += out.grad * np.cos(x.values)
-
-        out.backward_step = backward_step
+        out.backward_step = lambda: _sin_backward(x, out)
     return out
+
+
+def _sin_backward(x: Tensor, out: Tensor):
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += out.grad * np.cos(x.values)
 
 
 def cos(x: Tensor) -> Tensor:
@@ -66,13 +68,14 @@ def cos(x: Tensor) -> Tensor:
     out.is_leaf = False
 
     if out.comp_grad:
-        def backward_step():
-            if x.comp_grad:
-                x._init_grad_if_needed()
-                x.grad += -out.grad * np.sin(x.values)
-
-        out.backward_step = backward_step
+        out.backward_step = lambda: _cos_backward(x, out)
     return out
+
+
+def _cos_backward(x: Tensor, out: Tensor):
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += -out.grad * np.sin(x.values)
 
 
 def tan(x: Tensor) -> Tensor:
@@ -83,10 +86,11 @@ def tan(x: Tensor) -> Tensor:
     out.is_leaf = False
 
     if out.comp_grad:
-        def backward_step():
-            if x.comp_grad:
-                x._init_grad_if_needed()
-                x.grad += out.grad / (np.cos(x.values) ** 2)
-
-        out.backward_step = backward_step
+        out.backward_step = lambda: _tan_backward(x, out)
     return out
+
+
+def _tan_backward(x: Tensor, out: Tensor):
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += out.grad / (np.cos(x.values) ** 2)

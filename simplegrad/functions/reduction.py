@@ -13,15 +13,16 @@ def sum(x: Tensor, dim: Optional[int] = None) -> Tensor:
     out.oper = f"sum(d={dim})"
     out.comp_grad = _should_compute_grad(x)
     out.is_leaf = False
-    
-    if out.comp_grad:
-        def backward_step():
-            if x.comp_grad:
-                x._init_grad_if_needed()
-                x.grad += np.ones_like(x.values) * out.grad
 
-        out.backward_step = backward_step
+    if out.comp_grad:
+        out.backward_step = lambda: _sum_backward(x=x, out=out)
     return out
+
+
+def _sum_backward(x: Tensor, out: Tensor) -> None:
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        x.grad += np.ones_like(x.values) * out.grad
 
 
 def trace(x: Tensor) -> Tensor:
@@ -35,50 +36,22 @@ def trace(x: Tensor) -> Tensor:
     out.is_leaf = False
 
     if out.comp_grad:
-        def backward_step():
-            if x.comp_grad:
-                x._init_grad_if_needed()
-                grad_matrix = np.zeros_like(x.values)
-                np.fill_diagonal(grad_matrix, out.grad.flatten())
-                x.grad += grad_matrix
-
-        out.backward_step = backward_step
+        out.backward_step = lambda: _trace_backward(x=x, out=out)
     return out
+
+
+def _trace_backward(x: Tensor, out: Tensor) -> None:
+    if x.comp_grad:
+        x._init_grad_if_needed()
+        grad_matrix = np.zeros_like(x.values)
+        np.fill_diagonal(grad_matrix, out.grad.flatten())
+        x.grad += grad_matrix
 
 
 def mean(x: Tensor, dim: Optional[int] = None) -> Tensor:
     if dim is None:
         return sum(x) / x.values.size
     return sum(x, dim=dim) / x.values.shape[dim]
-
-# def max(x: Tensor, dim: Optional[int] = None) -> Tensor:
-#     out = Tensor(np.max(x.values, axis=dim), dtype=x.dtype)
-#     mask_idxs = np.argmax(x.values, axis=dim)
-#     out.prev = {x}
-#     out.oper = f"max(d={dim})"
-#     out.comp_grad = False
-#     out.is_leaf = False
-
-#     if out.comp_grad:
-#         def backward_step():
-#             if x.comp_grad:
-#                 x._init_grad_if_needed()
-#                 # Create a mask for the max indices
-#                 grad_values = np.zeros_like(x.values)
-#                 if dim is None:
-#                     grad_values.flat[mask_idxs] = out.grad
-#                 else:
-#                     it = np.nditer(mask_idxs, flags=['multi_index'])
-#                     while not it.finished:
-#                         idx = list(it.multi_index)
-#                         if dim is not None:
-#                             idx.insert(dim, it[0])
-#                         grad_values[tuple(idx)] = out.grad[it.multi_index]
-#                         it.iternext()
-#                 x.grad += grad_values
-
-#         out.backward_step = backward_step
-#     return out
 
 
 def argmax(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor:
@@ -89,11 +62,12 @@ def argmax(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor
     out.is_leaf = False
 
     if out.comp_grad:
-        def backward_step():
-            raise RuntimeError("argmax is not differentiable and does not support backpropagation")
-
-        out.backward_step = backward_step
+        out.backward_step = lambda: _argmax_backward()
     return out
+
+
+def _argmax_backward() -> None:
+    raise RuntimeError("argmax is not differentiable and does not support backpropagation")
 
 
 def argmin(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor:
@@ -104,8 +78,9 @@ def argmin(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor
     out.is_leaf = False
 
     if out.comp_grad:
-        def backward_step():
-            raise RuntimeError("argmin is not differentiable and does not support backpropagation")
-
-        out.backward_step = backward_step
+        out.backward_step = lambda: _argmin_backward()
     return out
+
+
+def _argmin_backward() -> None:
+    raise RuntimeError("argmin is not differentiable and does not support backpropagation")

@@ -44,7 +44,7 @@ def test_matmul():
 
 
 # exp, log, sin, cos, tan
-def test_operations_1():
+def test_operations_part1():
     array1 = np.array([[0.5, 1.2, -0.3], [0.1, -0.5, 2.1]])
     array2 = np.array([[1.0, 0.5, 0.8], [0.3, 1.5, 0.2]])
     a, b = sg.Tensor(array1, dtype="float64"), sg.Tensor(array2, dtype="float64")
@@ -65,7 +65,7 @@ def test_operations_1():
 
 
 # sum, mean, trace
-def test_operations_2():
+def test_operations_part2():
     array1 = np.array([[2.0, 3.0, 1.5], [0.5, 2.5, 1.0], [1.2, 0.8, 2.2]])
     a = sg.Tensor(array1, dtype="float64")
     c = sg.sum(a, dim=1) + sg.mean(a, dim=0) + sg.trace(a)
@@ -82,24 +82,31 @@ def test_operations_2():
 
 
 # softmax, relu, tanh
+def activations_helper(arrays, dims):
+    for array, dim in zip(arrays, dims):
+        a = sg.Tensor(array, dtype="float64")
+        softmax_out = sg.softmax(a, dim=dim)
+        tanh_out = sg.tanh(softmax_out)
+        c = sg.relu(tanh_out)
+        c.zero_grad()
+        c.backward()
+
+        at = torch.from_numpy(array).to(torch.float64).requires_grad_(True)
+        softmax_out_t = torch.softmax(at, dim=dim)
+        tanh_out_t = torch.tanh(softmax_out_t)
+        ct = torch.relu(tanh_out_t)
+        loss = ct.sum()
+        loss.backward()
+
+        compare2tensors(sg=c, pt=ct)
+        compare2tensors(sg=a.grad, pt=at.grad)
+
+
 def test_activations():
     array1 = np.array([[1.2, -0.5, 2.1], [-1.0, 0.3, 1.5], [0.8, -2.0, 0.5]])
-    a = sg.Tensor(array1, dtype="float64")
-    softmax_out = sg.softmax(a, dim=1)
-    tanh_out = sg.tanh(softmax_out)
-    c = sg.relu(tanh_out)
-    c.zero_grad()
-    c.backward()
-
-    at = torch.from_numpy(array1).to(torch.float64).requires_grad_(True)
-    softmax_out_t = torch.softmax(at, dim=1)
-    tanh_out_t = torch.tanh(softmax_out_t)
-    ct = torch.relu(tanh_out_t)
-    loss = ct.sum()
-    loss.backward()
-
-    compare2tensors(sg=c, pt=ct)
-    compare2tensors(sg=a.grad, pt=at.grad)
+    array2 = np.array([1.2, -0.5, 2.1, -1.0, 0.3, 1.5, 0.8, -2.0, 0.5])
+    array3 = np.array([[-1.0, 2.0], [3.0, -0.5], [0.0, 1.0], [2.5, -2.5]])
+    activations_helper([array1, array2, array3], [1, -1, 0])
 
 
 # Complex shapes with broadcasting: +, *, @

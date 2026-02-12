@@ -4,17 +4,17 @@ import numpy as np
 
 
 class Dropout(Module):
-    def __init__(self, p=0.5):
+    def __init__(self, p: int = 0.5):
         super().__init__()
         if not 0 <= p < 1:
             raise ValueError("Dropout probability must be in the range [0, 1).")
         self.p = p
         self.mask = None
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         if not isinstance(x, Tensor):
             raise TypeError("Input must be a Tensor.")
-        
+
         if self.eval_mode or self.p == 0:
             out = Tensor(x.values.copy())
             out.prev = {x}
@@ -26,6 +26,7 @@ class Dropout(Module):
                 if x.comp_grad:
                     x._init_grad_if_needed()
                     x.grad += out.grad  # No dropout applied in eval mode
+
             out.backward_step = backward_step
             return out
 

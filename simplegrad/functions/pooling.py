@@ -1,14 +1,13 @@
 import numpy as np
 from simplegrad.core.tensor import Tensor, _should_compute_grad
-from typing import Union
 from .conv import pad, _get_rec_fields_from_img, _get_img_from_rec_fields
 
 
 def max_pool2d(
     x: Tensor,
-    kernel_size: Union[int, tuple],
-    stride: Union[int, tuple] = None,
-    pad_width: Union[int, tuple] = 0,
+    kernel_size: int | tuple[int, int],
+    stride: int | tuple[int, int] = None,
+    pad_width: int | tuple[int, int, int] = 0,
     pad_mode: str = "constant",
     pad_value: int = 0,
 ) -> Tensor:
@@ -64,29 +63,44 @@ def max_pool2d(
     out_tensor.is_leaf = False
 
     if out_tensor.comp_grad:
-        def backward_step():
-            if padded_input.comp_grad:
-                padded_input._init_grad_if_needed()
-
-                # Create one-hot mask for max positions: (batch, channels, kh * kw, out_h, out_w)
-                mask = np.zeros((batch_size, channels, kh * kw, out_h, out_w))
-
-                # Use advanced indexing to set 1s at max positions
-                b_idx = np.arange(batch_size)[:, None, None, None]
-                c_idx = np.arange(channels)[None, :, None, None]
-                h_idx = np.arange(out_h)[None, None, :, None]
-                w_idx = np.arange(out_w)[None, None, None, :]
-
-                mask[b_idx, c_idx, max_idx, h_idx, w_idx] = 1.0
-
-                # Multiply mask by output gradient: (batch, channels, kh * kw, out_h, out_w)
-                rec_fields_grad = mask * out_tensor.grad[:, :, None, :, :]
-
-                # Reshape back to (batch, channels, kh, kw, out_h, out_w) for _get_img_from_rec_fields
-                rec_fields_grad = rec_fields_grad.reshape(batch_size, channels, kh, kw, out_h, out_w)
-
-                # Convert back to image space
-                padded_input.grad += _get_img_from_rec_fields(rec_fields_grad, padded_input.values.shape, kh, kw, sh, sw)
-
-        out_tensor.backward_step = backward_step
+        out_tensor.backward_step = lambda: _max_pool2d_backward(
+            padded_input, out_tensor, batch_size, channels, out_h, out_w, max_idx, kh, kw, sh, sw
+        )
     return out_tensor
+
+
+def _max_pool2d_backward(
+    padded_input: Tensor,
+    out_tensor: Tensor,
+    batch_size: int,
+    channels: int,
+    out_h: int,
+    out_w: int,
+    max_idx: np.ndarray,
+    kh: int,
+    kw: int,
+    sh: int,
+    sw: int,
+):
+    if padded_input.comp_grad:
+        padded_input._init_grad_if_needed()
+
+        # Create one-hot mask for max positions: (batch, channels, kh * kw, out_h, out_w)
+        mask = np.zeros((batch_size, channels, kh * kw, out_h, out_w))
+
+        # Use advanced indexing to set 1s at max positions
+        b_idx = np.arange(batch_size)[:, None, None, None]
+        c_idx = np.arange(channels)[None, :, None, None]
+        h_idx = np.arange(out_h)[None, None, :, None]
+        w_idx = np.arange(out_w)[None, None, None, :]
+
+        mask[b_idx, c_idx, max_idx, h_idx, w_idx] = 1.0
+
+        # Multiply mask by output gradient: (batch, channels, kh * kw, out_h, out_w)
+        rec_fields_grad = mask * out_tensor.grad[:, :, None, :, :]
+
+        # Reshape back to (batch, channels, kh, kw, out_h, out_w) for _get_img_from_rec_fields
+        rec_fields_grad = rec_fields_grad.reshape(batch_size, channels, kh, kw, out_h, out_w)
+
+        # Convert back to image space
+        padded_input.grad += _get_img_from_rec_fields(rec_fields_grad, padded_input.values.shape, kh, kw, sh, sw)
