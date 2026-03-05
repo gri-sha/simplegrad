@@ -1,3 +1,5 @@
+"""Reduction operations: sum, mean, trace, argmax, argmin."""
+
 import numpy as np
 from simplegrad.core.tensor import Tensor, _should_compute_grad
 from typing import Optional
@@ -5,6 +7,15 @@ from simplegrad.dtypes import get_dtype_class
 
 
 def sum(x: Tensor, dim: Optional[int] = None) -> Tensor:
+    """Sum tensor elements along a dimension.
+
+    Args:
+        x: Input tensor.
+        dim: Dimension to reduce. If None, sums all elements.
+
+    Returns:
+        Reduced tensor (keepdims=True).
+    """
     # dim 0: sum columns, resulting in a single row
     # dim 1: sum rows, resulting in a single column
     # etc.
@@ -20,12 +31,24 @@ def sum(x: Tensor, dim: Optional[int] = None) -> Tensor:
 
 
 def _sum_backward(x: Tensor, out: Tensor) -> None:
+    """Backward for sum: gradient broadcasts back to the original shape."""
     if x.comp_grad:
         x._init_grad_if_needed()
         x.grad += np.ones_like(x.values) * out.grad
 
 
 def trace(x: Tensor) -> Tensor:
+    """Compute the trace (sum of diagonal elements) of a square matrix.
+
+    Args:
+        x: 2D square tensor.
+
+    Returns:
+        Scalar tensor containing the trace.
+
+    Raises:
+        ValueError: If x is not a 2D square tensor.
+    """
     if x.values.ndim != 2 or x.values.shape[0] != x.values.shape[1]:
         raise ValueError("Trace is only defined for square matrices")
 
@@ -41,6 +64,7 @@ def trace(x: Tensor) -> Tensor:
 
 
 def _trace_backward(x: Tensor, out: Tensor) -> None:
+    """Backward for trace: gradient flows only to diagonal elements."""
     if x.comp_grad:
         x._init_grad_if_needed()
         grad_matrix = np.zeros_like(x.values)
@@ -49,12 +73,33 @@ def _trace_backward(x: Tensor, out: Tensor) -> None:
 
 
 def mean(x: Tensor, dim: Optional[int] = None) -> Tensor:
+    """Compute the mean of tensor elements along a dimension.
+
+    Args:
+        x: Input tensor.
+        dim: Dimension to reduce. If None, averages all elements.
+
+    Returns:
+        Reduced tensor.
+    """
     if dim is None:
         return sum(x) / x.values.size
     return sum(x, dim=dim) / x.values.shape[dim]
 
 
 def argmax(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor:
+    """Return indices of maximum values along a dimension.
+
+    Not differentiable — ``comp_grad`` is always False on the output.
+
+    Args:
+        x: Input tensor.
+        dim: Dimension to reduce. If None, returns the flat index.
+        dtype: Integer dtype for the output indices.
+
+    Returns:
+        Integer tensor of argmax indices.
+    """
     out = Tensor(np.argmax(x.values, axis=dim), dtype=get_dtype_class(dtype))
     out.prev = {x}
     out.oper = f"argmax(d={dim})"
@@ -71,6 +116,18 @@ def _argmax_backward() -> None:
 
 
 def argmin(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor:
+    """Return indices of minimum values along a dimension.
+
+    Not differentiable — ``comp_grad`` is always False on the output.
+
+    Args:
+        x: Input tensor.
+        dim: Dimension to reduce. If None, returns the flat index.
+        dtype: Integer dtype for the output indices.
+
+    Returns:
+        Integer tensor of argmin indices.
+    """
     out = Tensor(np.argmin(x.values, axis=dim), dtype=get_dtype_class(dtype))
     out.prev = {x}
     out.oper = f"argmin(d={dim})"

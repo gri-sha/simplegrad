@@ -1,3 +1,5 @@
+"""Core Tensor class and autograd engine."""
+
 from __future__ import annotations  # make all annotations lazy
 import numpy as np
 from contextlib import contextmanager
@@ -8,6 +10,7 @@ _COMP_GRAD = True
 
 @contextmanager
 def no_grad():
+    """Context manager that disables gradient computation globally."""
     global _COMP_GRAD
     prev_comp_grad = _COMP_GRAD
     _COMP_GRAD = False
@@ -19,19 +22,7 @@ def no_grad():
 
 
 def _should_compute_grad(*inputs) -> bool:
-    """
-    Determine if gradient computation is needed for an operation.
-
-    Args:
-        *inputs: Any number of inputs (Tensors, scalars, etc.)
-
-    Returns:
-        False if:
-            - Global _COMP_GRAD is False (inside no_grad() context)
-            - No input Tensor has comp_grad=True
-        True if:
-            - At least one input Tensor has comp_grad=True
-    """
+    """Return True if at least one input tensor requires gradients and the global flag is set."""
     # Check global flag first
     if not _COMP_GRAD:
         return False
@@ -45,6 +36,19 @@ def _should_compute_grad(*inputs) -> bool:
 
 
 class Tensor:
+    """N-dimensional array with automatic differentiation support.
+
+    Wraps a numpy array and records operations into a dynamic computation graph.
+    Call `.backward()` on a scalar output to propagate gradients back to all
+    leaf tensors with `comp_grad=True`.
+
+    Args:
+        values: Initial data. Converted to a numpy array of the given dtype.
+        comp_grad: Enable gradient tracking. Defaults to the global `_COMP_GRAD` flag.
+        label: Optional name shown in computation graph visualizations.
+        dtype: Data type string (e.g. ``"float32"``). Defaults to ``"float32"``.
+    """
+
     def __init__(
         self,
         values: np.ndarray | list | None = None,
@@ -67,6 +71,15 @@ class Tensor:
         self.backward_step = lambda: None
 
     def convert_to(self, dtype: str, inplace: bool = True) -> "Tensor" | None:
+        """Convert tensor values (and gradients) to a different dtype.
+
+        Args:
+            dtype: Target dtype string (e.g. ``"float64"``).
+            inplace: Modify this tensor in-place if True, else return a new tensor.
+
+        Returns:
+            New Tensor if ``inplace=False``, else None.
+        """
         if inplace:
             self.dtype = dtype
             self.values = convert_to_dtype(self.values, dtype)
@@ -110,6 +123,7 @@ class Tensor:
         return f"Tensor '{self.label}'\nshape: {self.shape}\nis_leaf: {self.is_leaf}\ndtype: {self.dtype}\ncomp_grad: {self.comp_grad}\nvalues:\n{self.values}{grad_info}"
 
     def zero_grad(self):
+        """Zero gradients on all leaf tensors in the computation graph."""
         # Initialize gradients only on leaf nodes
         if self.comp_grad and self.is_leaf:
             self.grad = np.zeros(self.shape)
@@ -117,6 +131,7 @@ class Tensor:
             t.zero_grad()
 
     def _check_can_backward(self):
+        """Raise if backward() cannot be called on this tensor."""
         if not self.comp_grad:
             raise RuntimeError(f"Cannot call backward() on tensor {self.label or ''} with comp_grad=False.")
         if self.grad is not None and not self.is_leaf:
@@ -125,6 +140,16 @@ class Tensor:
             raise RuntimeError("Cannot call backward() on an empty tensor")
 
     def backward(self) -> None:
+        """Run backpropagation from this tensor.
+
+        Computes gradients for all leaf tensors in the graph with `comp_grad=True`.
+        This tensor's gradient is initialized to ones (assumes scalar loss).
+        Non-leaf gradients are freed after the backward pass.
+
+        Raises:
+            RuntimeError: If `comp_grad=False`, tensor is empty, or backward has
+                already been called on this non-leaf tensor.
+        """
         self._check_can_backward()
 
         topo_order = []
@@ -149,10 +174,12 @@ class Tensor:
                 t.grad = None
 
     def _init_grad_if_needed(self) -> None:
+        """Initialize gradient array to zeros if not yet set."""
         if self.grad is None:
             self.grad = np.zeros(self.shape)
 
     def _reduce_broadcasted_dims(self, delta: np.ndarray) -> np.ndarray:
+        """Sum gradient over broadcast dimensions to match this tensor's shape."""
         while delta.ndim > self.grad.ndim:
             delta = delta.sum(axis=0)
         for i, (d, g) in enumerate(zip(delta.shape, self.grad.shape)):
@@ -161,6 +188,7 @@ class Tensor:
         return delta
 
     def __add__(self, other: int | float | "Tensor") -> "Tensor":
+        """Add a scalar or tensor element-wise."""
         if isinstance(other, (int, float)):
             out = Tensor(self.values + other)
             out.prev = {self}
@@ -169,7 +197,7 @@ class Tensor:
             out.is_leaf = False
 
             if out.comp_grad:
-                out.backward_step = lambda: add_const_backward(self, other, out)
+                out.backward_step = lambda: _add_const_backward(self, out)
             return out
 
         elif isinstance(other, Tensor):
@@ -190,6 +218,7 @@ class Tensor:
             raise ValueError(f"Wrong operand type: {type(other)}")
 
     def __mul__(self, other: int | float | "Tensor") -> "Tensor":
+        """Multiply by a scalar or tensor element-wise."""
         if isinstance(other, (int, float)):
             out = Tensor(self.values * other)
             out.prev = {self}
@@ -198,7 +227,7 @@ class Tensor:
             out.is_leaf = False
 
             if out.comp_grad:
-                out.backward_step = lambda: mul_const_backward(self, other, out)
+                out.backward_step = lambda: _mul_const_backward(self, other, out)
             return out
 
         elif isinstance(other, Tensor):
@@ -219,6 +248,7 @@ class Tensor:
             raise ValueError(f"Wrong operand type: {type(other)}")
 
     def __pow__(self, other: int | float) -> "Tensor":
+        """Raise to a scalar power element-wise."""
         if isinstance(other, (float, int)):
             if np.any(self.values < 0) and not float(other).is_integer():
                 raise ValueError(f"Invalid: {self.label if self.label else 'Tensor'} ** {other} would be complex.")
@@ -236,6 +266,7 @@ class Tensor:
             raise ValueError(f"Only 'float' or 'int' exponents are supported, got {type(other)}")
 
     def __matmul__(self, other: "Tensor") -> "Tensor":
+        """Matrix multiply with another tensor."""
         if isinstance(other, Tensor):
             out = Tensor(self.values @ other.values)
             out.prev = {self, other}
@@ -251,6 +282,7 @@ class Tensor:
 
     @property
     def T(self) -> "Tensor":
+        """Transpose of the tensor."""
         out = Tensor(self.values.T)
         out.prev = {self}
         out.oper = "T"
@@ -289,6 +321,7 @@ class Tensor:
 
 
 def _add_backward(x: Tensor, y: Tensor, out: Tensor) -> None:
+    """Backward for addition: upstream gradient flows unchanged to both inputs."""
     if x.comp_grad:
         x._init_grad_if_needed()
         x.grad += x._reduce_broadcasted_dims(delta=out.grad)
@@ -297,13 +330,15 @@ def _add_backward(x: Tensor, y: Tensor, out: Tensor) -> None:
         y.grad += y._reduce_broadcasted_dims(delta=out.grad)
 
 
-def add_const_backward(x: Tensor, const: int | float, out: Tensor) -> None:
+def _add_const_backward(x: Tensor, out: Tensor) -> None:
+    """Backward for scalar addition: upstream gradient flows unchanged to x."""
     if x.comp_grad:
         x._init_grad_if_needed()
         x.grad += x._reduce_broadcasted_dims(delta=out.grad)
 
 
 def _mul_backward(x: Tensor, y: Tensor, out: Tensor) -> None:
+    """Backward for element-wise multiply: d/dx = out.grad * y, d/dy = out.grad * x."""
     if x.comp_grad:
         x._init_grad_if_needed()
         x.grad += x._reduce_broadcasted_dims(delta=out.grad * y.values)
@@ -312,19 +347,22 @@ def _mul_backward(x: Tensor, y: Tensor, out: Tensor) -> None:
         y.grad += y._reduce_broadcasted_dims(delta=out.grad * x.values)
 
 
-def mul_const_backward(x: Tensor, const: int | float, out: Tensor) -> None:
+def _mul_const_backward(x: Tensor, const: int | float, out: Tensor) -> None:
+    """Backward for scalar multiply: d/dx = out.grad * const."""
     if x.comp_grad:
         x._init_grad_if_needed()
         x.grad += out.grad * const
 
 
 def _pow_backward(x: Tensor, const: int | float, out: Tensor) -> None:
+    """Backward for power: d/dx = const * x^(const-1) * out.grad."""
     if x.comp_grad:
         x._init_grad_if_needed()
         x.grad += out.grad * const * (x.values ** (const - 1))
 
 
 def _matmul_backward(x: Tensor, y: Tensor, out: Tensor) -> None:
+    """Backward for matmul: d/dX = dL @ Y.T, d/dY = X.T @ dL (batch-aware via swapaxes)."""
     if x.comp_grad:
         x._init_grad_if_needed()
         x.grad += x._reduce_broadcasted_dims(
@@ -337,6 +375,7 @@ def _matmul_backward(x: Tensor, y: Tensor, out: Tensor) -> None:
 
 
 def _T_backward(x: Tensor, out: Tensor) -> None:
+    """Backward for transpose: gradient of transpose is the transpose of the upstream gradient."""
     if x.comp_grad:
         x._init_grad_if_needed()
         x.grad += out.grad.T

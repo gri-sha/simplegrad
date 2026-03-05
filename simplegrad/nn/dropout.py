@@ -1,9 +1,24 @@
+"""Dropout regularization layer."""
+
 from simplegrad.core.tensor import Tensor
 from .module import Module
 import numpy as np
 
 
 class Dropout(Module):
+    """Apply dropout regularization during training.
+
+    During training, randomly zeroes elements of the input tensor with
+    probability ``p``. Disabled automatically in evaluation mode.
+
+    Args:
+        p: Probability of zeroing each element. Must be in ``[0, 1)``.
+            Defaults to 0.5.
+
+    Raises:
+        ValueError: If ``p`` is not in ``[0, 1)``.
+    """
+
     def __init__(self, p: int = 0.5):
         super().__init__()
         if not 0 <= p < 1:
@@ -12,6 +27,16 @@ class Dropout(Module):
         self.mask = None
 
     def forward(self, x: Tensor) -> Tensor:
+        """Apply dropout to the input.
+
+        In eval mode (or when ``p=0``), the input passes through unchanged.
+
+        Args:
+            x: Input tensor.
+
+        Returns:
+            Tensor with random elements zeroed (training) or unchanged (eval).
+        """
         if not isinstance(x, Tensor):
             raise TypeError("Input must be a Tensor.")
 

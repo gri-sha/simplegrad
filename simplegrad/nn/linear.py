@@ -1,3 +1,5 @@
+"""Fully-connected (linear/dense) layer."""
+
 import numpy as np
 from simplegrad.core import Tensor, uniform
 from simplegrad.dtypes import convert_to_dtype
@@ -6,6 +8,21 @@ from typing import Optional
 
 
 class Linear(Module):
+    """Fully-connected linear layer: ``output = x @ W + b``.
+
+    Weights are initialized with Kaiming uniform (range ``[-1/sqrt(in), 1/sqrt(in)]``).
+
+    Args:
+        in_features: Number of input features.
+        out_features: Number of output features.
+        weight: Optional pre-built weight tensor of shape ``(in_features, out_features)``.
+        bias: Optional pre-built bias tensor of shape ``(out_features,)``.
+        use_bias: Add a bias term. Defaults to True.
+        dtype: Data type string. Defaults to ``"float32"``.
+        weight_label: Label for the weight tensor (used in graph visualization).
+        bias_label: Label for the bias tensor.
+    """
+
     def __init__(
         self,
         in_features: Optional[int] = None,
@@ -55,6 +72,14 @@ class Linear(Module):
                 )
 
     def forward(self, x: Tensor) -> Tensor:
+        """Compute ``x @ W + b``.
+
+        Args:
+            x: Input tensor of shape ``(..., in_features)``.
+
+        Returns:
+            Output tensor of shape ``(..., out_features)``.
+        """
         res = x @ self.weight
         if self.use_bias:
             res = res + self.bias

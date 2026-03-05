@@ -1,3 +1,5 @@
+"""Pooling layers."""
+
 from ..core import Tensor
 from .module import Module
 from ..functions.pooling import max_pool2d
@@ -5,6 +7,19 @@ from typing import Union, Optional
 
 
 class MaxPool2d(Module):
+    """2D max pooling layer.
+
+    Slides a window over the input and keeps the maximum value in each window.
+
+    Args:
+        kernel_size: Pooling window size. Int or ``(kH, kW)``.
+        stride: Step between windows. Int or ``(sH, sW)``.
+        pad_width: Padding. Int (all sides) or ``(top, bottom, left, right)``.
+            Defaults to 0.
+        pad_mode: Padding mode. Defaults to ``"constant"``.
+        pad_value: Fill value for constant padding. Defaults to 0.
+    """
+
     def __init__(
         self,
         kernel_size: Union[int, tuple],
@@ -31,6 +46,14 @@ class MaxPool2d(Module):
         self.pad_value = pad_value
 
     def forward(self, x: Tensor) -> Tensor:
+        """Apply max pooling to the input.
+
+        Args:
+            x: Input of shape ``(batch, channels, H, W)`` or ``(channels, H, W)``.
+
+        Returns:
+            Pooled output of shape ``(batch, channels, out_H, out_W)``.
+        """
         return max_pool2d(
             x,
             kernel_size=self.kernel_size,

@@ -1,3 +1,5 @@
+"""2D convolution and padding operations with autograd support."""
+
 import numpy as np
 from simplegrad.core.tensor import Tensor, _should_compute_grad
 from typing import Optional, Union
@@ -5,6 +7,17 @@ from typing import Optional, Union
 
 # check https://numpy.org/doc/stable/reference/generated/numpy.pad.html for mode options
 def pad(x: Tensor, width: int | tuple[int, int, int, int], mode: str = "constant", value: int = 0) -> Tensor:
+    """Pad a tensor along its spatial dimensions.
+
+    Args:
+        x: Input tensor.
+        width: Padding widths. An int or nested tuples as accepted by ``numpy.pad``.
+        mode: Padding mode (e.g. ``"constant"``, ``"reflect"``). See numpy.pad docs.
+        value: Fill value for ``"constant"`` mode.
+
+    Returns:
+        Padded tensor.
+    """
     out = Tensor(
         np.pad(
             array=x.values,
@@ -25,6 +38,7 @@ def pad(x: Tensor, width: int | tuple[int, int, int, int], mode: str = "constant
 
 
 def _pad_backward(x: Tensor, out: Tensor, width: int | tuple[int, int, int, int], mode: str = "constant"):
+    """Backward for pad: slice out the original region from the upstream gradient."""
     if mode == "constant":
         if x.comp_grad:
             x._init_grad_if_needed()
@@ -120,6 +134,7 @@ def _conv2d_no_pad(
     bias: Optional[Tensor] = None,
     stride: Union[int, tuple] = 1,
 ):
+    """Perform conv2d on an already-padded input (no additional padding applied)."""
     batch_size = padded_input.values.shape[0] if padded_input.values.ndim == 4 else 1
     in_h, in_w = padded_input.values.shape[-2:]
     out_channels, in_channels, kh, kw = weight.values.shape
@@ -193,6 +208,13 @@ def _conv2d_no_pad_backward(
     rec_fields_flat: np.ndarray,
     weight_flat: np.ndarray,
 ) -> None:
+    """Backward for conv2d via the im2col matrix-multiply decomposition.
+
+    Gradients:
+        - d/dweight = rec_fields_flat.T @ out_grad
+        - d/dinput  = out_grad @ weight_flat.T, reshaped via col2im
+        - d/dbias   = sum of out.grad over batch, height, and width dims
+    """
     # Reshape output gradient: (batch * out_h * out_w, out_channels)
     out_grad = out_tensor.grad.transpose(0, 2, 3, 1).reshape(-1, out_channels)
 
@@ -227,6 +249,25 @@ def conv2d(
     pad_mode: str = "constant",
     pad_value: int = 0,
 ) -> Tensor:
+    """Apply a 2D convolution over the input tensor.
+
+    Implements convolution as a single matrix multiplication (im2col). Supports
+    batched inputs (4D) and single-sample inputs (3D).
+
+    Args:
+        x: Input tensor of shape ``(batch, in_channels, H, W)`` or
+            ``(in_channels, H, W)``.
+        weight: Kernel tensor of shape ``(out_channels, in_channels, kH, kW)``.
+        bias: Optional bias of shape ``(out_channels,)``.
+        stride: Convolution stride. Int or ``(height_stride, width_stride)``.
+        pad_width: Padding to apply before convolution. Int (same on all sides)
+            or ``(top, bottom, left, right)``.
+        pad_mode: Padding mode passed to ``numpy.pad``. Defaults to ``"constant"``.
+        pad_value: Fill value for constant padding. Defaults to 0.
+
+    Returns:
+        Output tensor of shape ``(batch, out_channels, out_H, out_W)``.
+    """
     assert (
         x.values.ndim == 4 or x.values.ndim == 3
     ), "Input tensor must be 4-dimensional (batch_size, in_channels, height, width) or 3-dimensional (in_channels, height, width)"

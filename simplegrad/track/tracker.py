@@ -1,3 +1,5 @@
+"""High-level experiment tracking API built on top of ExperimentDBManager."""
+
 from pathlib import Path
 from typing import Optional
 import subprocess

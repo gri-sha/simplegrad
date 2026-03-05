@@ -1,3 +1,5 @@
+"""Pooling operations with autograd support."""
+
 import numpy as np
 from simplegrad.core.tensor import Tensor, _should_compute_grad
 from .conv import pad, _get_rec_fields_from_img, _get_img_from_rec_fields
@@ -11,6 +13,19 @@ def max_pool2d(
     pad_mode: str = "constant",
     pad_value: int = 0,
 ) -> Tensor:
+    """Apply 2D max pooling over the input tensor.
+
+    Args:
+        x: Input tensor of shape ``(batch, channels, H, W)`` or ``(channels, H, W)``.
+        kernel_size: Pooling window size. Int or ``(kH, kW)``.
+        stride: Step between pooling windows. Int or ``(sH, sW)``.
+        pad_width: Padding before pooling. Int (all sides) or ``(top, bottom, left, right)``.
+        pad_mode: Padding mode. Defaults to ``"constant"``.
+        pad_value: Fill value for constant padding. Defaults to 0.
+
+    Returns:
+        Output tensor of shape ``(batch, channels, out_H, out_W)``.
+    """
     assert x.values.ndim == 4 or x.values.ndim == 3, "Input tensor must be 4D (batch, channels, H, W) or 3D (channels, H, W)"
 
     kh, kw = (kernel_size, kernel_size) if isinstance(kernel_size, int) else kernel_size
@@ -82,6 +97,7 @@ def _max_pool2d_backward(
     sh: int,
     sw: int,
 ):
+    """Backward for max_pool2d: gradient flows only to the max-valued position in each window."""
     if padded_input.comp_grad:
         padded_input._init_grad_if_needed()
 

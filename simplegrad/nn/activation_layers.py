@@ -1,10 +1,15 @@
+"""Activation function layers (Module wrappers)."""
+
 from simplegrad.core import Tensor
 from .module import Module
 from simplegrad.functions.activations import *
 
 
 class ReLU(Module):
+    """ReLU activation layer: max(0, x)."""
+
     def forward(self, x: Tensor) -> Tensor:
+        """Apply ReLU element-wise."""
         return relu(x)
 
     def __str__(self):
@@ -12,11 +17,18 @@ class ReLU(Module):
 
 
 class Softmax(Module):
-    def __init__(self, dim: int | None =None):
+    """Softmax activation layer.
+
+    Args:
+        dim: Dimension to normalize over. Defaults to None (all elements).
+    """
+
+    def __init__(self, dim: int | None = None):
         super().__init__()
         self.dim = dim
 
     def forward(self, x: Tensor):
+        """Apply softmax along ``dim``."""
         return softmax(x, self.dim)
 
     def __str__(self):
@@ -24,7 +36,10 @@ class Softmax(Module):
 
 
 class Tanh(Module):
+    """Tanh activation layer: tanh(x)."""
+
     def forward(self, x: Tensor):
+        """Apply tanh element-wise."""
         return tanh(x)
 
     def __str__(self):
@@ -32,7 +47,10 @@ class Tanh(Module):
 
 
 class Sigmoid(Module):
+    """Sigmoid activation layer: 1 / (1 + exp(-x))."""
+
     def forward(self, x: Tensor):
+        """Apply sigmoid element-wise."""
         return sigmoid(x)
 
     def __str__(self):

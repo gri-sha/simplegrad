@@ -1,3 +1,5 @@
+"""Matplotlib-based training metric plots for inline (notebook) use."""
+
 import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import Optional
@@ -14,17 +16,16 @@ def plot(
     path: Optional[Path] = None,
     color: Optional[str] = None,
 ):
-    """Plot training metrics inline.
+    """Plot training metrics as line charts.
 
     Args:
-        results (dict[str, list[RecordInfo]]): A dictionary where keys are metric names and values are lists of RecordInfo.
-        selected (Optional[list[str]], optional): List of metric names to plot. If None, plots all metrics. Defaults to None.
-        num_cols (int, optional): Number of columns in the plot grid. Defaults to 2.
-        cell_w (int, optional): Width of each subplot cell. Defaults to 8.
-        cell_h (int, optional): Height of each subplot cell. Defaults to 5.
-        path (Optional[Path], optional): If provided, saves the plot to this path. Defaults to None.
-        marker (str, optional): Marker style for the plot lines. Defaults to "o".
-        color (Optional[str], optional): Color for all plot lines. If None, colors are randomly assigned. Defaults to None.
+        results: Mapping of metric name to list of ``RecordInfo`` data points.
+        selected: Subset of metric names to plot. Plots all if None.
+        num_cols: Number of subplot columns. Defaults to 2.
+        cell_w: Width of each subplot cell in inches. Defaults to 8.
+        cell_h: Height of each subplot cell in inches. Defaults to 5.
+        path: If provided, save the figure to this path.
+        color: Fixed color for all lines. Random if None.
     """
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
 
@@ -70,16 +71,16 @@ def scatter(
     path: Optional[Path] = None,
     color: Optional[str] = None,
 ):
-    """Plot training metrics as scatter plot inline.
+    """Plot training metrics as scatter charts.
 
     Args:
-        results (dict[str, list[RecordInfo]]): A dictionary where keys are metric names and values are lists of RecordInfo.
-        selected (Optional[list[str]], optional): List of metric names to plot. If None, plots all metrics. Defaults to None.
-        num_cols (int, optional): Number of columns in the plot grid. Defaults to 2.
-        cell_w (int, optional): Width of each subplot cell. Defaults to 8.
-        cell_h (int, optional): Height of each subplot cell. Defaults to 5.
-        path (Optional[Path], optional): If provided, saves the plot to this path. Defaults to None.
-        color (Optional[str], optional): Color for all scatter points. If None, colors are randomly assigned. Defaults to None.
+        results: Mapping of metric name to list of ``RecordInfo`` data points.
+        selected: Subset of metric names to plot. Plots all if None.
+        num_cols: Number of subplot columns. Defaults to 2.
+        cell_w: Width of each subplot cell in inches. Defaults to 8.
+        cell_h: Height of each subplot cell in inches. Defaults to 5.
+        path: If provided, save the figure to this path.
+        color: Fixed color for all points. Random if None.
     """
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
 

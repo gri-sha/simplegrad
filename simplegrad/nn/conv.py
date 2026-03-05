@@ -1,3 +1,5 @@
+"""2D convolutional layer."""
+
 import numpy as np
 from simplegrad.core import Tensor, uniform
 from .module import Module
@@ -5,6 +7,29 @@ from simplegrad.functions.conv import conv2d
 
 
 class Conv2d(Module):
+    """2D convolutional layer.
+
+    Applies a learned 2D convolution over an input signal. Weights are
+    initialized with Kaiming uniform scaling.
+
+    Args:
+        in_channels: Number of input channels.
+        out_channels: Number of output channels (filters).
+        kernel_size: Kernel size. Int or ``(kH, kW)``.
+        weight: Optional pre-built weight tensor of shape
+            ``(out_channels, in_channels, kH, kW)``.
+        bias: Optional pre-built bias tensor of shape ``(out_channels,)``.
+        use_bias: Add a bias term. Defaults to True.
+        dtype: Data type string. Defaults to ``"float32"``.
+        stride: Convolution stride. Int or ``(sH, sW)``. Defaults to 1.
+        pad_width: Padding. Int (all sides) or ``(top, bottom, left, right)``.
+            Defaults to 0.
+        pad_mode: Padding mode. Defaults to ``"constant"``.
+        pad_value: Fill value for constant padding. Defaults to 0.
+        weight_label: Label for the weight tensor.
+        bias_label: Label for the bias tensor.
+    """
+
     def __init__(
         self,
         in_channels: int | None = None,
@@ -83,6 +108,15 @@ class Conv2d(Module):
         self.pad_value = pad_value
 
     def forward(self, x: Tensor) -> Tensor:
+        """Apply the convolution to the input.
+
+        Args:
+            x: Input of shape ``(batch, in_channels, H, W)`` or
+               ``(in_channels, H, W)``.
+
+        Returns:
+            Output of shape ``(batch, out_channels, out_H, out_W)``.
+        """
         assert (
             x.values.ndim == 4 or x.values.ndim == 3
         ), "Input tensor must be 4-dimensional (batch_size, in_channels, height, width) or 3-dimensional (in_channels, height, width)"

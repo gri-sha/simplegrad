@@ -1,4 +1,7 @@
+"""Computation graph serialization for D3.js-based visualization."""
+
 from simplegrad.core import Tensor
+
 
 def _build_graph_data(tensor: Tensor) -> dict:
     """Build a JSON-serializable graph structure for D3.js visualization."""

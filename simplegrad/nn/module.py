@@ -1,9 +1,18 @@
+"""Base Module class for all neural network layers."""
+
 import numpy as np
 from simplegrad.core.tensor import Tensor
 from simplegrad.dtypes import convert_to_dtype
 
 
 class Module:
+    """Base class for all neural network layers.
+
+    Subclass this and implement `forward()` to create custom layers.
+    Parameters (leaf `Tensor` attributes) and sub-modules are discovered
+    automatically via attribute introspection.
+    """
+
     def __init__(self) -> None:
         self.label = self.__class__.__name__
         self._parameters = {}
@@ -11,11 +20,13 @@ class Module:
         self.eval_mode = False
 
     def set_train_mode(self) -> None:
+        """Switch this module and all sub-modules to training mode."""
         self.eval_mode = False
         for _, submod in self.submodules().items():
             submod.set_train_mode()
 
     def set_eval_mode(self) -> None:
+        """Switch this module and all sub-modules to evaluation mode."""
         self.eval_mode = True
         for _, submod in self.submodules().items():
             submod.set_eval_mode()
@@ -24,21 +35,39 @@ class Module:
         return self.forward(*args, **kwargs)
 
     def forward(self, *args, **kwargs) -> Tensor:
+        """Define the forward pass. Must be implemented by subclasses."""
         raise NotImplementedError("Subclasses must implement 'forward'")
 
     def parameters(self, force_refresh: bool = False) -> dict[str, Tensor]:
+        """Return all parameter tensors in this module (including sub-modules).
+
+        Args:
+            force_refresh: Re-scan attributes even if cached. Defaults to False.
+
+        Returns:
+            Dict mapping parameter names to their Tensor objects.
+        """
         if not self._parameters or force_refresh:
             params = self._get_parameters()
             self._parameters = params
         return self._parameters
 
     def submodules(self, force_refresh: bool = False) -> dict[str, "Module"]:
+        """Return all direct sub-modules.
+
+        Args:
+            force_refresh: Re-scan attributes even if cached. Defaults to False.
+
+        Returns:
+            Dict mapping attribute names to Module objects.
+        """
         if not self._submodules or force_refresh:
             submods = self._get_submodules()
             self._submodules = {name: mod for name, mod in submods}
         return self._submodules
 
     def _get_parameters(self, prefix: str = "") -> dict[str, Tensor]:
+        """Recursively collect all Tensor parameters from this module and sub-modules."""
         params = {}
         for attr_name, attr_value in self.__dict__.items():
             if attr_name == "label" or attr_name == "_parameters":
@@ -62,6 +91,7 @@ class Module:
         return params
 
     def _get_submodules(self) -> list:
+        """Collect direct Module attributes and Module items inside lists/tuples."""
         submodules = []
         for attr_name, attr_value in self.__dict__.items():
             if attr_name in ("label", "_parameters"):
@@ -78,6 +108,7 @@ class Module:
         return f"{self.label} Module"
 
     def summary(self) -> None:
+        """Print a table of all parameters, their shapes, and total parameter count."""
         print(f"Parameters of {self.label}\n")
         print(f"{'Parameter':<20} {'Shape':<15} {'Trainable Parameters':<40}")
         print("-" * 60)

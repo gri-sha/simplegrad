@@ -1,9 +1,23 @@
+"""Token embedding layer."""
+
 from simplegrad.core import Tensor, normal, _should_compute_grad
 from typing import Optional
 from .module import Module
 
 
 class Embedding(Module):
+    """Lookup table that maps integer indices to dense vectors.
+
+    Weights are initialized from N(0, 1) by default.
+
+    Args:
+        num_embeddings: Size of the vocabulary (number of rows in the embedding table).
+        embedding_dim: Dimensionality of each embedding vector.
+        weight: Optional pre-built embedding matrix of shape
+            ``(num_embeddings, embedding_dim)``.
+        dtype: Data type string. Defaults to ``"float32"``.
+    """
+
     def __init__(self, num_embeddings: int, embedding_dim: int, weight: Optional[Tensor] = None, dtype: Optional[str] = None):
         super().__init__()
         self.dtype = dtype if dtype is not None else "float32"
@@ -27,6 +41,14 @@ class Embedding(Module):
             )
 
     def forward(self, input: Tensor) -> Tensor:
+        """Look up embeddings for the given indices.
+
+        Args:
+            input: Integer tensor of indices with any shape ``S``.
+
+        Returns:
+            Embedding tensor of shape ``(*S, embedding_dim)``.
+        """
         # assert input.dtype.startswith("int"), "Input tensor must be of integer type"
 
         flat_input = input.values.flatten()

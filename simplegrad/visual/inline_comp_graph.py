@@ -1,3 +1,5 @@
+"""Graphviz-based computation graph visualization for inline (notebook) use."""
+
 import graphviz
 from simplegrad.core import Tensor
 
@@ -7,6 +9,7 @@ def _node_signature(tensor: Tensor) -> str:
         return f"Tensor '{tensor.label}' | shape: {tensor.shape} | comp_grad: {tensor.comp_grad}"
     else:
         return f"shape: {tensor.shape} | comp_grad: {tensor.comp_grad}"
+
 
 def _add_graph_vertices(tensor: Tensor, graph):
     node_attrs = {"shape": "record", "style": "rounded,filled"}
@@ -42,7 +45,21 @@ def _add_graph_edges(tensor, graph):
         _add_graph_edges(sc, graph)
 
 
-def graph(tensor, path=None):
+def graph(tensor: Tensor, path: str = None):
+    """Render the computation graph of a tensor as an SVG diagram.
+
+    Node colors:
+        - Salmon: leaf tensors (inputs / parameters)
+        - Steel blue: intermediate tensors
+        - Gold: operation nodes
+
+    Args:
+        tensor: The output tensor whose computation graph to visualize.
+        path: If provided, save the SVG to this file path (without extension).
+
+    Returns:
+        A ``graphviz.Digraph`` object. Displays inline in Jupyter notebooks.
+    """
     g = graphviz.Digraph(
         format="svg",
         graph_attr={

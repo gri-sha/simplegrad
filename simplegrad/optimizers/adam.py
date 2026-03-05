@@ -1,7 +1,28 @@
+"""Adam optimizer."""
+
 import numpy as np
 from .optimizer import Optimizer
 
+
 class Adam(Optimizer):
+    """Adam optimizer with bias-corrected moment estimates.
+
+    Update rule::
+
+        m_t = beta_1 * m_{t-1} + (1 - beta_1) * grad
+        v_t = beta_2 * v_{t-1} + (1 - beta_2) * grad^2
+        m_hat = m_t / (1 - beta_1^t)
+        v_hat = v_t / (1 - beta_2^t)
+        param -= lr * m_hat / (sqrt(v_hat) + eps)
+
+    Args:
+        model: The model whose parameters to optimize.
+        lr: Learning rate.
+        beta_1: Exponential decay for the first moment. Defaults to 0.9.
+        beta_2: Exponential decay for the second moment. Defaults to 0.999.
+        eps: Numerical stability constant. Defaults to 1e-8.
+    """
+
     def __init__(self, model, lr, beta_1=0.9, beta_2=0.999, eps=1e-8):
         super().__init__()
         self.model = model
@@ -14,6 +35,11 @@ class Adam(Optimizer):
         self.step_count = 0
 
     def step(self):
+        """Apply one Adam update step to all model parameters.
+
+        Raises:
+            ValueError: If any parameter gradient is None (forgot to call backward).
+        """
         self.step_count += 1
         for name, param in self.model.parameters().items():
             if param.grad is None:
