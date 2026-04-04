@@ -2,7 +2,6 @@
 
 import numpy as np
 from ..core import Tensor, uniform, Module, Context
-from typing import Optional
 
 
 class Linear(Module):
@@ -23,10 +22,10 @@ class Linear(Module):
 
     def __init__(
         self,
-        in_features: Optional[int] = None,
-        out_features: Optional[int] = None,
-        weight: Optional[Tensor] = None,
-        bias: Optional[Tensor] = None,
+        in_features: int | None = None,
+        out_features: int | None = None,
+        weight: Tensor | None = None,
+        bias: Tensor | None = None,
         use_bias: bool = True,
         dtype: str = None,  # use global dtype if None
         weight_label: str = "W",

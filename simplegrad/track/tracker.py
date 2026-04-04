@@ -1,7 +1,6 @@
 """High-level experiment tracking API built on top of ExperimentDBManager."""
 
 from pathlib import Path
-from typing import Optional
 from .exp_db_manager import ExperimentDBManager, RunInfo, RecordInfo
 from .comp_graph import _build_graph_data
 from simplegrad.core import Tensor
@@ -19,7 +18,9 @@ class Tracker:
 
     def __init__(self, all_exp_dir: str = "./experiments"):
         self.all_exp_dir = Path(all_exp_dir)
-        self.all_exp_dir.mkdir(parents=True, exist_ok=True)  # Create the experiments directory if it doesn't exist
+        self.all_exp_dir.mkdir(
+            parents=True, exist_ok=True
+        )  # Create the experiments directory if it doesn't exist
 
         self.cur_exp_path = None
         self.db_manager = None
@@ -46,7 +47,7 @@ class Tracker:
         else:
             self.db_manager.init_exp_db()
 
-    def start_run(self, name: Optional[str] = None, config: Optional[dict] = None) -> int:
+    def start_run(self, name: str | None = None, config: dict | None = None) -> int:
         """Start a new run and return the run_id"""
         self.current_run_id = self.db_manager.create_run(name=name, config=config)
         self.current_run_name = name or f"run_{self.current_run_id}"
@@ -72,7 +73,7 @@ class Tracker:
         """Get all runs"""
         return self.db_manager.get_all_runs()
 
-    def get_run(self, run_id: int) -> Optional[RunInfo]:
+    def get_run(self, run_id: int) -> RunInfo | None:
         """Get a specific run by id"""
         return self.db_manager.get_run(run_id)
 
@@ -94,7 +95,7 @@ class Tracker:
         results = {metric: self.get_records(run_id, metric) for metric in metrics}
         return results
 
-    def save_comp_graph(self, tensor: Tensor, run_id: Optional[int] = None):
+    def save_comp_graph(self, tensor: Tensor, run_id: int | None = None):
         """Save computation graph for the current run"""
         id = run_id
         if id is None:
@@ -105,7 +106,7 @@ class Tracker:
         graph_data = _build_graph_data(tensor)
         self.db_manager.save_comp_graph(run_id=id, graph_data=graph_data)
 
-    def get_comp_graph(self, graph_id: int) -> Optional[dict]:
+    def get_comp_graph(self, graph_id: int) -> dict | None:
         """Get computation graph for a given run"""
         return self.db_manager.get_comp_graph(graph_id)
 

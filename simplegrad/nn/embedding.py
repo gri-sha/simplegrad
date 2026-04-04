@@ -3,6 +3,7 @@
 import numpy as np
 from ..core import Tensor, Function, Context, Module, normal
 
+
 class _EmbeddingLookup(Function):
     @staticmethod
     def output_shape(

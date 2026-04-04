@@ -7,7 +7,6 @@ import sqlite3
 import json
 import time
 from datetime import datetime
-from typing import Optional
 from contextlib import contextmanager
 from pathlib import Path
 from pydantic import BaseModel
@@ -26,8 +25,8 @@ class RunInfo(BaseModel):
     created_at: str  # Formatted datetime string for display
     status: str  # 'running', 'completed', 'failed'
     config: dict
-    num_records: Optional[list[int]] = None
-    metrics: Optional[list[str]] = None
+    num_records: list[int] | None = None
+    metrics: list[str] | None = None
 
 
 class RecordInfo(BaseModel):
@@ -113,7 +112,7 @@ class ExperimentDBManager:
                 );
             """)
 
-    def create_run(self, name: Optional[str] = None, config: Optional[dict] = None) -> int:
+    def create_run(self, name: str | None = None, config: dict | None = None) -> int:
         """Create a new training run. Returns run_id."""
         created_at = time.time()
         config = config or {}
@@ -128,7 +127,7 @@ class ExperimentDBManager:
 
         return run_id
 
-    def get_run(self, run_id: int) -> Optional[RunInfo]:
+    def get_run(self, run_id: int) -> RunInfo | None:
         """Get run metadata."""
         with self._get_connection(readonly=True) as conn:
             row = conn.execute("SELECT * FROM runs WHERE id = ?", (run_id,)).fetchone()
@@ -277,7 +276,7 @@ class ExperimentDBManager:
                 (run_id, json.dumps(graph_data), time.time()),
             )
 
-    def get_comp_graph(self, graph_id: int) -> Optional[dict]:
+    def get_comp_graph(self, graph_id: int) -> dict | None:
         """Get a single computation graph by its ID."""
         with self._get_connection(readonly=True) as conn:
             row = conn.execute("SELECT graph_json FROM graphs WHERE id = ?", (graph_id,)).fetchone()

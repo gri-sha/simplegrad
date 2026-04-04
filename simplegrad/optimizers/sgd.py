@@ -22,7 +22,7 @@ class SGD(Optimizer):
         TypeError: If ``model`` is not a Module.
     """
 
-    def __init__(self, model, lr=0.01, momentum=0, dampening=0):
+    def __init__(self, model: Module, lr: float = 0.01, momentum: float = 0, dampening: float = 0) -> None:
         if not isinstance(model, Module):
             raise TypeError(f"model must be a Module")
 

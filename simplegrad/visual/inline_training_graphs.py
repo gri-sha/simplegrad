@@ -2,19 +2,18 @@
 
 import matplotlib.pyplot as plt
 from pathlib import Path
-from typing import Optional
 import random
 from ..track import RecordInfo
 
 
 def plot(
     results: dict[str, list[RecordInfo]],
-    selected: Optional[list[str]] = None,
+    selected: list[str] | None = None,
     num_cols: int = 2,
     cell_w: int = 8,
     cell_h: int = 5,
-    path: Optional[Path] = None,
-    color: Optional[str] = None,
+    path: Path | None = None,
+    color: str | None = None,
 ):
     """Plot training metrics as line charts.
 
@@ -75,12 +74,12 @@ def plot(
 
 def scatter(
     results: dict[str, list[RecordInfo]],
-    selected: Optional[list[str]] = None,
+    selected: list[str] | None = None,
     num_cols: int = 2,
     cell_w: int = 8,
     cell_h: int = 5,
-    path: Optional[Path] = None,
-    color: Optional[str] = None,
+    path: Path | None = None,
+    color: str | None = None,
 ):
     """Plot training metrics as scatter charts.
 

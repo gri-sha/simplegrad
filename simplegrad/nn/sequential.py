@@ -16,11 +16,11 @@ class Sequential(Module):
         ```
     """
 
-    def __init__(self, *modules):
+    def __init__(self, *modules: Module) -> None:
         super().__init__()
         self.modules = modules
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         """Pass input through each module in sequence.
 
         Args:

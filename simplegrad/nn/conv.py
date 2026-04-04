@@ -121,7 +121,7 @@ class Conv2d(Module):
 
         Args:
             x: Input of shape ``(batch, in_channels, H, W)`` or
-               ``(in_channels, H, W)``.
+                ``(in_channels, H, W)``.
 
         Returns:
             Output of shape ``(batch, out_channels, out_H, out_W)``.

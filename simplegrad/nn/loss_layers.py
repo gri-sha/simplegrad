@@ -12,12 +12,12 @@ class CELoss(Module):
         reduction: ``"mean"``, ``"sum"``, or ``None``. Defaults to ``"mean"``.
     """
 
-    def __init__(self, dim=-1, reduction="mean"):
+    def __init__(self, dim: int = -1, reduction: str | None = "mean") -> None:
         super().__init__()
         self.dim = dim
         self.reduction = reduction
 
-    def forward(self, z, y):
+    def forward(self, z: Tensor, y: Tensor) -> Tensor:
         """Compute cross-entropy loss.
 
         Args:
@@ -40,11 +40,11 @@ class MSELoss(Module):
         reduction: ``"mean"``, ``"sum"``, or ``None``. Defaults to ``"mean"``.
     """
 
-    def __init__(self, reduction="mean"):
+    def __init__(self, reduction: str | None = "mean") -> None:
         super().__init__()
         self.reduction = reduction
 
-    def forward(self, p, y):
+    def forward(self, p: Tensor, y: Tensor) -> Tensor:
         """Compute MSE loss.
 
         Args:

@@ -14,12 +14,12 @@ class Flatten(Module):
             (the last dimension).
     """
 
-    def __init__(self, start_dim=1, end_dim=-1):
+    def __init__(self, start_dim: int = 1, end_dim: int = -1) -> None:
         super().__init__()
         self.start_dim = start_dim
         self.end_dim = end_dim
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         """Flatten the input tensor.
 
         Args:

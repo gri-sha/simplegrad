@@ -3,6 +3,7 @@
 import numpy as np
 from ..core import Tensor, Function, Context, Module
 
+
 class _DropoutEval(Function):
     oper = "Dropout(0)"
 

@@ -1,5 +1,4 @@
 import numpy as np
-from typing import Optional
 
 # default dtype
 _DTYPE = "float32"
@@ -48,6 +47,6 @@ def as_array(values, dtype=None, **kwargs):
     )
 
 
-def convert_to_dtype(array: np.ndarray, dtype: Optional[str] = None):
+def convert_to_dtype(array: np.ndarray, dtype: str | None = None):
     """Convert a numpy array to the global default dtype."""
     return array.astype(get_global_dtype_class() if dtype is None else DTYPES[dtype])

@@ -3,6 +3,7 @@
 import numpy as np
 from ..core import Tensor, Function, Context, get_dtype_class
 
+
 class _Sum(Function):
     @staticmethod
     def output_shape(x: Tensor, dim: int | None = None) -> tuple:

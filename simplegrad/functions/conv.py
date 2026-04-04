@@ -2,7 +2,6 @@
 
 import numpy as np
 from ..core import Tensor, Function, Context
-from typing import Optional, Union
 
 
 def _pad_output_shape(x_shape: tuple, width) -> tuple:
@@ -199,8 +198,8 @@ class _Conv2dNoPad(Function):
 def _conv2d_no_pad(
     padded_input: Tensor,
     weight: Tensor,
-    bias: Optional[Tensor] = None,
-    stride: Union[int, tuple] = 1,
+    bias: Tensor | None = None,
+    stride: int | tuple = 1,
 ):
     """Perform conv2d on an already-padded input (no additional padding applied)."""
     return _Conv2dNoPad.apply(padded_input, weight, bias, stride)

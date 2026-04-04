@@ -87,7 +87,7 @@ def _add_graph_edges(tensor: Tensor, graph, visited: set = None) -> None:
         _add_graph_edges(t, graph, visited)
 
 
-def graph(tensor: Tensor, path: str = None):
+def graph(tensor: Tensor, path: str | None = None) -> graphviz.Digraph:
     """Render the computation graph of a tensor as an SVG diagram.
 
     Functions decorated with ``@compound_op`` are enclosed in a labelled

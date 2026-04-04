@@ -1,6 +1,7 @@
 from __future__ import annotations  # make all annotations lazy
 import numpy as np
 from contextlib import contextmanager
+from typing import Callable
 from .dtypes import as_array, convert_to_dtype
 from .compound_ops import get_current_group
 
@@ -174,7 +175,7 @@ class Function:
     differentiable: bool = True
 
     @classmethod
-    def apply(cls, *inputs, oper: str | None = None):
+    def apply(cls, *inputs: object, oper: str | None = None) -> "Tensor":
         """Run the op, build the graph node, and wire up the backward step.
 
         Args:
@@ -276,7 +277,7 @@ class Tensor:
         self.group: tuple[str, int] | None = get_current_group()
 
     @classmethod
-    def deferred(cls, forward_fn, shape: tuple, dtype: str = "float32") -> "Tensor":
+    def deferred(cls, forward_fn: Callable[[], np.ndarray], shape: tuple, dtype: str = "float32") -> "Tensor":
         """Create an unrealized tensor that defers computation to ``.realize()``.
 
         Used internally by ``_create_op_result`` when lazy mode is active. The
@@ -319,7 +320,9 @@ class Tensor:
             New Tensor if ``inplace=False``, else None.
         """
         if self.values is None:
-            raise RuntimeError("Cannot convert dtype of an unrealized tensor. Call .realize() first.")
+            raise RuntimeError(
+                "Cannot convert dtype of an unrealized tensor. Call .realize() first."
+            )
         if inplace:
             self.dtype = dtype
             self.values = convert_to_dtype(self.values, dtype)
@@ -422,9 +425,13 @@ class Tensor:
     def _check_can_backward(self):
         """Raise if backward() cannot be called on this tensor."""
         if not self.comp_grad:
-            raise RuntimeError(f"Cannot call backward() on tensor {self.label or ''} with comp_grad=False.")
+            raise RuntimeError(
+                f"Cannot call backward() on tensor {self.label or ''} with comp_grad=False."
+            )
         if self.grad is not None and not self.is_leaf:
-            raise RuntimeError("backward() can only be called once on non-leaf tensors, or you need to use retain_grad()")
+            raise RuntimeError(
+                "backward() can only be called once on non-leaf tensors, or you need to use retain_grad()"
+            )
         if self.values is not None and self.values.size == 0:
             raise RuntimeError("Cannot call backward() on an empty tensor")
 
@@ -505,7 +512,9 @@ class Tensor:
         if not isinstance(other, (float, int)):
             raise ValueError(f"Only 'float' or 'int' exponents are supported, got {type(other)}")
         if not is_lazy() and np.any(self.values < 0) and not float(other).is_integer():
-            raise ValueError(f"Invalid: {self.label if self.label else 'Tensor'} ** {other} would be complex.")
+            raise ValueError(
+                f"Invalid: {self.label if self.label else 'Tensor'} ** {other} would be complex."
+            )
         return _Pow.apply(self, other, oper=f"^{other:.2f}")
 
     def __matmul__(self, other: "Tensor") -> "Tensor":

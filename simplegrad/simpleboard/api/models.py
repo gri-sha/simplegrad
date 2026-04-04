@@ -1,6 +1,5 @@
 """Pydantic models for API requests and responses."""
 
-from typing import Optional
 from pydantic import BaseModel
 
 from simplegrad.track import RecordInfo
@@ -9,8 +8,8 @@ from simplegrad.track import RecordInfo
 class CreateRunRequest(BaseModel):
     """Request body for creating a new run."""
 
-    name: Optional[str] = None
-    config: Optional[dict] = None
+    name: str | None = None
+    config: dict | None = None
 
 
 class MessageResponse(BaseModel):
@@ -35,7 +34,7 @@ class DBsResponse(BaseModel):
     """Information about available databases."""
 
     available_databases: list[str]
-    current_database: Optional[str] = None
+    current_database: str | None = None
 
 
 class MetricsResponse(BaseModel):

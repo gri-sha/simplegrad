@@ -25,34 +25,43 @@ plugins:
             show_root_heading: true
             heading_level: 3
             docstring_style: google
+            annotations_path: brief
+            show_signature_annotations: true
 
 nav:
   - Home: index.md
-  - API Reference:
-    - Tensor: api/tensor.md
-    - Factory Functions: api/factory.md
+  - Introduction: introduction.md
+  - Core:
+    - Tensor & Autograd: api/core/autograd.md
+    - Function & Context: api/core/function.md
+    - Compound Ops: api/core/compound_ops.md
     - Dtypes: api/dtypes.md
-    - Functions:
-      - Activations: api/functions/activations.md
-      - Math: api/functions/math.md
-      - Losses: api/functions/losses.md
-      - Reductions: api/functions/reduction.md
-      - Conv2d: api/functions/conv.md
-      - Pooling: api/functions/pooling.md
-      - Transform: api/functions/transform.md
-    - nn Layers:
-      - Module: api/nn/module.md
-      - Linear: api/nn/linear.md
-      - Conv2d: api/nn/conv.md
-      - Sequential: api/nn/sequential.md
-      - Dropout: api/nn/dropout.md
-      - MaxPool2d: api/nn/pooling.md
-      - Flatten: api/nn/transform.md
-      - Embedding: api/nn/embedding.md
-      - Activations: api/nn/activations.md
-      - Losses: api/nn/losses.md
-    - Optimizers:
-      - SGD: api/optimizers/sgd.md
-      - Adam: api/optimizers/adam.md
-    - Tracking: api/track.md
-    - Visualization: api/visual.md
+    - Factory Functions: api/factory.md
+    - Module: api/core/module.md
+    - Optimizer: api/core/optimizer.md
+    - Scheduler: api/core/scheduler.md
+  - Functions:
+    - Math: api/functions/math.md
+    - Activations: api/functions/activations.md
+    - Reductions: api/functions/reduction.md
+    - Transform: api/functions/transform.md
+    - Conv2d: api/functions/conv.md
+    - Pooling: api/functions/pooling.md
+    - Losses: api/functions/losses.md
+  - NN Layers:
+    - Linear: api/nn/linear.md
+    - Conv2d: api/nn/conv.md
+    - Sequential: api/nn/sequential.md
+    - Dropout: api/nn/dropout.md
+    - MaxPool2d: api/nn/pooling.md
+    - Flatten: api/nn/transform.md
+    - Embedding: api/nn/embedding.md
+    - Activations: api/nn/activations.md
+    - Losses: api/nn/losses.md
+  - Optimizers:
+    - SGD: api/optimizers/sgd.md
+    - Adam: api/optimizers/adam.md
+  - Schedulers:
+    - LinearLR: api/schedulers/linear.md
+  - Tracking: api/track.md
+  - Visualization: api/visual.md

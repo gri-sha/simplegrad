@@ -2,7 +2,6 @@
 
 from ..core import Tensor, Module
 from ..functions.pooling import max_pool2d
-from typing import Union
 
 
 class MaxPool2d(Module):
@@ -21,12 +20,12 @@ class MaxPool2d(Module):
 
     def __init__(
         self,
-        kernel_size: Union[int, tuple],
-        stride: Union[int, tuple],
+        kernel_size: int | tuple,
+        stride: int | tuple,
         # 2 options for padding:
         # int - same dimention for all directions
         # tuple - (top, bottom, left, right)
-        pad_width: Union[int, tuple[int]] = 0,
+        pad_width: int | tuple[int] = 0,
         pad_mode: str = "constant",
         pad_value: int = 0,
     ):

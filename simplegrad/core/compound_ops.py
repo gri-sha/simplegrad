@@ -1,6 +1,7 @@
 """Graph grouping utilities for compound operations."""
 
 from contextlib import contextmanager
+from typing import Callable
 import functools
 
 _CURRENT_GROUP: tuple[str, int] | None = None
@@ -38,7 +39,7 @@ def graph_group(name: str):
         _CURRENT_GROUP = None
 
 
-def compound_op(func):
+def compound_op(func: Callable) -> Callable:
     """Decorator for functions that compose multiple simplegrad operations.
 
     Apply to any public function that builds its output by calling other simplegrad ops rather than calling numpy directly.

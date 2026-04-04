@@ -1,7 +1,5 @@
 """REST API routes for simpleboard."""
 
-from typing import Optional
-
 from fastapi import APIRouter, HTTPException
 
 from simplegrad.track import RunInfo
@@ -107,7 +105,7 @@ async def update_run_status(run_id: int, request: UpdateRunStatusRequest):
 
 
 @router.get("/runs/{run_id}/records", response_model=MetricsResponse)
-async def get_records(run_id: int, metric_name: Optional[str] = None):
+async def get_records(run_id: int, metric_name: str | None = None):
     """Get metric records for a specific run."""
     if state.exp_db is None:
         raise HTTPException(status_code=400, detail="No database selected")

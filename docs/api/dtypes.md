@@ -1,13 +1,13 @@
 # Dtypes
 
-::: simplegrad.dtypes.set_dtype
+::: simplegrad.core.dtypes.set_dtype
 
-::: simplegrad.dtypes.get_global_dtype
+::: simplegrad.core.dtypes.get_global_dtype
 
-::: simplegrad.dtypes.get_global_dtype_class
+::: simplegrad.core.dtypes.get_global_dtype_class
 
-::: simplegrad.dtypes.get_dtype_class
+::: simplegrad.core.dtypes.get_dtype_class
 
-::: simplegrad.dtypes.as_array
+::: simplegrad.core.dtypes.as_array
 
-::: simplegrad.dtypes.convert_to_dtype
+::: simplegrad.core.dtypes.convert_to_dtype

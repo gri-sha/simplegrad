@@ -1,15 +1,14 @@
 from ..core import Optimizer, Scheduler
-from typing import Optional
 
 
 class LinearLR(Scheduler):
     def __init__(
         self,
         optimizer: Optimizer,
-        start_lr: Optional[float],
-        end_lr: Optional[float],
-        total_steps: Optional[int],
-        rate: Optional[float],
+        start_lr: float | None,
+        end_lr: float | None,
+        total_steps: int | None,
+        rate: float | None,
     ) -> None:
         """
         Possible combinations of parameters:

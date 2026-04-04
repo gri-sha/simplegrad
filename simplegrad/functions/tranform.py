@@ -3,6 +3,7 @@
 import numpy as np
 from ..core import Tensor, Function, Context
 
+
 class _Flatten(Function):
     oper = "Flatten"
 
