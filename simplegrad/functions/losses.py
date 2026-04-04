@@ -1,9 +1,25 @@
 """Loss functions: cross-entropy and mean squared error."""
 
 import numpy as np
-from simplegrad.core.tensor import Tensor, _should_compute_grad, compound_op
-import simplegrad as sg
-from typing import Optional
+from ..core import Tensor, Function, Context, compound_op
+from .reduction import sum, mean
+
+
+class _CELoss(Function):
+    @staticmethod
+    def output_shape(z: Tensor, y: Tensor, dim: int) -> tuple:
+        return tuple(1 if i == dim % len(z.shape) else s for i, s in enumerate(z.shape))
+
+    @staticmethod
+    def forward(ctx: Context, z: Tensor, y: Tensor, dim: int) -> np.ndarray:
+        exps = np.exp(z.values - np.max(z.values, axis=dim, keepdims=True))
+        ctx.s = exps / np.sum(exps, axis=dim, keepdims=True)
+        ctx.y_values = y.values
+        return -np.sum(y.values * np.log(ctx.s + 1e-12), axis=dim, keepdims=True)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> tuple:
+        return (ctx.s - ctx.y_values) * grad_output, None
 
 
 def ce_loss(z: Tensor, y: Tensor, dim: int = -1, reduction: str = "mean") -> Tensor:
@@ -24,42 +40,17 @@ def ce_loss(z: Tensor, y: Tensor, dim: int = -1, reduction: str = "mean") -> Ten
     Raises:
         ValueError: If ``reduction`` is not a valid option.
     """
-    # z - layer output (logits, Tensor)
-    # y - target probability distribution (Tensor)
     if dim > 0:
-        dim = dim - len(z.values.shape)  # convert to negative dim
-
-    # Softmax
-    exps = np.exp(z.values - np.max(z.values, axis=dim, keepdims=True))  # for numerical stability
-    s = exps / np.sum(exps, axis=dim, keepdims=True)
-
-    # Cross-entropy loss per sample
-    losses = -np.sum(y.values * np.log(s + 1e-12), axis=dim, keepdims=True)  # small epsilon for stability
-
-    out = Tensor(losses)
-    out.prev = {z, y}
-    out.oper = f"CELoss(dim={dim})"
-    out.comp_grad = _should_compute_grad(z)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _ce_loss_backward(z=z, s=s, y=y, out=out)
-
+        dim = dim - len(z.shape)
+    out = _CELoss.apply(z, y, dim, oper=f"CELoss(dim={dim})")
     if reduction == "mean":
-        return sg.mean(out)
+        return mean(out)
     elif reduction == "sum":
-        return sg.sum(out)
+        return sum(out)
     elif reduction is None:
         return out
     else:
         raise ValueError(f"Invalid reduction: {reduction}")
-
-
-def _ce_loss_backward(z: Tensor, s: np.ndarray, y: Tensor, out: Tensor) -> None:
-    """Backward for cross-entropy: d/dz = (softmax(z) - y) * out.grad."""
-    if z.comp_grad:
-        z._init_grad_if_needed()
-        z.grad += (s - y.values) * out.grad
 
 
 @compound_op
@@ -78,9 +69,9 @@ def mse_loss(p: Tensor, y: Tensor, reduction: str = "mean") -> Tensor:
         ValueError: If ``reduction`` is not a valid option.
     """
     if reduction == "mean":
-        return sg.mean((p - y) ** 2)
+        return mean((p - y) ** 2)
     elif reduction == "sum":
-        return sg.sum((p - y) ** 2)
+        return sum((p - y) ** 2)
     elif reduction is None:
         return (p - y) ** 2
     else:

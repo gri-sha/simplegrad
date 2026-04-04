@@ -1,7 +1,6 @@
 """Abstract base class for all optimizers."""
 
 import numpy as np
-from simplegrad.nn import Module
 
 
 class Optimizer:
@@ -10,7 +9,7 @@ class Optimizer:
     Subclasses must implement `step()` to define the parameter update rule.
     """
 
-    def __init__(self, lr: float, model: Module):
+    def __init__(self, lr: float, model):
         self.step_count = 0
 
         if lr is None:

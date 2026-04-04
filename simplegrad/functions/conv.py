@@ -1,12 +1,59 @@
 """2D convolution and padding operations with autograd support."""
 
 import numpy as np
-from simplegrad.core.tensor import Tensor, _should_compute_grad
+from ..core import Tensor, Function, Context
 from typing import Optional, Union
 
 
+def _pad_output_shape(x_shape: tuple, width) -> tuple:
+    """Compute output shape of pad() without executing numpy."""
+    if isinstance(width, int):
+        return tuple(s + 2 * width for s in x_shape)
+    return tuple(s + w[0] + w[1] for s, w in zip(x_shape, width))
+
+
+def _conv2d_output_shape(
+    padded_shape: tuple,
+    weight_shape: tuple,
+    stride: int | tuple,
+) -> tuple:
+    """Compute conv2d output shape without executing the convolution."""
+    batch_size = padded_shape[0] if len(padded_shape) == 4 else 1
+    in_h, in_w = padded_shape[-2], padded_shape[-1]
+    out_channels, in_channels, kh, kw = weight_shape
+    sh, sw = (stride, stride) if isinstance(stride, int) else stride
+    out_h = (in_h - kh) // sh + 1
+    out_w = (in_w - kw) // sw + 1
+    return (batch_size, out_channels, out_h, out_w)
+
+
 # check https://numpy.org/doc/stable/reference/generated/numpy.pad.html for mode options
-def pad(x: Tensor, width: int | tuple[int, int, int, int], mode: str = "constant", value: int = 0) -> Tensor:
+class _Pad(Function):
+    @staticmethod
+    def output_shape(x: Tensor, width, mode: str, value: int) -> tuple:
+        return _pad_output_shape(x.shape, width)
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor, width, mode: str, value: int) -> np.ndarray:
+        ctx.width = width
+        ctx.mode = mode
+        return np.pad(array=x.values, pad_width=width, mode=mode, constant_values=value)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        if ctx.mode == "constant":
+            slices = tuple(
+                slice(p[0], grad_output.shape[i] - p[1]) for i, p in enumerate(ctx.width)
+            )
+            return grad_output[slices]
+        raise NotImplementedError(
+            f"Backward pass for padding mode '{ctx.mode}' is not implemented."
+        )
+
+
+def pad(
+    x: Tensor, width: int | tuple[int, int, int, int], mode: str = "constant", value: int = 0
+) -> Tensor:
     """Pad a tensor along its spatial dimensions.
 
     Args:
@@ -18,38 +65,7 @@ def pad(x: Tensor, width: int | tuple[int, int, int, int], mode: str = "constant
     Returns:
         Padded tensor.
     """
-    out = Tensor(
-        np.pad(
-            array=x.values,
-            pad_width=width,
-            mode=mode,
-            constant_values=value,
-        )
-    )
-    out.prev = {x}
-    out.oper = f"pad(width={width}, mode={mode})"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _pad_backward(x, out, width, mode)
-
-    return out
-
-
-def _pad_backward(x: Tensor, out: Tensor, width: int | tuple[int, int, int, int], mode: str = "constant"):
-    """Backward for pad: slice out the original region from the upstream gradient."""
-    if mode == "constant":
-        if x.comp_grad:
-            x._init_grad_if_needed()
-            slices = tuple(
-                # remember: the stop index of slice is not included when using the slice
-                slice(p[0], out.grad.shape[i] - p[1])
-                for i, p in enumerate(width)
-            )
-            x.grad += out.grad[slices]
-    else:
-        raise NotImplementedError(f"Backward pass for padding mode '{mode}' is not implemented.")
+    return _Pad.apply(x, width, mode, value, oper=f"pad(width={width}, mode={mode})")
 
 
 # the idea of the following functions is to organize the convolution operation as a single matrix multiplication
@@ -74,23 +90,19 @@ def _get_rec_fields_from_img(img: np.ndarray, kh: int, kw: int, sh: int, sw: int
     out_h = (in_h - kh) // sh + 1
     out_w = (in_w - kw) // sw + 1
 
-    # Get strides of the input array
     s_batch, s_channel, s_h, s_w = img.strides
 
-    # Create strided view: (batch, channels, out_h, out_w, kh, kw)
     strided_shape = (batch_size, channels, out_h, out_w, kh, kw)
     strided_strides = (s_batch, s_channel, s_h * sh, s_w * sw, s_h, s_w)
 
     rec_fields = np.lib.stride_tricks.as_strided(img, shape=strided_shape, strides=strided_strides)
-
-    # Transpose to (batch, channels, kh, kw, out_h, out_w)
     rec_fields = rec_fields.transpose(0, 1, 4, 5, 2, 3)
-
-    # Make a copy to avoid issues with non-contiguous memory in downstream operations
     return np.ascontiguousarray(rec_fields)
 
 
-def _get_img_from_rec_fields(rec_fields: np.ndarray, img_shape: tuple[int, int, int, int], kh: int, kw: int, sh: int, sw: int) -> np.ndarray:
+def _get_img_from_rec_fields(
+    rec_fields: np.ndarray, img_shape: tuple[int, int, int, int], kh: int, kw: int, sh: int, sw: int
+) -> np.ndarray:
     """
     Reconstruct image from receptive fields (inverse of _get_rec_fields_from_img).
     Used in backward pass to compute gradient w.r.t. input image.
@@ -108,7 +120,6 @@ def _get_img_from_rec_fields(rec_fields: np.ndarray, img_shape: tuple[int, int, 
     out_h = (in_h - kh) // sh + 1
     out_w = (in_w - kw) // sw + 1
 
-    # Ensure correct shape
     assert rec_fields.shape == (
         batch_size,
         channels,
@@ -128,6 +139,63 @@ def _get_img_from_rec_fields(rec_fields: np.ndarray, img_shape: tuple[int, int, 
     return img
 
 
+class _Conv2dNoPad(Function):
+    oper = "conv2d"
+
+    @staticmethod
+    def output_shape(padded_input: Tensor, weight: Tensor, bias, stride) -> tuple:
+        return _conv2d_output_shape(padded_input.shape, weight.shape, stride)
+
+    @staticmethod
+    def forward(ctx: Context, padded_input: Tensor, weight: Tensor, bias, stride) -> np.ndarray:
+        batch_size = padded_input.values.shape[0] if padded_input.values.ndim == 4 else 1
+        out_channels, in_channels, kh, kw = weight.values.shape
+        sh, sw = (stride, stride) if isinstance(stride, int) else stride
+        out_shape = _conv2d_output_shape(padded_input.shape, weight.shape, stride)
+        out_h, out_w = out_shape[-2], out_shape[-1]
+
+        rec_fields = _get_rec_fields_from_img(padded_input.values, kh, kw, sh, sw)
+        ctx.rec_fields_flat = rec_fields.transpose(0, 4, 5, 1, 2, 3).reshape(
+            batch_size * out_h * out_w, -1
+        )
+        ctx.weight_flat = weight.values.reshape(out_channels, -1).T
+        ctx.kh, ctx.kw, ctx.sh, ctx.sw = kh, kw, sh, sw
+        ctx.batch_size = batch_size
+        ctx.out_h, ctx.out_w = out_h, out_w
+        ctx.in_channels = in_channels
+        ctx.out_channels = out_channels
+        ctx.padded_input_shape = padded_input.values.shape
+        ctx.weight_shape = weight.values.shape
+        ctx.has_bias = bias is not None
+
+        out_array = ctx.rec_fields_flat @ ctx.weight_flat
+        out_array = out_array.reshape(batch_size, out_h, out_w, out_channels).transpose(0, 3, 1, 2)
+
+        if bias is not None:
+            out_array = out_array + bias.values[None, :, None, None]
+        return out_array
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> tuple:
+        out_grad = grad_output.transpose(0, 2, 3, 1).reshape(-1, ctx.out_channels)
+
+        weight_flat_grad = ctx.rec_fields_flat.T @ out_grad
+        grad_weight = weight_flat_grad.T.reshape(ctx.weight_shape)
+
+        rec_fields_grad = out_grad @ ctx.weight_flat.T
+        rec_fields_grad = rec_fields_grad.reshape(
+            ctx.batch_size, ctx.out_h, ctx.out_w, ctx.in_channels, ctx.kh, ctx.kw
+        ).transpose(0, 3, 4, 5, 1, 2)
+        grad_padded_input = _get_img_from_rec_fields(
+            rec_fields_grad, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw
+        )
+
+        if ctx.has_bias:
+            grad_bias = np.sum(grad_output, axis=(0, 2, 3))
+            return grad_padded_input, grad_weight, grad_bias
+        return grad_padded_input, grad_weight
+
+
 def _conv2d_no_pad(
     padded_input: Tensor,
     weight: Tensor,
@@ -135,105 +203,7 @@ def _conv2d_no_pad(
     stride: Union[int, tuple] = 1,
 ):
     """Perform conv2d on an already-padded input (no additional padding applied)."""
-    batch_size = padded_input.values.shape[0] if padded_input.values.ndim == 4 else 1
-    in_h, in_w = padded_input.values.shape[-2:]
-    out_channels, in_channels, kh, kw = weight.values.shape
-    sh, sw = (stride, stride) if isinstance(stride, int) else stride
-    out_h = (in_h - kh) // sh + 1
-    out_w = (in_w - kw) // sw + 1
-
-    # Get receptive fields: (batch, in_channels, kh, kw, out_h, out_w)
-    rec_fields = _get_rec_fields_from_img(padded_input.values, kh, kw, sh, sw)
-
-    # Reshape for matmul: (batch * out_h * out_w, in_channels * kh * kw)
-    rec_fields_flat = rec_fields.transpose(0, 4, 5, 1, 2, 3).reshape(batch_size * out_h * out_w, -1)
-
-    # Weight as column matrix: (in_channels * kh * kw, out_channels)
-    weight_flat = weight.values.reshape(out_channels, -1).T
-
-    # Single matrix multiplication, result shape: (batch * out_h * out_w, out_channels)
-    out_array = rec_fields_flat @ weight_flat
-
-    # Reshape output: (batch_size, out_channels, out_h, out_w)
-    out_array = out_array.reshape(batch_size, out_h, out_w, out_channels).transpose(0, 3, 1, 2)
-
-    if bias is not None:
-        # if 1d tensors are restricted: out_array += bias.values[:, :, None, None]
-        out_array += bias.values[None, :, None, None]
-
-    out_tensor = Tensor(out_array)
-    out_tensor.prev = {padded_input, weight}
-    if bias is not None:
-        out_tensor.prev.add(bias)
-    out_tensor.oper = "conv2d"
-    out_tensor.comp_grad = _should_compute_grad(padded_input, weight, bias)
-    out_tensor.is_leaf = False
-
-    if out_tensor.comp_grad:
-
-        out_tensor.backward_step = lambda: _conv2d_no_pad_backward(
-            out_tensor,
-            padded_input,
-            weight,
-            bias,
-            batch_size,
-            in_channels,
-            out_channels,
-            out_h,
-            out_w,
-            kh,
-            kw,
-            sh,
-            sw,
-            rec_fields_flat,
-            weight_flat,
-        )
-    return out_tensor
-
-
-def _conv2d_no_pad_backward(
-    out_tensor: Tensor,
-    padded_input: Tensor,
-    weight: Tensor,
-    bias: Tensor | None,
-    batch_size: int,
-    in_channels: int,
-    out_channels: int,
-    out_h: int,
-    out_w: int,
-    kh: int,
-    kw: int,
-    sh: int,
-    sw: int,
-    rec_fields_flat: np.ndarray,
-    weight_flat: np.ndarray,
-) -> None:
-    """Backward for conv2d via the im2col matrix-multiply decomposition.
-
-    Gradients:
-        - d/dweight = rec_fields_flat.T @ out_grad
-        - d/dinput  = out_grad @ weight_flat.T, reshaped via col2im
-        - d/dbias   = sum of out.grad over batch, height, and width dims
-    """
-    # Reshape output gradient: (batch * out_h * out_w, out_channels)
-    out_grad = out_tensor.grad.transpose(0, 2, 3, 1).reshape(-1, out_channels)
-
-    if weight.comp_grad:
-        weight._init_grad_if_needed()
-        weight_flat_grad = rec_fields_flat.T @ out_grad  # weight_flat_grad.shape: (in_channels * kh * kw, out_channels)
-        weight.grad += weight_flat_grad.T.reshape(weight.values.shape)
-
-    if padded_input.comp_grad:
-        padded_input._init_grad_if_needed()
-        # (batch * out_h * out_w, in_channels * kh * kw)
-        rec_fields_grad = out_grad @ weight_flat.T
-        # Reshape back: (batch, in_channels, kh, kw, out_h, out_w)
-        rec_fields_grad = rec_fields_grad.reshape(batch_size, out_h, out_w, in_channels, kh, kw).transpose(0, 3, 4, 5, 1, 2)
-        padded_input.grad += _get_img_from_rec_fields(rec_fields_grad, padded_input.values.shape, kh, kw, sh, sw)
-
-    if bias is not None and bias.comp_grad:
-        bias._init_grad_if_needed()
-        bias.grad += np.sum(out_tensor.grad, axis=(0, 2, 3))
+    return _Conv2dNoPad.apply(padded_input, weight, bias, stride)
 
 
 # proper convolution with padding
@@ -269,11 +239,10 @@ def conv2d(
         Output tensor of shape ``(batch, out_channels, out_H, out_W)``.
     """
     assert (
-        x.values.ndim == 4 or x.values.ndim == 3
+        len(x.shape) == 4 or len(x.shape) == 3
     ), "Input tensor must be 4-dimensional (batch_size, in_channels, height, width) or 3-dimensional (in_channels, height, width)"
-    assert weight.values.ndim == 4, "Weight tensor must be 4-dimensional"
+    assert len(weight.shape) == 4, "Weight tensor must be 4-dimensional"
 
-    # deal with pad_width transformation
     if pad_width == 0 or pad_width == (0, 0, 0, 0):
         padded_input = x
     else:
@@ -285,7 +254,6 @@ def conv2d(
                 (pad_width, pad_width),
             )
         elif isinstance(pad_width, tuple) and len(pad_width) == 4:
-            # (top, bottom, left, right)
             pad_width_np = (
                 (0, 0),
                 (0, 0),
@@ -293,9 +261,10 @@ def conv2d(
                 (pad_width[2], pad_width[3]),
             )
         else:
-            raise ValueError("pad_width must be an int or a tuple of 4 ints (top, bottom, left, right)")
+            raise ValueError(
+                "pad_width must be an int or a tuple of 4 ints (top, bottom, left, right)"
+            )
 
         padded_input = pad(x=x, width=pad_width_np, mode=pad_mode, value=pad_value)
 
-    out = _conv2d_no_pad(padded_input=padded_input, weight=weight, bias=bias, stride=stride)
-    return out
+    return _conv2d_no_pad(padded_input=padded_input, weight=weight, bias=bias, stride=stride)

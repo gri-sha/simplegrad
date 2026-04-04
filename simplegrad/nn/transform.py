@@ -1,7 +1,6 @@
 """Shape transformation layers."""
 
-from ..core import Tensor
-from .module import Module
+from ..core import Tensor, Module
 from ..functions import flatten
 
 

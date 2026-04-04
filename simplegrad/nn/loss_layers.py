@@ -1,7 +1,7 @@
 """Loss function layers (Module wrappers)."""
 
-from .module import Module
-from simplegrad.functions.losses import ce_loss, mse_loss
+from ..core import Tensor, Module
+from ..functions.losses import ce_loss, mse_loss
 
 
 class CELoss(Module):

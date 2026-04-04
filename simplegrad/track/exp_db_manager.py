@@ -76,8 +76,7 @@ class ExperimentDBManager:
     def init_exp_db(self):
         """Initialize database schema."""
         with self._get_connection() as conn:
-            conn.executescript(
-                """
+            conn.executescript("""
                 CREATE TABLE IF NOT EXISTS runs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
@@ -112,8 +111,7 @@ class ExperimentDBManager:
                     created_at REAL NOT NULL,
                     FOREIGN KEY (run_id) REFERENCES runs(id)
                 );
-            """
-            )
+            """)
 
     def create_run(self, name: Optional[str] = None, config: Optional[dict] = None) -> int:
         """Create a new training run. Returns run_id."""
@@ -233,7 +231,9 @@ class ExperimentDBManager:
 
         with self._get_connection() as conn:
             conn.execute("INSERT OR IGNORE INTO metrics (name) VALUES (?)", (metric_name,))
-            metric_id = conn.execute("SELECT id FROM metrics WHERE name = ?", (metric_name,)).fetchone()["id"]
+            metric_id = conn.execute(
+                "SELECT id FROM metrics WHERE name = ?", (metric_name,)
+            ).fetchone()["id"]
             conn.execute(
                 "INSERT INTO records (run_id, metric_id, step, value, wall_time) VALUES (?, ?, ?, ?, ?)",
                 (run_id, metric_id, step, value, log_time),
@@ -251,7 +251,10 @@ class ExperimentDBManager:
                 (run_id, metric_name),
             ).fetchall()
 
-            result: list[RecordInfo] = [RecordInfo(step=row["step"], value=row["value"], log_time=row["wall_time"]) for row in rows]
+            result: list[RecordInfo] = [
+                RecordInfo(step=row["step"], value=row["value"], log_time=row["wall_time"])
+                for row in rows
+            ]
             return result
 
     def get_metrics(self, run_id: int) -> list[str]:
@@ -289,4 +292,11 @@ class ExperimentDBManager:
                 "SELECT id, graph_json, created_at FROM graphs WHERE run_id = ? ORDER BY created_at",
                 (run_id,),
             ).fetchall()
-            return [{"id": row["id"], "graph": json.loads(row["graph_json"]), "created_at": row["created_at"]} for row in rows]
+            return [
+                {
+                    "id": row["id"],
+                    "graph": json.loads(row["graph_json"]),
+                    "created_at": row["created_at"],
+                }
+                for row in rows
+            ]

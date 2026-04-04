@@ -2,9 +2,6 @@
 
 from pathlib import Path
 from typing import Optional
-import subprocess
-import webbrowser
-import time
 from .exp_db_manager import ExperimentDBManager, RunInfo, RecordInfo
 from .comp_graph import _build_graph_data
 from simplegrad.core import Tensor

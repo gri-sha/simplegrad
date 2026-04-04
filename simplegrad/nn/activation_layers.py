@@ -1,8 +1,7 @@
 """Activation function layers (Module wrappers)."""
 
-from simplegrad.core import Tensor
-from .module import Module
-from simplegrad.functions.activations import *
+from ..core import Tensor, Module
+from ..functions.activations import *
 
 
 class ReLU(Module):

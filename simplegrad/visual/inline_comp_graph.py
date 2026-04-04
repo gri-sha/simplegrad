@@ -1,7 +1,7 @@
 """Graphviz-based computation graph visualization for inline (notebook) use."""
 
 import graphviz
-from simplegrad.core import Tensor
+from ..core import Tensor
 
 
 def _node_signature(tensor: Tensor) -> str:
@@ -43,7 +43,12 @@ def _render_tensor_node(tensor: Tensor, target) -> None:
         tensor: The tensor to render.
         target: A ``graphviz.Digraph`` or subgraph context to add nodes into.
     """
-    node_attrs = {"shape": "record", "style": "rounded,filled", "fontname": "monospace", "fontsize": "10"}
+    node_attrs = {
+        "shape": "record",
+        "style": "rounded,filled",
+        "fontname": "monospace",
+        "fontsize": "10",
+    }
     node_attrs["fillcolor"] = "lightsalmon" if tensor.is_leaf else "lightsteelblue"
     target.node(tensor._str_id, _node_signature(tensor), **node_attrs)
     if tensor.oper is not None:

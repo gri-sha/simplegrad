@@ -1,9 +1,48 @@
 """Activation functions with autograd support."""
 
 import numpy as np
-from simplegrad.core.tensor import Tensor, _should_compute_grad, compound_op
-from .math import exp, log
+from .math import exp
 from .reduction import sum
+from ..core import Tensor, Function, Context, compound_op
+
+
+class _Relu(Function):
+    oper = "ReLU"
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        ctx.mask = x.values > 0
+        return np.maximum(0, x.values)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output * ctx.mask
+
+
+class _Tanh(Function):
+    oper = "Tanh"
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        ctx.out = np.tanh(x.values)
+        return ctx.out
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output * (1 - ctx.out**2)
+
+
+class _Sigmoid(Function):
+    oper = "Sigmoid"
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        ctx.out = 1 / (1 + np.exp(-x.values))
+        return ctx.out
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output * ctx.out * (1 - ctx.out)
 
 
 def relu(x: Tensor) -> Tensor:
@@ -15,22 +54,32 @@ def relu(x: Tensor) -> Tensor:
     Returns:
         Tensor with negative values replaced by zero.
     """
-    out = Tensor(np.maximum(0, x.values))
-    out.prev = {x}
-    out.oper = "ReLU"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _relu_backward(x, out)
-    return out
+    return _Relu.apply(x)
 
 
-def _relu_backward(x: Tensor, out: Tensor) -> None:
-    """Backward for ReLU: gradient is 1 where x > 0, else 0."""
-    if x.comp_grad:
-        x._init_grad_if_needed()
-        x.grad = out.grad * np.where(x.values > 0, 1.0, 0.0)
+def tanh(x: Tensor) -> Tensor:
+    """Apply hyperbolic tangent element-wise.
+
+    Args:
+        x: Input tensor.
+
+    Returns:
+        Tensor with values in (-1, 1).
+    """
+    return _Tanh.apply(x)
+
+
+def sigmoid(x: Tensor) -> Tensor:
+    """Apply sigmoid activation element-wise: 1 / (1 + exp(-x)).
+
+    Args:
+        x: Input tensor.
+
+    Returns:
+        Tensor with values in (0, 1).
+    """
+    return _Sigmoid.apply(x)
+
 
 @compound_op
 def softmax(x: Tensor, dim: int | None = None) -> Tensor:
@@ -45,58 +94,3 @@ def softmax(x: Tensor, dim: int | None = None) -> Tensor:
     """
     exps = exp(x)
     return exps / sum(exps, dim)
-
-
-def tanh(x: Tensor) -> Tensor:
-    """Apply hyperbolic tangent element-wise.
-
-    Args:
-        x: Input tensor.
-
-    Returns:
-        Tensor with values in (-1, 1).
-    """
-    out = Tensor(np.tanh(x.values))
-    out.prev = {x}
-    out.oper = "Tanh"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _tanh_backward(x, out)
-    return out
-
-
-def _tanh_backward(x: Tensor, out: Tensor) -> None:
-    """Backward for tanh: d/dx = (1 - tanh(x)^2) * out.grad."""
-    if x.comp_grad:
-        x._init_grad_if_needed()
-        x.grad += out.grad * (1 - np.tanh(x.values) ** 2)
-
-
-def sigmoid(x: Tensor) -> Tensor:
-    """Apply sigmoid activation element-wise: 1 / (1 + exp(-x)).
-
-    Args:
-        x: Input tensor.
-
-    Returns:
-        Tensor with values in (0, 1).
-    """
-    out = Tensor(1 / (1 + np.exp(-x.values)))
-    out.prev = {x}
-    out.oper = "Sigmoid"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _sigmoid_backward(x, out)
-    return out
-
-
-def _sigmoid_backward(x: Tensor, out: Tensor) -> None:
-    """Backward for sigmoid: d/dx = sigmoid(x) * (1 - sigmoid(x)) * out.grad."""
-    if x.comp_grad:
-        x._init_grad_if_needed()
-        sigmoid_x = 1 / (1 + np.exp(-x.values))
-        x.grad += out.grad * sigmoid_x * (1 - sigmoid_x)

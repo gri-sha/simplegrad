@@ -43,7 +43,9 @@ def get_dtype_class(dtype: str):
 
 def as_array(values, dtype=None, **kwargs):
     """Convert values into numpy array with current dtype."""
-    return np.array(values, dtype=dtype if dtype is not None else get_global_dtype_class(), **kwargs)
+    return np.array(
+        values, dtype=dtype if dtype is not None else get_global_dtype_class(), **kwargs
+    )
 
 
 def convert_to_dtype(array: np.ndarray, dtype: Optional[str] = None):

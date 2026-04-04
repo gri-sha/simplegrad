@@ -6,10 +6,11 @@ from typing import Optional
 
 from simplegrad.track import ExperimentDBManager
 
-
 # Global state
 all_exp_dir: Optional[Path] = None  # Directory containing all experiment databases
-exp_db: Optional[ExperimentDBManager] = None  # Manager instance of currently selected experiment database
+exp_db: Optional[ExperimentDBManager] = (
+    None  # Manager instance of currently selected experiment database
+)
 exp_db_name: Optional[str] = None  # Name of the currently selected experiment database
 
 

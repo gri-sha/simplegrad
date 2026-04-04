@@ -12,7 +12,6 @@ from fastapi.responses import FileResponse
 
 from .api import router, ws_router
 
-
 app = FastAPI(
     title="simpleboard",
     description="training visualization dashboard for simplegrad",

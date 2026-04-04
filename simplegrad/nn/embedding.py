@@ -1,8 +1,30 @@
 """Token embedding layer."""
 
-from simplegrad.core import Tensor, normal, _should_compute_grad
-from typing import Optional
-from .module import Module
+import numpy as np
+from ..core import Tensor, Function, Context, Module, normal
+
+class _EmbeddingLookup(Function):
+    @staticmethod
+    def output_shape(
+        weight: Tensor, input_tensor: Tensor, output_shape: tuple, embedding_dim: int
+    ) -> tuple:
+        return output_shape
+
+    @staticmethod
+    def forward(
+        ctx: Context, weight: Tensor, input_tensor: Tensor, output_shape: tuple, embedding_dim: int
+    ) -> np.ndarray:
+        ctx.flat_input = input_tensor.values.flatten()
+        ctx.embedding_dim = embedding_dim
+        ctx.weight_shape = weight.shape
+        return weight.values[ctx.flat_input].reshape(output_shape)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> tuple:
+        weight_grad = np.zeros(ctx.weight_shape)
+        grad_values = grad_output.reshape(-1, ctx.embedding_dim)
+        np.add.at(weight_grad, ctx.flat_input, grad_values)
+        return weight_grad, None
 
 
 class Embedding(Module):
@@ -18,12 +40,20 @@ class Embedding(Module):
         dtype: Data type string. Defaults to ``"float32"``.
     """
 
-    def __init__(self, num_embeddings: int, embedding_dim: int, weight: Optional[Tensor] = None, dtype: Optional[str] = None):
+    def __init__(
+        self,
+        num_embeddings: int,
+        embedding_dim: int,
+        weight: Tensor | None = None,
+        dtype: str | None = None,
+    ):
         super().__init__()
         self.dtype = dtype if dtype is not None else "float32"
 
         if weight is not None:
-            assert weight.ndim == 2, "Weight tensor must be 2-dimensional"
+            assert (
+                weight.shape[0] > 0 and len(weight.shape) == 2
+            ), "Weight tensor must be 2-dimensional"
             assert isinstance(weight, Tensor), "Weight must be a sg.Tensor"
             self.weight = weight.convert_to(self.dtype, inplace=False)
             self.dtype = weight.dtype
@@ -49,29 +79,14 @@ class Embedding(Module):
         Returns:
             Embedding tensor of shape ``(*S, embedding_dim)``.
         """
-        # assert input.dtype.startswith("int"), "Input tensor must be of integer type"
-
-        flat_input = input.values.flatten()
-        embedded = self.weight.values[flat_input]
         output_shape = input.shape + (self.embedding_dim,)
-        output_values = embedded.reshape(output_shape)
-
-        out = Tensor(values=output_values, dtype=self.dtype)
-        out.prev = {self.weight}
-        out.oper = f"Embed(n_embd={self.num_embeddings}, embd_dim={self.embedding_dim})"
-        out.comp_grad = _should_compute_grad(self.weight)
-
-        if out.comp_grad:
-
-            def backward_step():
-                if self.weight.comp_grad:
-                    self.weight._init_grad_if_needed()
-                    grad_values = out.grad.reshape(-1, self.embedding_dim)
-                    for idx, grad in zip(flat_input, grad_values):
-                        self.weight.grad[idx] += grad
-
-            out.backward_step = backward_step
-
+        out = _EmbeddingLookup.apply(
+            self.weight,
+            input,
+            output_shape,
+            self.embedding_dim,
+            oper=f"Embed(n_embd={self.num_embeddings}, embd_dim={self.embedding_dim})",
+        )
         return out
 
     def __repr__(self):

@@ -1,9 +1,8 @@
 """Pooling layers."""
 
-from ..core import Tensor
-from .module import Module
+from ..core import Tensor, Module
 from ..functions.pooling import max_pool2d
-from typing import Union, Optional
+from typing import Union
 
 
 class MaxPool2d(Module):
@@ -33,9 +32,12 @@ class MaxPool2d(Module):
     ):
         super().__init__()
         assert ((isinstance(kernel_size, int)) and kernel_size > 0) or (
-            (isinstance(kernel_size, tuple) and all(k > 0 for k in kernel_size)) and len(kernel_size) == 2
+            (isinstance(kernel_size, tuple) and all(k > 0 for k in kernel_size))
+            and len(kernel_size) == 2
         ), "kernel_size must be a positive integer or a tuple of positive integers"
-        self.kernel_size = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
+        self.kernel_size = (
+            kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
+        )
         assert ((isinstance(stride, int)) and stride > 0) or (
             (isinstance(stride, tuple) and all(s > 0 for s in stride)) and len(stride) == 2
         ), "stride must be a positive integer or a tuple of positive integers"

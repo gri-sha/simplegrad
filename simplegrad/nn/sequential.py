@@ -1,7 +1,6 @@
 """Sequential container for chaining modules."""
 
-from simplegrad.core.tensor import Tensor
-from .module import Module
+from ..core import Tensor, Module
 
 
 class Sequential(Module):

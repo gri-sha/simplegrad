@@ -1,8 +1,66 @@
 """Pooling operations with autograd support."""
 
 import numpy as np
-from simplegrad.core.tensor import Tensor, _should_compute_grad
+from ..core import Tensor, Function, Context
 from .conv import pad, _get_rec_fields_from_img, _get_img_from_rec_fields
+
+
+def _pool_output_shape(x_shape: tuple, kh: int, kw: int, sh: int, sw: int) -> tuple:
+    """Compute pooling output shape without executing numpy."""
+    batch = x_shape[0] if len(x_shape) == 4 else 1
+    channels = x_shape[-3]
+    in_h, in_w = x_shape[-2], x_shape[-1]
+    out_h = (in_h - kh) // sh + 1
+    out_w = (in_w - kw) // sw + 1
+    return (batch, channels, out_h, out_w)
+
+
+class _MaxPool2d(Function):
+    oper = "max_pool2d"
+
+    @staticmethod
+    def output_shape(padded_input: Tensor, kh: int, kw: int, sh: int, sw: int) -> tuple:
+        return _pool_output_shape(padded_input.shape, kh, kw, sh, sw)
+
+    @staticmethod
+    def forward(
+        ctx: Context, padded_input: Tensor, kh: int, kw: int, sh: int, sw: int
+    ) -> np.ndarray:
+        out_shape = _pool_output_shape(padded_input.shape, kh, kw, sh, sw)
+        batch_size = padded_input.values.shape[0] if padded_input.values.ndim == 4 else 1
+        channels = padded_input.values.shape[-3]
+        out_h, out_w = out_shape[-2], out_shape[-1]
+
+        rec_fields = _get_rec_fields_from_img(padded_input.values, kh, kw, sh, sw)
+        ctx.rec_fields_flat = rec_fields.reshape(batch_size, channels, kh * kw, out_h, out_w)
+        ctx.max_idx = np.argmax(ctx.rec_fields_flat, axis=2)
+        ctx.padded_input_shape = padded_input.values.shape
+        ctx.batch_size = batch_size
+        ctx.channels = channels
+        ctx.out_h = out_h
+        ctx.out_w = out_w
+        ctx.kh = kh
+        ctx.kw = kw
+        ctx.sh = sh
+        ctx.sw = sw
+        return np.max(ctx.rec_fields_flat, axis=2)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        mask = np.zeros((ctx.batch_size, ctx.channels, ctx.kh * ctx.kw, ctx.out_h, ctx.out_w))
+        b_idx = np.arange(ctx.batch_size)[:, None, None, None]
+        c_idx = np.arange(ctx.channels)[None, :, None, None]
+        h_idx = np.arange(ctx.out_h)[None, None, :, None]
+        w_idx = np.arange(ctx.out_w)[None, None, None, :]
+        mask[b_idx, c_idx, ctx.max_idx, h_idx, w_idx] = 1.0
+
+        rec_fields_grad = mask * grad_output[:, :, None, :, :]
+        rec_fields_grad = rec_fields_grad.reshape(
+            ctx.batch_size, ctx.channels, ctx.kh, ctx.kw, ctx.out_h, ctx.out_w
+        )
+        return _get_img_from_rec_fields(
+            rec_fields_grad, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw
+        )
 
 
 def max_pool2d(
@@ -18,7 +76,8 @@ def max_pool2d(
     Args:
         x: Input tensor of shape ``(batch, channels, H, W)`` or ``(channels, H, W)``.
         kernel_size: Pooling window size. Int or ``(kH, kW)``.
-        stride: Step between pooling windows. Int or ``(sH, sW)``.
+        stride: Step between pooling windows. Int or ``(sH, sW)``. Defaults to
+            ``kernel_size`` if not specified.
         pad_width: Padding before pooling. Int (all sides) or ``(top, bottom, left, right)``.
         pad_mode: Padding mode. Defaults to ``"constant"``.
         pad_value: Fill value for constant padding. Defaults to 0.
@@ -26,22 +85,23 @@ def max_pool2d(
     Returns:
         Output tensor of shape ``(batch, channels, out_H, out_W)``.
     """
-    assert x.values.ndim == 4 or x.values.ndim == 3, "Input tensor must be 4D (batch, channels, H, W) or 3D (channels, H, W)"
+    assert (
+        len(x.shape) == 4 or len(x.shape) == 3
+    ), "Input tensor must be 4D (batch, channels, H, W) or 3D (channels, H, W)"
 
     kh, kw = (kernel_size, kernel_size) if isinstance(kernel_size, int) else kernel_size
-    sh, sw = (stride, stride) if isinstance(stride, int) else stride
+    if stride is None:
+        sh, sw = kh, kw
+    elif isinstance(stride, int):
+        sh, sw = stride, stride
+    else:
+        sh, sw = stride
 
-    # Handle padding
     if pad_width == 0 or pad_width == (0, 0, 0, 0):
         padded_input = x
     else:
         if isinstance(pad_width, int):
-            pad_width_np = (
-                (0, 0),
-                (0, 0),
-                (pad_width, pad_width),
-                (pad_width, pad_width),
-            )
+            pad_width_np = ((0, 0), (0, 0), (pad_width, pad_width), (pad_width, pad_width))
         elif isinstance(pad_width, tuple) and len(pad_width) == 4:
             pad_width_np = (
                 (0, 0),
@@ -53,70 +113,4 @@ def max_pool2d(
             raise ValueError("pad_width must be an int or tuple of 4 ints")
         padded_input = pad(x=x, width=pad_width_np, mode=pad_mode, value=pad_value)
 
-    batch_size = padded_input.values.shape[0] if padded_input.values.ndim == 4 else 1
-    channels = padded_input.values.shape[-3]
-    in_h, in_w = padded_input.values.shape[-2:]
-    out_h = (in_h - kh) // sh + 1
-    out_w = (in_w - kw) // sw + 1
-
-    # Get receptive fields: (batch, channels, kh, kw, out_h, out_w)
-    rec_fields = _get_rec_fields_from_img(padded_input.values, kh, kw, sh, sw)
-
-    # Reshape for pooling: (batch, channels, kh * kw, out_h, out_w)
-    rec_fields_flat = rec_fields.reshape(batch_size, channels, kh * kw, out_h, out_w)
-
-    # Vectorized max over kernel dimension
-    out_array = np.max(rec_fields_flat, axis=2)  # (batch, channels, out_h, out_w)
-
-    # Store argmax indices for backward pass
-    max_idx = np.argmax(rec_fields_flat, axis=2)  # (batch, channels, out_h, out_w)
-
-    out_tensor = Tensor(out_array)
-    out_tensor.prev = {padded_input}
-    out_tensor.oper = "max_pool2d"
-    out_tensor.comp_grad = _should_compute_grad(padded_input)
-    out_tensor.is_leaf = False
-
-    if out_tensor.comp_grad:
-        out_tensor.backward_step = lambda: _max_pool2d_backward(
-            padded_input, out_tensor, batch_size, channels, out_h, out_w, max_idx, kh, kw, sh, sw
-        )
-    return out_tensor
-
-
-def _max_pool2d_backward(
-    padded_input: Tensor,
-    out_tensor: Tensor,
-    batch_size: int,
-    channels: int,
-    out_h: int,
-    out_w: int,
-    max_idx: np.ndarray,
-    kh: int,
-    kw: int,
-    sh: int,
-    sw: int,
-):
-    """Backward for max_pool2d: gradient flows only to the max-valued position in each window."""
-    if padded_input.comp_grad:
-        padded_input._init_grad_if_needed()
-
-        # Create one-hot mask for max positions: (batch, channels, kh * kw, out_h, out_w)
-        mask = np.zeros((batch_size, channels, kh * kw, out_h, out_w))
-
-        # Use advanced indexing to set 1s at max positions
-        b_idx = np.arange(batch_size)[:, None, None, None]
-        c_idx = np.arange(channels)[None, :, None, None]
-        h_idx = np.arange(out_h)[None, None, :, None]
-        w_idx = np.arange(out_w)[None, None, None, :]
-
-        mask[b_idx, c_idx, max_idx, h_idx, w_idx] = 1.0
-
-        # Multiply mask by output gradient: (batch, channels, kh * kw, out_h, out_w)
-        rec_fields_grad = mask * out_tensor.grad[:, :, None, :, :]
-
-        # Reshape back to (batch, channels, kh, kw, out_h, out_w) for _get_img_from_rec_fields
-        rec_fields_grad = rec_fields_grad.reshape(batch_size, channels, kh, kw, out_h, out_w)
-
-        # Convert back to image space
-        padded_input.grad += _get_img_from_rec_fields(rec_fields_grad, padded_input.values.shape, kh, kw, sh, sw)
+    return _MaxPool2d.apply(padded_input, kh, kw, sh, sw)

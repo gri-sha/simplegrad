@@ -1,7 +1,72 @@
 """Differentiable math functions (log, exp, trig)."""
 
 import numpy as np
-from simplegrad.core.tensor import Tensor, _should_compute_grad
+from ..core import Tensor, Function, Context, is_lazy
+
+
+class _Log(Function):
+    oper = "log"
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        ctx.x_values = x.values
+        return np.log(x.values)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output / ctx.x_values
+
+
+class _Exp(Function):
+    oper = "exp"
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        ctx.out = np.exp(x.values)
+        return ctx.out
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output * ctx.out
+
+
+class _Sin(Function):
+    oper = "sin"
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        ctx.x_values = x.values
+        return np.sin(x.values)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output * np.cos(ctx.x_values)
+
+
+class _Cos(Function):
+    oper = "cos"
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        ctx.x_values = x.values
+        return np.cos(x.values)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return -grad_output * np.sin(ctx.x_values)
+
+
+class _Tan(Function):
+    oper = "tan"
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        ctx.x_values = x.values
+        return np.tan(x.values)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output / (np.cos(ctx.x_values) ** 2)
 
 
 def log(x: Tensor) -> Tensor:
@@ -14,27 +79,11 @@ def log(x: Tensor) -> Tensor:
         Tensor of ln(x).
 
     Raises:
-        ValueError: If any value in x is <= 0.
+        ValueError: If any value in x is <= 0 (checked in eager mode only).
     """
-    if np.any(x.values <= 0):
+    if not is_lazy() and np.any(x.values <= 0):
         raise ValueError("Log of negative value is undefined")
-
-    out = Tensor(np.log(x.values))
-    out.prev = {x}
-    out.oper = "log"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _log_backward(x, out)
-    return out
-
-
-def _log_backward(x: Tensor, out: Tensor):
-    """Backward for log: d/dx = out.grad / x."""
-    if x.comp_grad:
-        x._init_grad_if_needed()
-        x.grad += out.grad / x.values
+    return _Log.apply(x)
 
 
 def exp(x: Tensor) -> Tensor:
@@ -46,23 +95,7 @@ def exp(x: Tensor) -> Tensor:
     Returns:
         Tensor of e^x.
     """
-    out = Tensor(np.exp(x.values))
-    out.prev = {x}
-    out.oper = "exp"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _exp_backward(x, out)
-
-    return out
-
-
-def _exp_backward(x: Tensor, out: Tensor):
-    """Backward for exp: d/dx = exp(x) * out.grad."""
-    if x.comp_grad:
-        x._init_grad_if_needed()
-        x.grad += out.grad * np.exp(x.values)
+    return _Exp.apply(x)
 
 
 def sin(x: Tensor) -> Tensor:
@@ -74,22 +107,7 @@ def sin(x: Tensor) -> Tensor:
     Returns:
         Tensor of sin(x).
     """
-    out = Tensor(np.sin(x.values))
-    out.prev = {x}
-    out.oper = "sin"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _sin_backward(x, out)
-    return out
-
-
-def _sin_backward(x: Tensor, out: Tensor):
-    """Backward for sin: d/dx = cos(x) * out.grad."""
-    if x.comp_grad:
-        x._init_grad_if_needed()
-        x.grad += out.grad * np.cos(x.values)
+    return _Sin.apply(x)
 
 
 def cos(x: Tensor) -> Tensor:
@@ -101,22 +119,7 @@ def cos(x: Tensor) -> Tensor:
     Returns:
         Tensor of cos(x).
     """
-    out = Tensor(np.cos(x.values))
-    out.prev = {x}
-    out.oper = "cos"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _cos_backward(x, out)
-    return out
-
-
-def _cos_backward(x: Tensor, out: Tensor):
-    """Backward for cos: d/dx = -sin(x) * out.grad."""
-    if x.comp_grad:
-        x._init_grad_if_needed()
-        x.grad += -out.grad * np.sin(x.values)
+    return _Cos.apply(x)
 
 
 def tan(x: Tensor) -> Tensor:
@@ -128,19 +131,4 @@ def tan(x: Tensor) -> Tensor:
     Returns:
         Tensor of tan(x).
     """
-    out = Tensor(np.tan(x.values))
-    out.prev = {x}
-    out.oper = "tan"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _tan_backward(x, out)
-    return out
-
-
-def _tan_backward(x: Tensor, out: Tensor):
-    """Backward for tan: d/dx = out.grad / cos(x)^2."""
-    if x.comp_grad:
-        x._init_grad_if_needed()
-        x.grad += out.grad / (np.cos(x.values) ** 2)
+    return _Tan.apply(x)

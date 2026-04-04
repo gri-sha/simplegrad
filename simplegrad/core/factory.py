@@ -1,10 +1,15 @@
 """Factory functions for creating common Tensor initializations."""
 
 import numpy as np
-from .tensor import Tensor
+from .autograd import Tensor
 
 
-def zeros(shape: tuple[int, ...], dtype: str = "float32", comp_grad: bool | None = None, label: bool | None = None) -> Tensor:
+def zeros(
+    shape: tuple[int, ...],
+    dtype: str = "float32",
+    comp_grad: bool | None = None,
+    label: bool | None = None,
+) -> Tensor:
     """Create a tensor filled with zeros.
 
     Args:
@@ -16,7 +21,12 @@ def zeros(shape: tuple[int, ...], dtype: str = "float32", comp_grad: bool | None
     return Tensor(values=np.zeros(shape), dtype=dtype, comp_grad=comp_grad, label=label)
 
 
-def ones(shape: tuple[int, ...], dtype: str = "float32", comp_grad: bool | None = None, label: bool | None = None) -> Tensor:
+def ones(
+    shape: tuple[int, ...],
+    dtype: str = "float32",
+    comp_grad: bool | None = None,
+    label: bool | None = None,
+) -> Tensor:
     """Create a tensor filled with ones.
 
     Args:
@@ -46,7 +56,12 @@ def normal(
         mu: Distribution mean.
         sigma: Distribution standard deviation.
     """
-    return Tensor(values=np.random.normal(size=shape, loc=mu, scale=sigma), dtype=dtype, comp_grad=comp_grad, label=label)
+    return Tensor(
+        values=np.random.normal(size=shape, loc=mu, scale=sigma),
+        dtype=dtype,
+        comp_grad=comp_grad,
+        label=label,
+    )
 
 
 def uniform(
@@ -67,10 +82,21 @@ def uniform(
         low: Lower bound of the distribution.
         high: Upper bound of the distribution.
     """
-    return Tensor(values=np.random.uniform(size=shape, low=low, high=high), dtype=dtype, comp_grad=comp_grad, label=label)
+    return Tensor(
+        values=np.random.uniform(size=shape, low=low, high=high),
+        dtype=dtype,
+        comp_grad=comp_grad,
+        label=label,
+    )
 
 
-def full(shape: tuple[int, ...], fill_value: float, dtype: str = "float32", comp_grad: bool | None = None, label: bool | None = None) -> Tensor:
+def full(
+    shape: tuple[int, ...],
+    fill_value: float,
+    dtype: str = "float32",
+    comp_grad: bool | None = None,
+    label: bool | None = None,
+) -> Tensor:
     """Create a tensor filled with a constant value.
 
     Args:

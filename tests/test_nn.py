@@ -71,9 +71,13 @@ def _test_conv2d_helper(
         x_pt_for_conv = x_pt
         is_asymmetric = False
 
-    conv_pt.weight.data = torch.from_numpy(conv.weight.values).to(torch.float64).requires_grad_(True)
+    conv_pt.weight.data = (
+        torch.from_numpy(conv.weight.values).to(torch.float64).requires_grad_(True)
+    )
     if use_bias:
-        conv_pt.bias.data = torch.from_numpy(conv.bias.values.flatten()).to(torch.float64).requires_grad_(True)
+        conv_pt.bias.data = (
+            torch.from_numpy(conv.bias.values.flatten()).to(torch.float64).requires_grad_(True)
+        )
 
     y_pt = conv_pt(x_pt_for_conv)
     loss_pt = y_pt.sum()
@@ -263,8 +267,12 @@ def test_linear_layer():
     # PyTorch equivalent
     x_pt = torch.from_numpy(x.values).requires_grad_(True).to(torch.float64)
     linear_pt = torch.nn.Linear(in_features, out_features, bias=True)
-    linear_pt.weight.data = torch.from_numpy(linear.weight.values.T).to(torch.float64).requires_grad_(True)
-    linear_pt.bias.data = torch.from_numpy(linear.bias.values.flatten()).to(torch.float64).requires_grad_(True)
+    linear_pt.weight.data = (
+        torch.from_numpy(linear.weight.values.T).to(torch.float64).requires_grad_(True)
+    )
+    linear_pt.bias.data = (
+        torch.from_numpy(linear.bias.values.flatten()).to(torch.float64).requires_grad_(True)
+    )
 
     y_pt = linear_pt(x_pt)
     loss_pt = y_pt.sum()
@@ -313,12 +321,30 @@ def test_neural_network():
     )
 
     # Copy weights
-    model_pt[0].weight.data = torch.from_numpy(model.modules[0].weight.values.T).to(torch.float64).requires_grad_(True)
-    model_pt[0].bias.data = torch.from_numpy(model.modules[0].bias.values.flatten()).to(torch.float64).requires_grad_(True)
-    model_pt[2].weight.data = torch.from_numpy(model.modules[2].weight.values.T).to(torch.float64).requires_grad_(True)
-    model_pt[2].bias.data = torch.from_numpy(model.modules[2].bias.values.flatten()).to(torch.float64).requires_grad_(True)
-    model_pt[4].weight.data = torch.from_numpy(model.modules[4].weight.values.T).to(torch.float64).requires_grad_(True)
-    model_pt[4].bias.data = torch.from_numpy(model.modules[4].bias.values.flatten()).to(torch.float64).requires_grad_(True)
+    model_pt[0].weight.data = (
+        torch.from_numpy(model.modules[0].weight.values.T).to(torch.float64).requires_grad_(True)
+    )
+    model_pt[0].bias.data = (
+        torch.from_numpy(model.modules[0].bias.values.flatten())
+        .to(torch.float64)
+        .requires_grad_(True)
+    )
+    model_pt[2].weight.data = (
+        torch.from_numpy(model.modules[2].weight.values.T).to(torch.float64).requires_grad_(True)
+    )
+    model_pt[2].bias.data = (
+        torch.from_numpy(model.modules[2].bias.values.flatten())
+        .to(torch.float64)
+        .requires_grad_(True)
+    )
+    model_pt[4].weight.data = (
+        torch.from_numpy(model.modules[4].weight.values.T).to(torch.float64).requires_grad_(True)
+    )
+    model_pt[4].bias.data = (
+        torch.from_numpy(model.modules[4].bias.values.flatten())
+        .to(torch.float64)
+        .requires_grad_(True)
+    )
 
     # Forward pass
     print(model_pt)
@@ -408,7 +434,9 @@ def _test_embedding_helper(num_embeddings, embedding_dim, input_shape, dtype="fl
     indices_pt = torch.from_numpy(indices).long()
 
     embedding_pt = torch.nn.Embedding(num_embeddings, embedding_dim)
-    embedding_pt.weight.data = torch.from_numpy(embedding.weight.values).to(torch_dtype).requires_grad_(True)
+    embedding_pt.weight.data = (
+        torch.from_numpy(embedding.weight.values).to(torch_dtype).requires_grad_(True)
+    )
 
     output_pt = embedding_pt(indices_pt)
     loss_pt = output_pt.sum()
@@ -431,4 +459,6 @@ def test_embedding_2d():
 
 def test_embedding_5d():
     """Test Embedding layer with 5D input"""
-    _test_embedding_helper(num_embeddings=15, embedding_dim=4, input_shape=(2, 3, 2, 3, 4), dtype="float32")
+    _test_embedding_helper(
+        num_embeddings=15, embedding_dim=4, input_shape=(2, 3, 2, 3, 4), dtype="float32"
+    )

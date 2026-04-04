@@ -1,7 +1,7 @@
 """Adam optimizer."""
 
 import numpy as np
-from .optimizer import Optimizer
+from ..core import Optimizer, Module, Tensor
 
 
 class Adam(Optimizer):
@@ -28,8 +28,12 @@ class Adam(Optimizer):
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.eps = eps
-        self.moments1 = {name: np.zeros_like(param.values) for name, param in self.model.parameters().items()}
-        self.moments2 = {name: np.zeros_like(param.values) for name, param in self.model.parameters().items()}
+        self.moments1 = {
+            name: np.zeros_like(param.values) for name, param in self.model.parameters().items()
+        }
+        self.moments2 = {
+            name: np.zeros_like(param.values) for name, param in self.model.parameters().items()
+        }
         self.step_count = 0
 
     def step(self):
@@ -47,13 +51,15 @@ class Adam(Optimizer):
             self.moments1[name] = self.beta_1 * self.moments1[name] + (1 - self.beta_1) * param.grad
 
             # Update biased second raw moment estimate
-            self.moments2[name] = self.beta_2 * self.moments2[name] + (1 - self.beta_2) * (param.grad ** 2)
+            self.moments2[name] = self.beta_2 * self.moments2[name] + (1 - self.beta_2) * (
+                param.grad**2
+            )
 
             # Compute bias-corrected first moment estimate
-            m_hat = self.moments1[name] / (1 - self.beta_1 ** self.step_count)
+            m_hat = self.moments1[name] / (1 - self.beta_1**self.step_count)
 
             # Compute bias-corrected second raw moment estimate
-            v_hat = self.moments2[name] / (1 - self.beta_2 ** self.step_count)
+            v_hat = self.moments2[name] / (1 - self.beta_2**self.step_count)
 
             # Update parameters
             param.values -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)

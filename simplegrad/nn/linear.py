@@ -1,9 +1,7 @@
 """Fully-connected (linear/dense) layer."""
 
 import numpy as np
-from simplegrad.core import Tensor, uniform
-from simplegrad.dtypes import convert_to_dtype
-from .module import Module
+from ..core import Tensor, uniform, Module, Context
 from typing import Optional
 
 
@@ -59,7 +57,9 @@ class Linear(Module):
 
         if self.use_bias:
             if bias is not None:
-                assert bias.shape == (self.out_features,), "Bias shape must be (out_features,), " f"but got {bias.shape} instead."
+                assert bias.shape == (self.out_features,), (
+                    "Bias shape must be (out_features,), " f"but got {bias.shape} instead."
+                )
                 self.bias = bias
                 self.bias.label = bias_label
             else:

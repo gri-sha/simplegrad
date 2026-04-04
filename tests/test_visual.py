@@ -1,6 +1,7 @@
 """Tests for computation graph group tagging and cluster rendering."""
 
-from simplegrad.core.tensor import Tensor, graph_group, compound_op
+from simplegrad.core import Tensor
+from simplegrad.core.compound_ops import graph_group, compound_op
 
 
 def test_group_is_none_by_default():

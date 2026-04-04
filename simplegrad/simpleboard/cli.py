@@ -11,12 +11,22 @@ import time
 
 def main():
     parser = argparse.ArgumentParser(description="Launch simpleboard.")
-    parser.add_argument("--port", "-p", type=int, default=8000, help="Port to run the server on (default: 8000)")
-    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind to (default: 127.0.0.1)")
     parser.add_argument(
-        "--all-exp-dir", "-e", type=str, default="./experiments", help="Directory containing experiment databases (default: ./experiments)"
+        "--port", "-p", type=int, default=8000, help="Port to run the server on (default: 8000)"
     )
-    parser.add_argument("--no-browser", action="store_true", help="Don't automatically open browser")
+    parser.add_argument(
+        "--host", type=str, default="127.0.0.1", help="Host to bind to (default: 127.0.0.1)"
+    )
+    parser.add_argument(
+        "--all-exp-dir",
+        "-e",
+        type=str,
+        default="./experiments",
+        help="Directory containing experiment databases (default: ./experiments)",
+    )
+    parser.add_argument(
+        "--no-browser", action="store_true", help="Don't automatically open browser"
+    )
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
 
     args = parser.parse_args()
@@ -57,7 +67,13 @@ def main():
         threading.Thread(target=open_browser, daemon=True).start()
 
     # Run the server
-    uvicorn.run("simplegrad.simpleboard.server:app", host=args.host, port=args.port, reload=args.reload, log_level="info")
+    uvicorn.run(
+        "simplegrad.simpleboard.server:app",
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+        log_level="info",
+    )
 
 
 if __name__ == "__main__":

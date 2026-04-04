@@ -1,8 +1,29 @@
 """Dropout regularization layer."""
 
-from simplegrad.core.tensor import Tensor
-from .module import Module
 import numpy as np
+from ..core import Tensor, Function, Context, Module
+
+class _DropoutEval(Function):
+    oper = "Dropout(0)"
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        return x.values.copy()
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output
+
+
+class _DropoutTrain(Function):
+    @staticmethod
+    def forward(ctx: Context, x: Tensor, p: float) -> np.ndarray:
+        ctx.mask = np.random.rand(*x.values.shape) >= p
+        return x.values * ctx.mask
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output * ctx.mask
 
 
 class Dropout(Module):
@@ -19,17 +40,18 @@ class Dropout(Module):
         ValueError: If ``p`` is not in ``[0, 1)``.
     """
 
-    def __init__(self, p: int = 0.5):
+    def __init__(self, p: float = 0.5):
         super().__init__()
         if not 0 <= p < 1:
             raise ValueError("Dropout probability must be in the range [0, 1).")
         self.p = p
-        self.mask = None
 
     def forward(self, x: Tensor) -> Tensor:
         """Apply dropout to the input.
 
         In eval mode (or when ``p=0``), the input passes through unchanged.
+        The random mask is generated at realize time, so this method is
+        compatible with lazy execution mode.
 
         Args:
             x: Input tensor.
@@ -41,36 +63,9 @@ class Dropout(Module):
             raise TypeError("Input must be a Tensor.")
 
         if self.eval_mode or self.p == 0:
-            out = Tensor(x.values.copy())
-            out.prev = {x}
-            out.comp_grad = x.comp_grad
-            out.is_leaf = False
-            out.oper = f"Dropout(0)"
+            return _DropoutEval.apply(x)
 
-            def backward_step():
-                if x.comp_grad:
-                    x._init_grad_if_needed()
-                    x.grad += out.grad  # No dropout applied in eval mode
-
-            out.backward_step = backward_step
-            return out
-
-        # Create dropout mask
-        self.mask = Tensor(np.random.rand(*x.values.shape) >= self.p, comp_grad=False)
-        out = Tensor(x.values * self.mask.values)
-        out.prev = {x}
-        out.comp_grad = x.comp_grad
-        out.is_leaf = False
-        out.oper = f"Dropout(p={self.p})"
-
-        # Backward step
-        def backward_step():
-            if x.comp_grad and self.mask is not None:
-                x._init_grad_if_needed()
-                x.grad += out.grad * self.mask.values
-
-        out.backward_step = backward_step
-        return out
+        return _DropoutTrain.apply(x, self.p, oper=f"Dropout(p={self.p})")
 
     def __str__(self):
         return f"Dropout(p={self.p})"

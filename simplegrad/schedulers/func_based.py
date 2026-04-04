@@ -1,11 +1,15 @@
-from .scheduler import Scheduler
-from simplegrad.optimizers import Optimizer
+from ..core import Optimizer, Scheduler
 from typing import Optional
 
 
 class LinearLR(Scheduler):
     def __init__(
-        self, optimizer: Optimizer, start_lr: Optional[float], end_lr: Optional[float], total_steps: Optional[int], rate: Optional[float]
+        self,
+        optimizer: Optimizer,
+        start_lr: Optional[float],
+        end_lr: Optional[float],
+        total_steps: Optional[int],
+        rate: Optional[float],
     ) -> None:
         """
         Possible combinations of parameters:
@@ -21,9 +25,15 @@ class LinearLR(Scheduler):
         self.total_steps = total_steps
         self.rate = rate
 
-
-        if start_lr is not None and end_lr is not None and total_steps is not None and rate is not None:
-            raise ValueError("Parameter mismatch. Only three of the parameters start_lr, end_lr, total_steps, rate should be provided (or two: start_lr, rate).")
+        if (
+            start_lr is not None
+            and end_lr is not None
+            and total_steps is not None
+            and rate is not None
+        ):
+            raise ValueError(
+                "Parameter mismatch. Only three of the parameters start_lr, end_lr, total_steps, rate should be provided (or two: start_lr, rate)."
+            )
 
         # Case 1
         if start_lr is not None and end_lr is not None and total_steps is not None:

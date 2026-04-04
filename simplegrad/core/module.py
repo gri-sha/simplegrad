@@ -1,8 +1,7 @@
 """Base Module class for all neural network layers."""
 
 import numpy as np
-from simplegrad.core.tensor import Tensor
-from simplegrad.dtypes import convert_to_dtype
+from .autograd import Tensor
 
 
 class Module:
@@ -115,8 +114,8 @@ class Module:
         params = self.parameters()
         tot = 0
         for name, tensor in params.items():
-            tr = np.prod(tensor.values.shape)
+            tr = np.prod(tensor.shape)
             tot += tr
-            print(f"{name:<20} {str(tensor.values.shape):<15} {str(tr):<40}")
+            print(f"{name:<20} {str(tensor.shape):<15} {str(tr):<40}")
         print("-" * 60)
         print(f"Total trainable parameters: {tot}")

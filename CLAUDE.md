@@ -10,15 +10,23 @@ The framework has an educational objective: users should be able to read the sou
 
 ```
 simplegrad/               # Main package
-    core/                 # Tensor class and autograd engine
+    core/                 # All base classes and the autograd engine
+        autograd.py       # Tensor, Function, Context, lazy mode, tensor ops (_Add, _Mul, ...)
+        compound_ops.py   # graph_group, compound_op decorators for computation graph clustering
+        dtypes.py         # dtype utilities (as_array, convert_to_dtype, get_dtype_class, ...)
+        factory.py        # Tensor factory functions (zeros, ones, normal, uniform, full)
+        module.py         # Module base class for all neural network layers
+        optimizer.py      # Optimizer base class
+        scheduler.py      # Scheduler base class
+        __init__.py       # Exports everything from core/
     functions/            # Differentiable math, activations, losses, pooling, conv
-    nn/                   # Neural network layers (Linear, Conv2d, Dropout, etc.)
-    optimizers/           # SGD, Adam
-    schedulers/           # Learning rate schedulers
+                          # All files import from ..core (one-way dependency)
+    nn/                   # Neural network layers (Linear, Conv2d, Dropout, Embedding, ...)
+    optimizers/           # SGD, Adam (import Optimizer from core)
+    schedulers/           # LinearLR, ExponentialLR, CosineAnnealingLR, ReduceLROnPlateauLR
     track/                # Experiment tracking (Tracker, SQLite backend)
     visual/               # Inline visualization (computation graphs, training plots)
     simpleboard/          # Web app for experiment tracking dashboard
-    dtypes.py             # Supported data types
 
 tests/                    # Test suite (pytest)
 docs/                     # MkDocs documentation source
@@ -31,6 +39,23 @@ pyproject.toml            # Project metadata, dependencies, tool config
 mkdocs.yml                # Documentation site configuration
 ```
 
+### Dependency layers
+
+The package follows a strict one-way import hierarchy:
+
+```
+core/          (no intra-simplegrad imports except core/module.py → core/autograd.py)
+  ↑
+functions/     (import from ..core only)
+  ↑
+nn/            (import from ..core and ..functions)
+  ↑
+optimizers/    (import from ..core)
+schedulers/    (import from ..core)
+```
+
+Never import from a higher layer into a lower one — this causes circular imports.
+
 ## Code Style
 
 ### Language
@@ -39,8 +64,25 @@ All code, comments, variable names, docstrings, and commit messages must be writ
 
 ### Comments
 
-- Do not use separator lines in comments (no `===`, `---`, `———`, `***`, or similar decorators).
+- Do not use separator lines in comments anywhere — this includes source files, test files, and scripts. No `===`, `---`, `———`, `***`, or similar decorators, even as section dividers between test groups.
+- Use a plain single-line comment for section labels: `# lazy operator overloads`, not a decorated block.
 - Keep comments concise and only where the logic is not self-evident.
+- Never delete existing comments when editing a file. If you rewrite or replace a section of code, carry all original comments over into the new version.
+
+### Type Annotations
+
+Use modern Python union syntax throughout — never import `Optional`, `Union`, `List`, `Dict`, `Tuple`, or `Set` from `typing`.
+
+| Instead of | Write |
+|---|---|
+| `Optional[int]` | `int \| None` |
+| `Union[int, float]` | `int \| float` |
+| `List[int]` | `list[int]` |
+| `Dict[str, int]` | `dict[str, int]` |
+| `Tuple[int, ...]` | `tuple[int, ...]` |
+| `Set[str]` | `set[str]` |
+
+Only import from `typing` when there is no built-in alternative: `Callable`, `TypeVar`, `Protocol`, `overload`, `TYPE_CHECKING`, etc.
 
 ### Docstrings
 
@@ -77,15 +119,38 @@ Internal helper methods (prefixed with `_`) do not require docstrings unless the
 
 ## Development
 
-### Setup
+### Python Environment
+
+This project uses a local virtual environment at `.venv/`. Never install packages into the global Python environment.
+
+Always activate the venv before running anything:
+
+```bash
+source .venv/bin/activate
+```
+
+To reinstall the package inside the venv:
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-### Running Tests
+### Formatting
+
+Run Black before every commit:
 
 ```bash
+black .
+```
+
+CI will fail on unformatted code, so always format locally first.
+
+### Running Tests
+
+Always activate the venv first, then run pytest:
+
+```bash
+source .venv/bin/activate
 pytest
 ```
 
@@ -121,30 +186,34 @@ All tensor data is stored as a numpy `ndarray` in `tensor.values`. Every operati
 
 ### Adding a New Differentiable Operation
 
-Every differentiable function follows the same pattern. Use this as a template:
+All differentiable ops use the `Function` base class from `simplegrad.core.autograd`. Subclass it, implement `forward` and `backward` as static methods, and call `cls.apply(...)` to run the op. The base class handles graph wiring, gradient accumulation, and lazy/eager dispatch automatically.
 
 ```python
+from simplegrad.core import Tensor, Function, Context
+import numpy as np
+
+
+class _MyOp(Function):
+    oper = "MyOp"   # label shown in computation graph — no spaces
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        ctx.x_values = x.values       # save anything needed for backward
+        return np.some_numpy_op(x.values)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output * <local_gradient_expression using ctx>
+
+
 def my_op(x: Tensor) -> Tensor:
-    out = Tensor(np.some_numpy_op(x.values))
-    out.prev = {x}
-    out.oper = "MyOp"          # short label shown in computation graph
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _my_op_backward(x, out)
-    return out
-
-
-def _my_op_backward(x: Tensor, out: Tensor) -> None:
-    if x.comp_grad:
-        x._init_grad_if_needed()
-        x.grad += out.grad * <local_gradient_expression>
+    """Public API function. Add a Google-style docstring."""
+    return _MyOp.apply(x)
 ```
 
 Key rules:
-- Always use `_should_compute_grad(x)` to set `out.comp_grad` — never set it to a hardcoded boolean.
-- Always check `x.comp_grad` inside the backward function before writing to `x.grad`.
-- Always use `+=` when accumulating into `x.grad` (a tensor can receive gradients from multiple consumers).
-- The `oper` string must not contain spaces (it is used as a graph node label).
-- Import `_should_compute_grad` from `simplegrad.core.tensor`.
+- `forward` returns a numpy array and saves intermediates to `ctx`. It must not write to `.grad`.
+- `backward` returns one gradient array per Tensor input (or a tuple). It must not accumulate — the base class does that.
+- Override `output_shape(*inputs)` if the output shape differs from the first input's shape (required for matmul, conv, reductions, etc.).
+- For functions that compose multiple ops (e.g. softmax, mse_loss), use the `@compound_op` decorator instead of subclassing `Function`.
+- Place new functional ops in `simplegrad/functions/`. New nn layers go in `simplegrad/nn/`.

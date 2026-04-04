@@ -1,9 +1,53 @@
 """Tensor shape transformation functions: flatten and reshape."""
 
-from simplegrad.core.tensor import Tensor, _should_compute_grad
+import numpy as np
+from ..core import Tensor, Function, Context
+
+class _Flatten(Function):
+    oper = "Flatten"
+
+    @staticmethod
+    def output_shape(x: Tensor, start_dim: int = 0, end_dim: int = -1) -> tuple:
+        ndim = len(x.shape)
+        start = start_dim % ndim
+        end = end_dim % ndim
+        flat_size = 1
+        for i in range(start, end + 1):
+            flat_size *= x.shape[i]
+        return x.shape[:start] + (flat_size,) + x.shape[end + 1 :]
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor, start_dim: int = 0, end_dim: int = -1) -> np.ndarray:
+        ctx.x_shape = x.shape
+        ndim = len(x.shape)
+        start = start_dim % ndim
+        end = end_dim % ndim
+        flat_size = 1
+        for i in range(start, end + 1):
+            flat_size *= x.shape[i]
+        out_shape = x.shape[:start] + (flat_size,) + x.shape[end + 1 :]
+        return x.values.reshape(out_shape)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output.reshape(ctx.x_shape)
 
 
-# both start and end are flattened
+class _Reshape(Function):
+    @staticmethod
+    def output_shape(x: Tensor, new_shape: tuple) -> tuple:
+        return new_shape
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor, new_shape: tuple) -> np.ndarray:
+        ctx.x_shape = x.shape
+        return x.values.reshape(new_shape)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output.reshape(ctx.x_shape)
+
+
 def flatten(x: Tensor, start_dim: int = 0, end_dim: int = -1) -> Tensor:
     """Flatten a range of dimensions into a single dimension.
 
@@ -15,25 +59,7 @@ def flatten(x: Tensor, start_dim: int = 0, end_dim: int = -1) -> Tensor:
     Returns:
         Tensor with dimensions ``[start_dim, end_dim]`` merged into one.
     """
-    if end_dim < 0:
-        end_dim = len(x.values.shape) + end_dim
-    if start_dim < 0:
-        start_dim = len(x.values.shape) + start_dim
-
-    out = Tensor(x.values.reshape(*x.values.shape[:start_dim], -1, *x.values.shape[end_dim + 1 :]))
-    out.prev = {x}
-    out.oper = "Flatten"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-    if out.comp_grad:
-        out.backward_step = lambda: _flatten_backward(x, out)
-    return out
-
-
-def _flatten_backward(x: Tensor, out: Tensor) -> None:
-    """Backward for flatten: reshape gradient back to the original shape."""
-    if x.comp_grad:
-        x.grad = out.grad.reshape(x.values.shape)
+    return _Flatten.apply(x, start_dim, end_dim)
 
 
 def reshape(x: Tensor, new_shape: tuple[int, ...]) -> Tensor:
@@ -46,18 +72,4 @@ def reshape(x: Tensor, new_shape: tuple[int, ...]) -> Tensor:
     Returns:
         Tensor with values laid out in ``new_shape``.
     """
-    out = Tensor(x.values.reshape(new_shape))
-    out.prev = {x}
-    out.oper = f"reshape({new_shape})"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _reshape_backward(x, out)
-    return out
-
-
-def _reshape_backward(x: Tensor, out: Tensor) -> None:
-    """Backward for reshape: reshape gradient back to the original shape."""
-    if x.comp_grad:
-        x.grad = out.grad.reshape(x.values.shape)
+    return _Reshape.apply(x, new_shape, oper=f"reshape({new_shape})")

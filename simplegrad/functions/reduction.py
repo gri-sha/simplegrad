@@ -1,12 +1,87 @@
 """Reduction operations: sum, mean, trace, argmax, argmin."""
 
 import numpy as np
-from simplegrad.core.tensor import Tensor, _should_compute_grad
-from typing import Optional
-from simplegrad.dtypes import get_dtype_class
+from ..core import Tensor, Function, Context, get_dtype_class
+
+class _Sum(Function):
+    @staticmethod
+    def output_shape(x: Tensor, dim: int | None = None) -> tuple:
+        if dim is None:
+            return (1,) * len(x.shape)
+        return tuple(1 if i == dim % len(x.shape) else s for i, s in enumerate(x.shape))
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor, dim: int | None = None) -> np.ndarray:
+        ctx.x_shape = x.shape
+        return np.sum(x.values, axis=dim, keepdims=True)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return np.ones(ctx.x_shape) * grad_output
 
 
-def sum(x: Tensor, dim: Optional[int] = None) -> Tensor:
+class _Trace(Function):
+    oper = "trace"
+
+    @staticmethod
+    def output_shape(x: Tensor) -> tuple:
+        return (1, 1)
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        ctx.x_shape = x.shape
+        return np.array([[np.trace(x.values)]])
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        grad = np.zeros(ctx.x_shape)
+        np.fill_diagonal(grad, grad_output.flatten())
+        return grad
+
+
+class _Argmax(Function):
+    oper = "argmax"
+    differentiable = False
+
+    @staticmethod
+    def output_shape(x: Tensor, dim: int | None = None, dtype: str = "int32") -> tuple:
+        if dim is None:
+            return (1,)
+        return tuple(1 if i == dim % len(x.shape) else s for i, s in enumerate(x.shape))
+
+    @staticmethod
+    def forward(
+        ctx: Context, x: Tensor, dim: int | None = None, dtype: str = "int32"
+    ) -> np.ndarray:
+        return np.argmax(x.values, axis=dim)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        raise RuntimeError("argmax is not differentiable and does not support backpropagation")
+
+
+class _Argmin(Function):
+    oper = "argmin"
+    differentiable = False
+
+    @staticmethod
+    def output_shape(x: Tensor, dim: int | None = None, dtype: str = "int32") -> tuple:
+        if dim is None:
+            return (1,)
+        return tuple(1 if i == dim % len(x.shape) else s for i, s in enumerate(x.shape))
+
+    @staticmethod
+    def forward(
+        ctx: Context, x: Tensor, dim: int | None = None, dtype: str = "int32"
+    ) -> np.ndarray:
+        return np.argmin(x.values, axis=dim)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        raise RuntimeError("argmin is not differentiable and does not support backpropagation")
+
+
+def sum(x: Tensor, dim: int | None = None) -> Tensor:
     """Sum tensor elements along a dimension.
 
     Args:
@@ -16,25 +91,7 @@ def sum(x: Tensor, dim: Optional[int] = None) -> Tensor:
     Returns:
         Reduced tensor (keepdims=True).
     """
-    # dim 0: sum columns, resulting in a single row
-    # dim 1: sum rows, resulting in a single column
-    # etc.
-    out = Tensor(np.sum(x.values, axis=dim, keepdims=True))
-    out.prev = {x}
-    out.oper = f"sum(d={dim})"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _sum_backward(x=x, out=out)
-    return out
-
-
-def _sum_backward(x: Tensor, out: Tensor) -> None:
-    """Backward for sum: gradient broadcasts back to the original shape."""
-    if x.comp_grad:
-        x._init_grad_if_needed()
-        x.grad += np.ones_like(x.values) * out.grad
+    return _Sum.apply(x, dim, oper=f"sum(d={dim})")
 
 
 def trace(x: Tensor) -> Tensor:
@@ -47,32 +104,14 @@ def trace(x: Tensor) -> Tensor:
         Scalar tensor containing the trace.
 
     Raises:
-        ValueError: If x is not a 2D square tensor.
+        ValueError: If x is not a 2D square tensor (checked in eager mode).
     """
-    if x.values.ndim != 2 or x.values.shape[0] != x.values.shape[1]:
+    if x.values is not None and (x.values.ndim != 2 or x.values.shape[0] != x.values.shape[1]):
         raise ValueError("Trace is only defined for square matrices")
-
-    out = Tensor(np.array([[np.trace(x.values)]]))
-    out.prev = {x}
-    out.oper = "trace"
-    out.comp_grad = _should_compute_grad(x)
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _trace_backward(x=x, out=out)
-    return out
+    return _Trace.apply(x)
 
 
-def _trace_backward(x: Tensor, out: Tensor) -> None:
-    """Backward for trace: gradient flows only to diagonal elements."""
-    if x.comp_grad:
-        x._init_grad_if_needed()
-        grad_matrix = np.zeros_like(x.values)
-        np.fill_diagonal(grad_matrix, out.grad.flatten())
-        x.grad += grad_matrix
-
-
-def mean(x: Tensor, dim: Optional[int] = None) -> Tensor:
+def mean(x: Tensor, dim: int | None = None) -> Tensor:
     """Compute the mean of tensor elements along a dimension.
 
     Args:
@@ -83,11 +122,14 @@ def mean(x: Tensor, dim: Optional[int] = None) -> Tensor:
         Reduced tensor.
     """
     if dim is None:
-        return sum(x) / x.values.size
-    return sum(x, dim=dim) / x.values.shape[dim]
+        n = 1
+        for s in x.shape:
+            n *= s
+        return sum(x) / n
+    return sum(x, dim=dim) / x.shape[dim]
 
 
-def argmax(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor:
+def argmax(x: Tensor, dim: int | None = None, dtype: str = "int32") -> Tensor:
     """Return indices of maximum values along a dimension.
 
     Not differentiable — ``comp_grad`` is always False on the output.
@@ -100,22 +142,12 @@ def argmax(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor
     Returns:
         Integer tensor of argmax indices.
     """
-    out = Tensor(np.argmax(x.values, axis=dim), dtype=get_dtype_class(dtype))
-    out.prev = {x}
-    out.oper = f"argmax(d={dim})"
-    out.comp_grad = False
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _argmax_backward()
+    out = _Argmax.apply(x, dim, dtype, oper=f"argmax(d={dim})")
+    out.dtype = get_dtype_class(dtype)
     return out
 
 
-def _argmax_backward() -> None:
-    raise RuntimeError("argmax is not differentiable and does not support backpropagation")
-
-
-def argmin(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor:
+def argmin(x: Tensor, dim: int | None = None, dtype: str = "int32") -> Tensor:
     """Return indices of minimum values along a dimension.
 
     Not differentiable — ``comp_grad`` is always False on the output.
@@ -128,16 +160,6 @@ def argmin(x: Tensor, dim: Optional[int] = None, dtype: str = "int32") -> Tensor
     Returns:
         Integer tensor of argmin indices.
     """
-    out = Tensor(np.argmin(x.values, axis=dim), dtype=get_dtype_class(dtype))
-    out.prev = {x}
-    out.oper = f"argmin(d={dim})"
-    out.comp_grad = False
-    out.is_leaf = False
-
-    if out.comp_grad:
-        out.backward_step = lambda: _argmin_backward()
+    out = _Argmin.apply(x, dim, dtype, oper=f"argmin(d={dim})")
+    out.dtype = get_dtype_class(dtype)
     return out
-
-
-def _argmin_backward() -> None:
-    raise RuntimeError("argmin is not differentiable and does not support backpropagation")

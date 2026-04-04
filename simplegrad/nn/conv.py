@@ -1,9 +1,8 @@
 """2D convolutional layer."""
 
 import numpy as np
-from simplegrad.core import Tensor, uniform
-from .module import Module
-from simplegrad.functions.conv import conv2d
+from ..core import Tensor, Module, uniform
+from ..functions.conv import conv2d
 
 
 class Conv2d(Module):
@@ -52,7 +51,7 @@ class Conv2d(Module):
         super().__init__()
         self.dtype = dtype if dtype is not None else "float32"
         if weight is not None:
-            assert weight.values.ndim == 4, "Weight tensor must be 4-dimensional"
+            assert len(weight.shape) == 4, "Weight tensor must be 4-dimensional"
             assert isinstance(weight, Tensor), "Weight must be a sg.Tensor"
             self.weight = weight.convert_to(self.dtype, inplace=False)
             self.in_channels = weight.shape[1]
@@ -69,7 +68,9 @@ class Conv2d(Module):
             assert ((isinstance(kernel_size, int)) and kernel_size > 0) or (
                 (isinstance(kernel_size, tuple) and all(k > 0 for k in kernel_size))
             ), "kernel_size must be a positive integer or a tuple of positive integers"
-            self.kernel_size = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
+            self.kernel_size = (
+                kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
+            )
             weight_shape = (out_channels, in_channels, *self.kernel_size)
             self.weight = uniform(
                 shape=weight_shape,
@@ -81,7 +82,9 @@ class Conv2d(Module):
 
         if use_bias:
             if bias is not None:
-                assert bias.shape == (out_channels,), "Bias shape must be (out_channels,), " f"but got {bias.shape} instead."
+                assert bias.shape == (out_channels,), (
+                    "Bias shape must be (out_channels,), " f"but got {bias.shape} instead."
+                )
                 self.bias = bias
                 self.bias.label = bias_label
             else:
@@ -101,9 +104,15 @@ class Conv2d(Module):
         self.stride = stride if isinstance(stride, tuple) else (stride, stride)
 
         assert ((isinstance(pad_width, int)) and pad_width >= 0) or (
-            isinstance(pad_width, tuple) and len(pad_width) == 4 and all(isinstance(p, int) and p >= 0 for p in pad_width)
+            isinstance(pad_width, tuple)
+            and len(pad_width) == 4
+            and all(isinstance(p, int) and p >= 0 for p in pad_width)
         ), "padding must be a non-negative integer or a tuple of 4 non-negative integers"
-        self.pad_width = (pad_width, pad_width, pad_width, pad_width) if isinstance(pad_width, int) else pad_width
+        self.pad_width = (
+            (pad_width, pad_width, pad_width, pad_width)
+            if isinstance(pad_width, int)
+            else pad_width
+        )
         self.pad_mode = pad_mode
         self.pad_value = pad_value
 
@@ -118,9 +127,11 @@ class Conv2d(Module):
             Output of shape ``(batch, out_channels, out_H, out_W)``.
         """
         assert (
-            x.values.ndim == 4 or x.values.ndim == 3
+            len(x.shape) == 4 or len(x.shape) == 3
         ), "Input tensor must be 4-dimensional (batch_size, in_channels, height, width) or 3-dimensional (in_channels, height, width)"
-        assert x.values.shape[-3] == self.in_channels, f"Expected input with {self.in_channels} channels, got {x.values.shape[-3]}"
+        assert (
+            x.shape[-3] == self.in_channels
+        ), f"Expected input with {self.in_channels} channels, got {x.shape[-3]}"
 
         return conv2d(
             x=x,

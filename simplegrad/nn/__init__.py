@@ -1,4 +1,3 @@
-from .module import Module
 from .sequential import Sequential
 from .linear import Linear
 from .dropout import Dropout
