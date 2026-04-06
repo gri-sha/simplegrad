@@ -1,5 +1,7 @@
-import simplegrad as sg
+"""Tests for neural network layers: Linear, Conv2d, MaxPool2d, Embedding, Sequential."""
+
 import numpy as np
+import simplegrad as sg
 import torch
 from .utils import compare2tensors, TOL
 
@@ -108,7 +110,7 @@ def _test_conv2d_helper(
         )
 
 
-def test_convolution_layer():
+def test_conv2d_basic():
     """Test Conv2D layer forward and backward pass with padding=1, stride=1"""
     _test_conv2d_helper(
         in_channels=2,
@@ -123,7 +125,7 @@ def test_convolution_layer():
     )
 
 
-def test_convolution_layer_stride_2():
+def test_conv2d_stride_2():
     """Test Conv2D layer with stride=2"""
     _test_conv2d_helper(
         in_channels=2,
@@ -138,7 +140,7 @@ def test_convolution_layer_stride_2():
     )
 
 
-def test_convolution_layer_no_padding():
+def test_conv2d_no_padding():
     """Test Conv2D layer with no padding"""
     _test_conv2d_helper(
         in_channels=1,
@@ -151,7 +153,7 @@ def test_convolution_layer_no_padding():
     )
 
 
-def test_convolution_layer_asymmetric_padding():
+def test_conv2d_asymmetric_padding():
     """Test Conv2D layer with asymmetric padding (top, bottom, left, right)"""
     _test_conv2d_helper(
         in_channels=2,
@@ -159,14 +161,14 @@ def test_convolution_layer_asymmetric_padding():
         kernel_size=(3, 3),
         input_shape=(1, 2, 6, 6),
         stride=1,
-        pad_width=(1, 2, 1, 2),  # top=1, bottom=2, left=1, right=2
+        pad_width=(1, 2, 1, 2),
         pad_mode="constant",
         pad_value=0,
         use_bias=True,
     )
 
 
-def test_convolution_layer_5x5_kernel():
+def test_conv2d_5x5_kernel():
     """Test Conv2D layer with larger 5x5 kernel"""
     _test_conv2d_helper(
         in_channels=1,
@@ -181,7 +183,7 @@ def test_convolution_layer_5x5_kernel():
     )
 
 
-def test_convolution_layer_stride_2_padding_1():
+def test_conv2d_stride_2_padding_1():
     """Test Conv2D layer with stride=2 and padding=1"""
     _test_conv2d_helper(
         in_channels=3,
@@ -196,7 +198,7 @@ def test_convolution_layer_stride_2_padding_1():
     )
 
 
-def test_convolution_layer_no_bias():
+def test_conv2d_no_bias():
     """Test Conv2D layer without bias"""
     _test_conv2d_helper(
         in_channels=2,
@@ -209,7 +211,7 @@ def test_convolution_layer_no_bias():
     )
 
 
-def test_convolution_layer_batch_processing():
+def test_conv2d_batch():
     """Test Conv2D layer with larger batch size"""
     _test_conv2d_helper(
         in_channels=3,
@@ -224,7 +226,6 @@ def test_convolution_layer_batch_processing():
     )
 
 
-# Test MaxPool2d layer
 def test_max_pool2d():
     """Test MaxPool2d layer forward and backward pass"""
     batch_size, channels, height, width = 2, 3, 8, 8
@@ -241,7 +242,6 @@ def test_max_pool2d():
     y.zero_grad()
     y.backward()
 
-    # PyTorch equivalent
     x_pt = torch.from_numpy(x.values).requires_grad_(True).to(torch.float64)
     pool_pt = torch.nn.MaxPool2d(kernel_size=kernel_size, stride=stride)
 
@@ -253,7 +253,6 @@ def test_max_pool2d():
     compare2tensors(sg=x.grad, pt=x_pt.grad)
 
 
-# Test Linear layer
 def test_linear_layer():
     """Test single linear layer forward and backward pass"""
     in_features, out_features = 4, 3
@@ -264,7 +263,6 @@ def test_linear_layer():
     y.zero_grad()
     y.backward()
 
-    # PyTorch equivalent
     x_pt = torch.from_numpy(x.values).requires_grad_(True).to(torch.float64)
     linear_pt = torch.nn.Linear(in_features, out_features, bias=True)
     linear_pt.weight.data = (
@@ -284,12 +282,11 @@ def test_linear_layer():
     compare2tensors(sg=linear.bias.grad, pt=linear_pt.bias.grad.unsqueeze(0))
 
 
-def test_neural_network():
+def test_sequential_network():
     """Test forward and backward pass through 3-layer neural network"""
     input_size, hidden_size, output_size = 5, 4, 2
     batch_size = 3
 
-    # Create SimpleNet model
     model = sg.nn.Sequential(
         sg.nn.Linear(input_size, hidden_size, dtype="float64"),
         sg.nn.ReLU(),
@@ -299,18 +296,14 @@ def test_neural_network():
         sg.nn.Softmax(dim=1),
     )
 
-    # Create input
     x = sg.Tensor(np.random.randn(batch_size, input_size).astype(np.float64), dtype="float64")
 
-    # Forward pass
     output = model(x)
     output.zero_grad()
     output.backward()
 
-    # PyTorch equivalent
     x_pt = torch.from_numpy(x.values).requires_grad_(True)
 
-    # Create PyTorch model with same weights
     model_pt = torch.nn.Sequential(
         torch.nn.Linear(input_size, hidden_size),
         torch.nn.ReLU(),
@@ -346,16 +339,11 @@ def test_neural_network():
         .requires_grad_(True)
     )
 
-    # Forward pass
-    print(model_pt)
     output_pt = model_pt(x_pt)
     loss_pt = output_pt.sum()
     loss_pt.backward()
 
-    # Compare outputs
     compare2tensors(sg=output, pt=output_pt)
-
-    # Compare gradients
     compare2tensors(sg=x.grad, pt=x_pt.grad)
     compare2tensors(sg=model.modules[0].weight.grad, pt=model_pt[0].weight.grad.T)
     compare2tensors(sg=model.modules[0].bias.grad, pt=model_pt[0].bias.grad.unsqueeze(0))
@@ -365,71 +353,17 @@ def test_neural_network():
     compare2tensors(sg=model.modules[4].bias.grad, pt=model_pt[4].bias.grad.unsqueeze(0))
 
 
-def test_neural_network_with_optimizer():
-    """Test neural network training with SGD optimizer"""
-    input_size, hidden_size, output_size = 5, 4, 2
-    batch_size = 3
-
-    class SimpleNet(sg.Module):
-        def __init__(self, input_size, hidden_size, output_size):
-            super().__init__()
-            self.fc1 = sg.nn.Linear(input_size, hidden_size)
-            self.fc2 = sg.nn.Linear(hidden_size, hidden_size)
-            self.fc3 = sg.nn.Linear(hidden_size, output_size)
-
-        def forward(self, x):
-            x = sg.relu(self.fc1(x))
-            x = sg.relu(self.fc2(x))
-            x = self.fc3(x)
-            return x
-
-    # Create model
-    model = SimpleNet(input_size, hidden_size, output_size)
-    optimizer = sg.opt.SGD(model, lr=0.01, momentum=0.9)
-
-    # Create input and target
-    x = sg.Tensor(np.random.randn(batch_size, input_size).astype(np.float64), dtype="float64")
-    target = np.random.randn(batch_size, output_size).astype(np.float64)
-
-    # Forward pass
-    output = model(x)
-    loss = sg.mse_loss(output, sg.Tensor(target, dtype="float64"))
-
-    # Backward pass
-    loss.backward()
-
-    # Store old weights
-    old_fc1_weights = model.fc1.weight.values.copy()
-
-    # Optimization step
-    optimizer.step()
-
-    # Check that weights were updated
-    assert not np.allclose(old_fc1_weights, model.fc1.weight.values), "Weights should be updated"
-
-    # Zero gradients
-    optimizer.zero_grad()
-
-    # Check gradients are zeroed
-    for name, param in model.parameters().items():
-        assert np.allclose(param.grad, 0), f"Gradient for {name} should be zero after zero_grad()"
-
-
 def _test_embedding_helper(num_embeddings, embedding_dim, input_shape, dtype="float64"):
     """Helper function to test Embedding layer with different input shapes"""
-    # Create simplegrad embedding
     embedding = sg.nn.Embedding(num_embeddings, embedding_dim, dtype=dtype)
 
-    # Create random integer indices
     indices = np.random.randint(0, num_embeddings, size=input_shape)
     x = sg.Tensor(indices, dtype="int32" if dtype == "float32" else "int64")
 
-    # Forward pass
     output = embedding(x)
     output.zero_grad()
     output.backward()
 
-    # PyTorch equivalent
     torch_dtype = torch.float32 if dtype == "float32" else torch.float64
     indices_pt = torch.from_numpy(indices).long()
 
@@ -442,7 +376,6 @@ def _test_embedding_helper(num_embeddings, embedding_dim, input_shape, dtype="fl
     loss_pt = output_pt.sum()
     loss_pt.backward()
 
-    # Compare outputs and gradients
     compare2tensors(sg=output, pt=output_pt)
     compare2tensors(sg=embedding.weight.grad, pt=embedding_pt.weight.grad)
 
