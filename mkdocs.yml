@@ -3,6 +3,7 @@ site_description: A lightweight autograd engine for education and experimentatio
 
 theme:
   name: material
+  favicon: assets/favicon.svg
   features:
     - navigation.sections
     - navigation.expand
