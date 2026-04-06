@@ -17,3 +17,5 @@ __pycache__/
 *.db 
 experiments/
 site/
+.oneignore
+*local.json

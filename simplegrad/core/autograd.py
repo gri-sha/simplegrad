@@ -277,7 +277,9 @@ class Tensor:
         self.group: tuple[str, int] | None = get_current_group()
 
     @classmethod
-    def deferred(cls, forward_fn: Callable[[], np.ndarray], shape: tuple, dtype: str = "float32") -> "Tensor":
+    def deferred(
+        cls, forward_fn: Callable[[], np.ndarray], shape: tuple, dtype: str = "float32"
+    ) -> "Tensor":
         """Create an unrealized tensor that defers computation to ``.realize()``.
 
         Used internally by ``_create_op_result`` when lazy mode is active. The

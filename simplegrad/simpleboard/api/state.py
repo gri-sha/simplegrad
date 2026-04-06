@@ -7,7 +7,9 @@ from simplegrad.track import ExperimentDBManager
 
 # Global state
 all_exp_dir: Path | None = None  # Directory containing all experiment databases
-exp_db: ExperimentDBManager | None = None  # Manager instance of currently selected experiment database
+exp_db: ExperimentDBManager | None = (
+    None  # Manager instance of currently selected experiment database
+)
 exp_db_name: str | None = None  # Name of the currently selected experiment database
 
 
