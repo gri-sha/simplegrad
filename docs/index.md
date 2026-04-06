@@ -1,4 +1,4 @@
-![simplegrad](../assets/header.png)
+![simplegrad](images/header.png)
 
 A lightweight deep learning framework built on NumPy with automatic differentiation.
 
