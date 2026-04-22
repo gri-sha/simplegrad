@@ -5,10 +5,10 @@ class LinearLR(Scheduler):
     def __init__(
         self,
         optimizer: Optimizer,
-        start_lr: float | None,
-        end_lr: float | None,
-        total_steps: int | None,
-        rate: float | None,
+        start_lr: float | None = None,
+        end_lr: float | None = None,
+        total_steps: int | None = None,
+        rate: float | None = None,
     ) -> None:
         """
         Possible combinations of parameters:
@@ -24,12 +24,7 @@ class LinearLR(Scheduler):
         self.total_steps = total_steps
         self.rate = rate
 
-        if (
-            start_lr is not None
-            and end_lr is not None
-            and total_steps is not None
-            and rate is not None
-        ):
+        if start_lr is not None and end_lr is not None and total_steps is not None and rate is not None:
             raise ValueError(
                 "Parameter mismatch. Only three of the parameters start_lr, end_lr, total_steps, rate should be provided (or two: start_lr, rate)."
             )
@@ -38,14 +33,14 @@ class LinearLR(Scheduler):
         if start_lr is not None and end_lr is not None and total_steps is not None:
             self.rate = (end_lr - start_lr) / total_steps
         # Case 2
-        elif start_lr is not None and end_lr is not None and self.rate is not None:
-            self.total_steps = int((end_lr - start_lr) / self.rate)
+        elif start_lr is not None and end_lr is not None and rate is not None:
+            self.total_steps = int((end_lr - start_lr) / rate)
         # Case 3
-        elif start_lr is not None and total_steps is not None and self.rate is not None:
-            self.end_lr = start_lr + total_steps * self.rate
+        elif start_lr is not None and total_steps is not None and rate is not None:
+            self.end_lr = start_lr + total_steps * rate
         # Case 4
-        elif end_lr is not None and total_steps is not None and self.rate is not None:
-            self.start_lr = end_lr - total_steps * self.rate
+        elif end_lr is not None and total_steps is not None and rate is not None:
+            self.start_lr = end_lr - total_steps * rate
         # Case 5
         elif start_lr is not None and self.rate is not None:
             self.total_steps = float("inf")
@@ -53,7 +48,7 @@ class LinearLR(Scheduler):
     def step(self, *args, **kwargs) -> None:
         if self.steps < self.total_steps:
             new_lr = self.start_lr + self.rate * self.steps
-            self.optimizer.set_lr(new_lr)
+            self.optimizer.set_param("lr", new_lr)
         self.steps += 1
 
 
