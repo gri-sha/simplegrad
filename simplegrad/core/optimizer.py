@@ -1,7 +1,7 @@
 """Abstract base class for all optimizers."""
 
-import numpy as np
 from .module import Module
+from .devices import get_backend
 
 
 class Optimizer:
@@ -99,7 +99,8 @@ class Optimizer:
         """Zero gradients for all parameters across all groups."""
         for group in self.param_groups:
             for param in group["params"].values():
-                param.grad = np.zeros_like(param.values)
+                xp = get_backend(param.device)
+                param.grad = xp.zeros_like(param.values)
 
     def step(self):
         """Perform a single optimization step. Must be implemented by subclasses."""

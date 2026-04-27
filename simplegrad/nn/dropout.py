@@ -19,7 +19,8 @@ class _DropoutEval(Function):
 class _DropoutTrain(Function):
     @staticmethod
     def forward(ctx: Context, x: Tensor, p: float) -> np.ndarray:
-        ctx.mask = np.random.rand(*x.values.shape) >= p
+        xp = ctx.backend
+        ctx.mask = xp.random.rand(*x.values.shape) >= p
         return x.values * ctx.mask
 
     @staticmethod

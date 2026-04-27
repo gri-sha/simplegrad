@@ -2,6 +2,7 @@
 
 import numpy as np
 from ..core import Tensor, Function, Context, is_lazy
+from ..core.devices import get_backend
 
 
 class _Log(Function):
@@ -9,8 +10,9 @@ class _Log(Function):
 
     @staticmethod
     def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        xp = ctx.backend
         ctx.x_values = x.values
-        return np.log(x.values)
+        return xp.log(x.values)
 
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
@@ -22,7 +24,8 @@ class _Exp(Function):
 
     @staticmethod
     def forward(ctx: Context, x: Tensor) -> np.ndarray:
-        ctx.out = np.exp(x.values)
+        xp = ctx.backend
+        ctx.out = xp.exp(x.values)
         return ctx.out
 
     @staticmethod
@@ -35,12 +38,14 @@ class _Sin(Function):
 
     @staticmethod
     def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        xp = ctx.backend
         ctx.x_values = x.values
-        return np.sin(x.values)
+        return xp.sin(x.values)
 
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
-        return grad_output * np.cos(ctx.x_values)
+        xp = ctx.backend
+        return grad_output * xp.cos(ctx.x_values)
 
 
 class _Cos(Function):
@@ -48,12 +53,14 @@ class _Cos(Function):
 
     @staticmethod
     def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        xp = ctx.backend
         ctx.x_values = x.values
-        return np.cos(x.values)
+        return xp.cos(x.values)
 
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
-        return -grad_output * np.sin(ctx.x_values)
+        xp = ctx.backend
+        return -grad_output * xp.sin(ctx.x_values)
 
 
 class _Tan(Function):
@@ -61,12 +68,14 @@ class _Tan(Function):
 
     @staticmethod
     def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        xp = ctx.backend
         ctx.x_values = x.values
-        return np.tan(x.values)
+        return xp.tan(x.values)
 
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
-        return grad_output / (np.cos(ctx.x_values) ** 2)
+        xp = ctx.backend
+        return grad_output / (xp.cos(ctx.x_values) ** 2)
 
 
 def log(x: Tensor) -> Tensor:
@@ -81,7 +90,7 @@ def log(x: Tensor) -> Tensor:
     Raises:
         ValueError: If any value in x is <= 0 (checked in eager mode only).
     """
-    if not is_lazy() and np.any(x.values <= 0):
+    if not is_lazy() and get_backend(x.device).any(x.values <= 0):
         raise ValueError("Log of negative value is undefined")
     return _Log.apply(x)
 

@@ -1,6 +1,6 @@
 """2D convolutional layer."""
 
-import numpy as np
+import math
 from ..core import Tensor, Module, uniform
 from ..functions.conv import conv2d
 
@@ -72,12 +72,13 @@ class Conv2d(Module):
                 kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
             )
             weight_shape = (out_channels, in_channels, *self.kernel_size)
+            bound = math.sqrt(1 / (in_channels * math.prod(self.kernel_size)))
             self.weight = uniform(
                 shape=weight_shape,
                 dtype=self.dtype,
                 label=weight_label,
-                high=np.sqrt(1 / (in_channels * np.prod(self.kernel_size))),
-                low=-np.sqrt(1 / (in_channels * np.prod(self.kernel_size))),
+                high=bound,
+                low=-bound,
             )
 
         if use_bias:
@@ -88,12 +89,13 @@ class Conv2d(Module):
                 self.bias = bias
                 self.bias.label = bias_label
             else:
+                bound = math.sqrt(1 / (in_channels * math.prod(self.kernel_size)))
                 self.bias = uniform(
                     shape=(out_channels,),
                     dtype=self.dtype,
                     label=weight_label,
-                    high=np.sqrt(1 / (in_channels * np.prod(self.kernel_size))),
-                    low=-np.sqrt(1 / (in_channels * np.prod(self.kernel_size))),
+                    high=bound,
+                    low=-bound,
                 )
         else:
             self.bias = None

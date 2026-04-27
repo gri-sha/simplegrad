@@ -1,6 +1,6 @@
 """Fully-connected (linear/dense) layer."""
 
-import numpy as np
+import math
 from ..core import Tensor, uniform, Module, Context
 
 
@@ -46,12 +46,13 @@ class Linear(Module):
             assert out_features > 0, "out_features must be a positive integer"
             self.out_features = out_features
 
+            bound = math.sqrt(1 / self.in_features)
             self.weight = uniform(
                 shape=(self.in_features, self.out_features),
                 dtype=self.dtype,
                 label=weight_label,
-                high=np.sqrt(1 / self.in_features),
-                low=-np.sqrt(1 / self.in_features),
+                high=bound,
+                low=-bound,
             )
 
         if self.use_bias:
@@ -62,12 +63,13 @@ class Linear(Module):
                 self.bias = bias
                 self.bias.label = bias_label
             else:
+                bound = math.sqrt(1 / self.in_features)
                 self.bias = uniform(
                     shape=(self.out_features,),
                     dtype=self.dtype,
                     label=bias_label,
-                    high=np.sqrt(1 / self.in_features),
-                    low=-np.sqrt(1 / self.in_features),
+                    high=bound,
+                    low=-bound,
                 )
 
     def forward(self, x: Tensor) -> Tensor:

@@ -13,12 +13,14 @@ class _Sum(Function):
 
     @staticmethod
     def forward(ctx: Context, x: Tensor, dim: int | None = None) -> np.ndarray:
+        xp = ctx.backend
         ctx.x_shape = x.shape
-        return np.sum(x.values, axis=dim, keepdims=True)
+        return xp.sum(x.values, axis=dim, keepdims=True)
 
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
-        return np.ones(ctx.x_shape) * grad_output
+        xp = ctx.backend
+        return xp.ones(ctx.x_shape) * grad_output
 
 
 class _Trace(Function):
@@ -30,13 +32,17 @@ class _Trace(Function):
 
     @staticmethod
     def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        xp = ctx.backend
         ctx.x_shape = x.shape
-        return np.array([[np.trace(x.values)]])
+        return xp.array([[xp.trace(x.values)]])
 
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
-        grad = np.zeros(ctx.x_shape)
-        np.fill_diagonal(grad, grad_output.flatten())
+        xp = ctx.backend
+        grad = xp.zeros(ctx.x_shape)
+        n = min(ctx.x_shape)
+        idxs = xp.arange(n)
+        grad[idxs, idxs] = grad_output.flatten()[:n]
         return grad
 
 
@@ -54,7 +60,8 @@ class _Argmax(Function):
     def forward(
         ctx: Context, x: Tensor, dim: int | None = None, dtype: str = "int32"
     ) -> np.ndarray:
-        return np.argmax(x.values, axis=dim)
+        xp = ctx.backend
+        return xp.argmax(x.values, axis=dim)
 
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
@@ -75,7 +82,8 @@ class _Argmin(Function):
     def forward(
         ctx: Context, x: Tensor, dim: int | None = None, dtype: str = "int32"
     ) -> np.ndarray:
-        return np.argmin(x.values, axis=dim)
+        xp = ctx.backend
+        return xp.argmin(x.values, axis=dim)
 
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:

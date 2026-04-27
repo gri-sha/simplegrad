@@ -12,8 +12,21 @@ It's not a toy. It ships a full autograd engine, conv layers, optimizers, schedu
 
 ## Install
 
+The package is not yet published to PyPI. Clone the repo and install in editable mode:
+
 ```bash
-pip install simplegrad
+git clone https://github.com/gri-sha/simplegrad.git
+cd simplegrad
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -e ".[dev,docs,cuda12]"
+```
+
+For CUDA support, install the extra matching your CUDA version:
+
+```bash
+pip install -e ".[dev,cuda12]"   # CUDA 12.x
+pip install -e ".[dev,cuda13]"   # CUDA 13.x
 ```
 
 ## Quick start

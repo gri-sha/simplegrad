@@ -1,7 +1,7 @@
 """Stochastic Gradient Descent optimizer with optional momentum."""
 
 from ..core import Optimizer, Module
-import numpy as np
+from ..core.devices import get_backend
 
 
 class SGD(Optimizer):
@@ -50,7 +50,7 @@ class SGD(Optimizer):
         super().__init__(lr, model, param_groups, momentum=momentum, dampening=dampening)
 
         self.velocities = {
-            (group["label"], name): np.zeros_like(param.values)
+            (group["label"], name): get_backend(param.device).zeros_like(param.values)
             for group in self.param_groups
             for name, param in group["params"].items()
         }

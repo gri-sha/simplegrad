@@ -1,7 +1,8 @@
 """Base Module class for all neural network layers."""
 
-import numpy as np
+import math
 from .autograd import Tensor
+from .devices import get_backend, validate_device
 
 
 class Module:
@@ -106,6 +107,33 @@ class Module:
     def __str__(self) -> str:
         return f"{self.label} Module"
 
+    def to_device(self, device: str) -> "Module":
+        """Move all parameters to the target device in-place.
+
+        Transfers every parameter tensor's underlying array to the backend
+        of the given device (e.g. from numpy to cupy when moving to CUDA).
+        Returns self for chaining.
+
+        Args:
+            device: Target device string, e.g. ``"cpu"`` or ``"cuda:0"``.
+
+        Returns:
+            This module (mutated in-place).
+
+        Raises:
+            ValueError: If the device string is invalid.
+
+        Example:
+            >>> model = Linear(4, 2)
+            >>> model.to_device("cuda:0")
+        """
+        validate_device(device)
+        xp = get_backend(device)
+        for param in self._get_parameters().values():
+            param.values = xp.array(param.values)
+            param.device = device
+        return self
+
     def summary(self) -> None:
         """Print a table of all parameters, their shapes, and total parameter count."""
         print(f"Parameters of {self.label}\n")
@@ -114,7 +142,7 @@ class Module:
         params = self.parameters()
         tot = 0
         for name, tensor in params.items():
-            tr = np.prod(tensor.shape)
+            tr = math.prod(tensor.shape)
             tot += tr
             print(f"{name:<20} {str(tensor.shape):<15} {str(tr):<40}")
         print("-" * 60)

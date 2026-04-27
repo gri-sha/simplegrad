@@ -1,7 +1,7 @@
 """Adam optimizer."""
 
-import numpy as np
 from ..core import Optimizer, Module
+from ..core.devices import get_backend
 
 
 class Adam(Optimizer):
@@ -50,12 +50,12 @@ class Adam(Optimizer):
         super().__init__(lr, model, param_groups, beta_1=beta_1, beta_2=beta_2, eps=eps)
 
         self.moments1 = {
-            (group["label"], name): np.zeros_like(param.values)
+            (group["label"], name): get_backend(param.device).zeros_like(param.values)
             for group in self.param_groups
             for name, param in group["params"].items()
         }
         self.moments2 = {
-            (group["label"], name): np.zeros_like(param.values)
+            (group["label"], name): get_backend(param.device).zeros_like(param.values)
             for group in self.param_groups
             for name, param in group["params"].items()
         }
@@ -95,7 +95,8 @@ class Adam(Optimizer):
                 v_hat = self.moments2[key] / (1 - beta_2**self.step_count)
 
                 # Update parameters
-                param.values -= lr * m_hat / (np.sqrt(v_hat) + eps)
+                xp = get_backend(param.device)
+                param.values -= lr * m_hat / (xp.sqrt(v_hat) + eps)
 
     def state(self) -> dict:
         """Return the full optimizer state, including hyperparameters and moment estimates.

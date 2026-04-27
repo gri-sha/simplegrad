@@ -14,8 +14,7 @@ class ReduceLROnPlateauLR(Scheduler):
         factor: Multiplicative factor applied to the learning rate when a plateau
             is detected. For example, 0.1 reduces the lr by a factor of 10.
         patience: Number of consecutive steps with no improvement before the
-            learning rate is reduced. Set to 0 to reduce on every step that
-            shows no improvement.
+            learning rate is reduced. Default is 10.
         min_lr: Lower bound on the learning rate. Can be a scalar or a list of
             floats for each parameter group. Default is 0.
         threshold: Minimum change in the monitored quantity to qualify as an
@@ -35,6 +34,8 @@ class ReduceLROnPlateauLR(Scheduler):
             (e.g., for loss). Default is ``False``.
         verbose: If ``True``, a message is printed each time the learning rate
             is reduced. Default is ``False``.
+        eps: Minimum decay applied to lr. If the difference between new and old
+            lr is smaller than eps, the update is ignored. Default is 1e-8.
     """
 
     def __init__(
@@ -48,6 +49,7 @@ class ReduceLROnPlateauLR(Scheduler):
         cooldown: int = 0,
         maximize_metric: bool = False,
         verbose: bool = False,
+        eps: float = 1e-8,
     ):
         super().__init__(optimizer)
         if factor >= 1.0:
@@ -67,6 +69,7 @@ class ReduceLROnPlateauLR(Scheduler):
         self.cooldown = cooldown
         self.maximize_metric = maximize_metric
         self.verbose = verbose
+        self.eps = eps
 
         self.best = None
         self.num_bad_steps = 0

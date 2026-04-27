@@ -22,9 +22,10 @@ class _EmbeddingLookup(Function):
 
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> tuple:
-        weight_grad = np.zeros(ctx.weight_shape)
+        xp = ctx.backend
+        weight_grad = xp.zeros(ctx.weight_shape)
         grad_values = grad_output.reshape(-1, ctx.embedding_dim)
-        np.add.at(weight_grad, ctx.flat_input, grad_values)
+        xp.add.at(weight_grad, ctx.flat_input, grad_values)
         return weight_grad, None
 
 

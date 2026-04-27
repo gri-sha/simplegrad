@@ -12,10 +12,11 @@ class _CELoss(Function):
 
     @staticmethod
     def forward(ctx: Context, z: Tensor, y: Tensor, dim: int) -> np.ndarray:
-        exps = np.exp(z.values - np.max(z.values, axis=dim, keepdims=True))
-        ctx.s = exps / np.sum(exps, axis=dim, keepdims=True)
+        xp = ctx.backend
+        exps = xp.exp(z.values - xp.max(z.values, axis=dim, keepdims=True))
+        ctx.s = exps / xp.sum(exps, axis=dim, keepdims=True)
         ctx.y_values = y.values
-        return -np.sum(y.values * np.log(ctx.s + 1e-12), axis=dim, keepdims=True)
+        return -xp.sum(y.values * xp.log(ctx.s + 1e-12), axis=dim, keepdims=True)
 
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> tuple:

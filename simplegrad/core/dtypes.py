@@ -1,4 +1,5 @@
 import numpy as np
+from .devices import get_backend
 
 # default dtype
 _DTYPE = "float32"
@@ -40,9 +41,23 @@ def get_dtype_class(dtype: str):
     return DTYPES[dtype]
 
 
-def as_array(values, dtype=None, **kwargs):
-    """Convert values into numpy array with current dtype."""
-    return np.array(
+def as_array(values, dtype=None, device: str = "cpu", **kwargs):
+    """Convert values into an array on the given device with the specified dtype.
+
+    Routes to numpy for ``"cpu"`` and cupy for ``"cuda:N"``. The dtype
+    defaults to the current global dtype when not specified.
+
+    Args:
+        values: Input data (list, ndarray, scalar, or backend array).
+        dtype: NumPy dtype class or None to use the global default.
+        device: Device string controlling which backend to use.
+        **kwargs: Forwarded to the backend ``array()`` constructor.
+
+    Returns:
+        Array of the requested dtype on the given device.
+    """
+    xp = get_backend(device)
+    return xp.array(
         values, dtype=dtype if dtype is not None else get_global_dtype_class(), **kwargs
     )
 

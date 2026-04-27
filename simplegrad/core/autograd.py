@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from typing import Callable
 from .dtypes import as_array, convert_to_dtype
 from .compound_ops import get_current_group
+from .devices import get_default_device, get_backend, validate_same_device, validate_device
 
 _COMP_GRAD = True
 _LAZY_MODE: bool = False
@@ -102,24 +103,26 @@ def set_mode(mode: str) -> None:
         raise ValueError(f"Unknown mode '{mode}'. Expected 'eager' or 'lazy'.")
 
 
-def _create_op_result(forward_fn, shape: tuple, dtype: str):
+def _create_op_result(forward_fn, shape: tuple, dtype: str, device: str = "cpu"):
     """Create the output tensor for an operation, respecting the current execution mode.
 
-    In eager mode, calls ``forward_fn()`` immediately and wraps the numpy result
-    in a new Tensor. In lazy mode, creates a shell Tensor with ``values=None``
-    and stores ``forward_fn`` to be executed later by ``.realize()``.
+    In eager mode, calls ``forward_fn()`` immediately and wraps the result
+    in a new Tensor on the given device. In lazy mode, creates a shell Tensor
+    with ``values=None`` and stores ``forward_fn`` to be executed later by
+    ``.realize()``.
 
     This is the single function that all op implementations call instead of
     writing ``Tensor(np.some_op(x.values))`` directly. Keeping all mode-dispatch
     logic here means op functions never need to branch on eager vs lazy themselves.
 
     Args:
-        forward_fn: Zero-argument callable returning a numpy ndarray. Captures
+        forward_fn: Zero-argument callable returning a backend ndarray. Captures
             input tensor objects (not their values), so it stays valid until
             ``.realize()`` populates those tensors' ``.values``.
         shape: The output tensor's shape. Must be correct — this is what
             ``tensor.shape`` will return before ``.realize()`` is called.
         dtype: Output dtype string (e.g. ``"float32"``).
+        device: Device string for the output tensor. Defaults to ``"cpu"``.
 
     Returns:
         A new Tensor. In eager mode, ``tensor.values`` is populated. In lazy
@@ -127,8 +130,8 @@ def _create_op_result(forward_fn, shape: tuple, dtype: str):
         ``forward_fn``.
     """
     if is_lazy():
-        return Tensor.deferred(forward_fn, shape=shape, dtype=dtype)
-    return Tensor(forward_fn(), dtype=dtype)
+        return Tensor.deferred(forward_fn, shape=shape, dtype=dtype, device=device)
+    return Tensor(forward_fn(), dtype=dtype, device=device)
 
 
 class Context:
@@ -141,16 +144,27 @@ class Context:
     ``.realize()`` time — either way, the backward always runs after the forward,
     so ``ctx`` attributes are always populated by the time they are read.
 
-    Attributes are set freely with dot notation — use whatever names are
-    meaningful for the op.
+    Two attributes are set automatically by :meth:`Function.apply` before
+    ``forward`` is called:
+
+    Attributes:
+        device: Device string of the operation's tensors (e.g. ``"cpu"``).
+        backend: The compute module for this device — either :mod:`numpy`
+            or :mod:`cupy`. Forward and backward methods should alias this
+            as ``xp = ctx.backend`` and use ``xp.*`` instead of ``np.*``.
+
+    Additional attributes are set freely with dot notation — use whatever
+    names are meaningful for the op.
 
     Example:
         >>> ctx = Context()
-        >>> ctx.mask = np.random.rand(*x.values.shape) >= p
+        >>> xp = ctx.backend
+        >>> ctx.mask = xp.random.rand(*x.values.shape) >= p
         >>> ctx.mask  # available in backward
     """
 
-    pass
+    device: str = "cpu"
+    backend = np
 
 
 class Function:
@@ -191,10 +205,14 @@ class Function:
 
         ctx = Context()
         tensor_inputs = [t for t in inputs if isinstance(t, Tensor)]
+        device = validate_same_device(*tensor_inputs)
+        ctx.device = device
+        ctx.backend = get_backend(device)
         out = _create_op_result(
             lambda: cls.forward(ctx, *inputs),
             shape=cls.output_shape(*inputs),
             dtype=tensor_inputs[0].dtype,
+            device=device,
         )
         out.prev = set(tensor_inputs)
         out.comp_grad = _should_compute_grad(*tensor_inputs) and cls.differentiable
@@ -242,28 +260,34 @@ class Function:
 class Tensor:
     """N-dimensional array with automatic differentiation support.
 
-    Wraps a numpy array and records operations into a dynamic computation graph.
-    Call `.backward()` on a scalar output to propagate gradients back to all
-    leaf tensors with `comp_grad=True`.
+    Wraps a numpy or cupy array and records operations into a dynamic
+    computation graph. Call `.backward()` on a scalar output to propagate
+    gradients back to all leaf tensors with `comp_grad=True`.
 
     Args:
-        values: Initial data. Converted to a numpy array of the given dtype.
+        values: Initial data. Converted to an array of the given dtype on
+            the given device.
         comp_grad: Enable gradient tracking. Defaults to the global `_COMP_GRAD` flag.
         label: Optional name shown in computation graph visualizations.
         dtype: Data type string (e.g. ``"float32"``). Defaults to ``"float32"``.
+        device: Device string (e.g. ``"cpu"`` or ``"cuda:0"``). Defaults to
+            the current global default device.
     """
 
     def __init__(
         self,
-        values: np.ndarray | list | None = None,
+        values=None,
         comp_grad: bool = None,
         label: str | None = None,
         dtype: str | None = None,
+        device: str | None = None,
     ) -> None:
         self.dtype = dtype if dtype is not None else "float32"
+        self.device = device if device is not None else get_default_device()
+        xp = get_backend(self.device)
         if values is None:
-            values = np.array([])
-        self.values = as_array(values, self.dtype)
+            values = xp.array([])
+        self.values = as_array(values, self.dtype, device=self.device)
         self.shape = self.values.shape
         self._forward_fn = None
 
@@ -278,7 +302,11 @@ class Tensor:
 
     @classmethod
     def deferred(
-        cls, forward_fn: Callable[[], np.ndarray], shape: tuple, dtype: str = "float32"
+        cls,
+        forward_fn: Callable[[], np.ndarray],
+        shape: tuple,
+        dtype: str = "float32",
+        device: str | None = None,
     ) -> "Tensor":
         """Create an unrealized tensor that defers computation to ``.realize()``.
 
@@ -287,17 +315,19 @@ class Tensor:
         until ``.realize()`` walks the graph and calls ``forward_fn``.
 
         Args:
-            forward_fn: Zero-argument callable that returns a numpy ndarray.
+            forward_fn: Zero-argument callable that returns a backend ndarray.
                 Captures input tensors by reference, so it stays valid until
                 ``.realize()`` populates their ``.values``.
             shape: Output shape. Available immediately without executing the op.
             dtype: Data type string. Defaults to ``"float32"``.
+            device: Device string. Defaults to the current global default device.
 
         Returns:
             An unrealized Tensor with ``values=None``.
         """
         t = cls.__new__(cls)
         t.dtype = dtype
+        t.device = device if device is not None else get_default_device()
         t.values = None
         t.shape = shape
         t._forward_fn = forward_fn
@@ -339,6 +369,42 @@ class Tensor:
             if self.grad is not None:
                 new_tensor.grad = convert_to_dtype(self.grad, dtype)
             return new_tensor
+
+    def to_device(self, device: str) -> "Tensor":
+        """Copy this tensor to the target device, returning a new leaf Tensor.
+
+        Transfers the underlying array to the backend of the target device
+        (e.g. from numpy to cupy when moving from CPU to CUDA). The returned
+        tensor is a new leaf with no gradient history — it is detached from
+        the computation graph of the original tensor.
+
+        Args:
+            device: Target device string, e.g. ``"cpu"`` or ``"cuda:0"``.
+
+        Returns:
+            A new Tensor on the target device with the same dtype and
+            ``comp_grad`` as the original.
+
+        Raises:
+            ValueError: If the device string is invalid.
+            RuntimeError: If this tensor is unrealized. Call ``.realize()`` first.
+
+        Example:
+            >>> x = Tensor([1.0, 2.0], device="cpu")
+            >>> x_gpu = x.to_device("cuda:0")
+            >>> x_gpu.device
+            'cuda:0'
+        """
+        if self.values is None:
+            raise RuntimeError("Cannot move an unrealized tensor. Call .realize() first.")
+        validate_device(device)
+        xp = get_backend(device)
+        return Tensor(
+            values=xp.array(self.values),
+            dtype=self.dtype,
+            comp_grad=self.comp_grad,
+            device=device,
+        )
 
     def __len__(self) -> int:
         if self.values is None:
@@ -385,7 +451,7 @@ class Tensor:
     def zero_grad(self):
         """Zero gradients on all leaf tensors in the computation graph."""
         if self.comp_grad and self.is_leaf:
-            self.grad = np.zeros(self.shape)
+            self.grad = get_backend(self.device).zeros(self.shape)
         for t in self.prev:
             t.zero_grad()
 
@@ -467,7 +533,7 @@ class Tensor:
 
         build_topo(self)
 
-        self.grad = np.ones(self.values.shape)
+        self.grad = get_backend(self.device).ones(self.values.shape)
         for t in reversed(topo_order):
             t.backward_step()
 
@@ -478,7 +544,7 @@ class Tensor:
     def _init_grad_if_needed(self) -> None:
         """Initialize gradient array to zeros if not yet set."""
         if self.grad is None:
-            self.grad = np.zeros(self.shape)
+            self.grad = get_backend(self.device).zeros(self.shape)
 
     def _reduce_broadcasted_dims(self, delta: np.ndarray) -> np.ndarray:
         """Sum gradient over broadcast dimensions to match this tensor's shape."""
@@ -513,7 +579,7 @@ class Tensor:
         """Raise to a scalar power element-wise."""
         if not isinstance(other, (float, int)):
             raise ValueError(f"Only 'float' or 'int' exponents are supported, got {type(other)}")
-        if not is_lazy() and np.any(self.values < 0) and not float(other).is_integer():
+        if not is_lazy() and get_backend(self.device).any(self.values < 0) and not float(other).is_integer():
             raise ValueError(
                 f"Invalid: {self.label if self.label else 'Tensor'} ** {other} would be complex."
             )
@@ -649,8 +715,9 @@ class _Matmul(Function):
         # dz/dy = x^T @ grad_output
         # In batched matmul, we treat only the last two axes as matrix axes and all preceding axes as batch axes.
         # Therefore we use swapaxes(-1, -2) to transpose each matrix independently while leaving batch dimensions unchanged.
-        grad_x = np.matmul(grad_output, ctx.y_values.swapaxes(-1, -2))  #
-        grad_y = np.matmul(ctx.x_values.swapaxes(-1, -2), grad_output)
+        xp = ctx.backend
+        grad_x = xp.matmul(grad_output, ctx.y_values.swapaxes(-1, -2))
+        grad_y = xp.matmul(ctx.x_values.swapaxes(-1, -2), grad_output)
         return grad_x, grad_y
 
 

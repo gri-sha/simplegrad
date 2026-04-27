@@ -11,8 +11,9 @@ class _Relu(Function):
 
     @staticmethod
     def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        xp = ctx.backend
         ctx.mask = x.values > 0
-        return np.maximum(0, x.values)
+        return xp.maximum(0, x.values)
 
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
@@ -24,7 +25,8 @@ class _Tanh(Function):
 
     @staticmethod
     def forward(ctx: Context, x: Tensor) -> np.ndarray:
-        ctx.out = np.tanh(x.values)
+        xp = ctx.backend
+        ctx.out = xp.tanh(x.values)
         return ctx.out
 
     @staticmethod
@@ -37,7 +39,8 @@ class _Sigmoid(Function):
 
     @staticmethod
     def forward(ctx: Context, x: Tensor) -> np.ndarray:
-        ctx.out = 1 / (1 + np.exp(-x.values))
+        xp = ctx.backend
+        ctx.out = 1 / (1 + xp.exp(-x.values))
         return ctx.out
 
     @staticmethod
