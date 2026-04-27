@@ -63,6 +63,6 @@ nav:
     - SGD: api/optimizers/sgd.md
     - Adam: api/optimizers/adam.md
   - Schedulers:
-    - LinearLR: api/schedulers/linear.md
+    - Overview: api/schedulers/linear.md
   - Tracking: api/track.md
   - Visualization: api/visual.md

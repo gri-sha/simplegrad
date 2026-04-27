@@ -206,7 +206,7 @@ class Function:
 
     @classmethod
     def _accumulate(cls, ctx, out, tensor_inputs: list) -> None:
-        """Call backward and accumulate the returned gradients into each input."""
+        """This is a wrapper around backward for gradient accumulation: calls backward() and accumulates returned gradients into .grad of each input tensor."""
         grads = cls.backward(ctx, out.grad)
         if not isinstance(grads, tuple):
             grads = (grads,)
