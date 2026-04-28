@@ -57,7 +57,7 @@ def as_array(values, dtype=None, device: str = "cpu", **kwargs):
         Array of the requested dtype on the given device.
     """
     xp = get_backend(device)
-    return xp.array(
+    return xp.asarray(
         values, dtype=dtype if dtype is not None else get_global_dtype_class(), **kwargs
     )
 

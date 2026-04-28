@@ -2,6 +2,7 @@
 
 from .autograd import Tensor
 from .devices import get_backend, get_default_device
+from .dtypes import get_dtype_class
 
 
 def zeros(
@@ -22,7 +23,7 @@ def zeros(
     """
     dev = device if device is not None else get_default_device()
     xp = get_backend(dev)
-    return Tensor(values=xp.zeros(shape), dtype=dtype, comp_grad=comp_grad, label=label, device=dev)
+    return Tensor(values=xp.zeros(shape, dtype=get_dtype_class(dtype)), dtype=dtype, comp_grad=comp_grad, label=label, device=dev)
 
 
 def ones(
@@ -43,7 +44,7 @@ def ones(
     """
     dev = device if device is not None else get_default_device()
     xp = get_backend(dev)
-    return Tensor(values=xp.ones(shape), dtype=dtype, comp_grad=comp_grad, label=label, device=dev)
+    return Tensor(values=xp.ones(shape, dtype=get_dtype_class(dtype)), dtype=dtype, comp_grad=comp_grad, label=label, device=dev)
 
 
 def normal(
@@ -69,7 +70,7 @@ def normal(
     dev = device if device is not None else get_default_device()
     xp = get_backend(dev)
     return Tensor(
-        values=xp.random.normal(size=shape, loc=mu, scale=sigma),
+        values=xp.random.normal(size=shape, loc=mu, scale=sigma).astype(get_dtype_class(dtype)),
         dtype=dtype,
         comp_grad=comp_grad,
         label=label,
@@ -100,7 +101,7 @@ def uniform(
     dev = device if device is not None else get_default_device()
     xp = get_backend(dev)
     return Tensor(
-        values=xp.random.uniform(size=shape, low=low, high=high),
+        values=xp.random.uniform(size=shape, low=low, high=high).astype(get_dtype_class(dtype)),
         dtype=dtype,
         comp_grad=comp_grad,
         label=label,
@@ -128,4 +129,4 @@ def full(
     """
     dev = device if device is not None else get_default_device()
     xp = get_backend(dev)
-    return Tensor(values=xp.full(shape, fill_value), dtype=dtype, comp_grad=comp_grad, label=label, device=dev)
+    return Tensor(values=xp.full(shape, fill_value, dtype=get_dtype_class(dtype)), dtype=dtype, comp_grad=comp_grad, label=label, device=dev)
