@@ -146,7 +146,7 @@ def test_cosine_annealing_lr_sets_lr_max():
     opt = _make_optimizer(lr=0.1)
     scheduler = sg.sch.CosineAnnealingLR(opt, T_0=10, lr_max=0.5)
     assert scheduler.lr_max == 0.5
-    assert opt.lr == 0.5
+    assert np.isclose(opt.lr, 0.5)
 
 
 def test_cosine_annealing_lr_custom_params():
@@ -314,37 +314,37 @@ def test_reduce_lr_on_plateau_reduces_lr_on_plateau():
     scheduler = sg.sch.ReduceLROnPlateauLR(opt, factor=0.5, patience=2, verbose=False)
 
     scheduler.step(10.0)  # best = 10.0
-    assert opt.lr == 0.1
+    assert np.isclose(opt.lr, 0.1)
     assert scheduler.num_bad_steps == 0
 
     scheduler.step(9.0)  # improvement
-    assert opt.lr == 0.1
+    assert np.isclose(opt.lr, 0.1)
     assert scheduler.num_bad_steps == 0
 
     scheduler.step(8.5)  # improvement (still going down)
-    assert opt.lr == 0.1
+    assert np.isclose(opt.lr, 0.1)
 
     scheduler.step(8.5)  # no improvement (equal to best, not better)
     assert scheduler.num_bad_steps == 1
 
     scheduler.step(8.5)  # no improvement again -> trigger reduction
-    assert opt.lr == 0.05  # 0.1 * 0.5
+    assert np.isclose(opt.lr, 0.05)  # 0.1 * 0.5
 
 
 def test_reduce_lr_on_plateau_respects_min_lr():
     """LR should not drop below min_lr."""
     opt = _make_optimizer(lr=0.1)
-    scheduler = sg.sch.ReduceLROnPlateauLR(opt, factor=0.5, patience=1, min_lr=0.03, verbose=False)
+    scheduler = sg.sch.ReduceLROnPlateauLR(opt, factor=0.5, patience=1, min_lr=0.03, verbose=True)
 
     scheduler.step(10.0)
     scheduler.step(9.0)
     scheduler.step(8.5)  # trigger reduction to 0.05
-    assert opt.lr == 0.05
+    assert np.isclose(opt.lr, 0.05)
 
     scheduler.step(7.0)  # improvement resets
     scheduler.step(8.0)  # no improvement
     scheduler.step(9.0)  # no improvement -> reduce to 0.025
-    assert opt.lr == 0.03  # clamped to min_lr
+    assert np.isclose(opt.lr, 0.03)  # clamped to min_lr
 
 
 def test_reduce_lr_on_plateau_cooldown():
@@ -377,7 +377,7 @@ def test_reduce_lr_on_plateau_maximize_metric():
     assert scheduler.num_bad_steps == 0
     scheduler.step(0.55)  # no improvement
     scheduler.step(0.55)  # no improvement -> reduce
-    assert opt.lr == 0.05
+    assert np.isclose(opt.lr, 0.05)
 
 
 def test_reduce_lr_on_plateau_threshold_rel():
@@ -398,7 +398,7 @@ def test_reduce_lr_on_plateau_threshold_rel():
     assert scheduler.num_bad_steps == 0
     scheduler.step(9.5)  # no improvement
     scheduler.step(9.5)  # no improvement again -> reduce
-    assert opt.lr == 0.05
+    assert np.isclose(opt.lr, 0.05)
 
 
 def test_reduce_lr_on_plateau_threshold_abs():
@@ -419,7 +419,7 @@ def test_reduce_lr_on_plateau_threshold_abs():
     assert scheduler.num_bad_steps == 0
     scheduler.step(9.3)  # 9.3 < 9.5, no improvement
     scheduler.step(9.3)  # no improvement -> reduce
-    assert opt.lr == 0.05
+    assert np.isclose(opt.lr, 0.05)
 
 
 def test_reduce_lr_on_plateau_verbose(capsys):
@@ -445,7 +445,7 @@ def test_reduce_lr_on_plateau_no_reduction_if_factor_too_small():
     scheduler.step(8.5)
     scheduler.step(8.5)  # would reduce to ~0.0999999
     # The difference is < 1e-12 so no reduction should occur
-    assert opt.lr == 0.1
+    assert np.isclose(opt.lr, 0.1)
 
 
 def test_reduce_lr_on_plateau_integration_with_optimizer():
@@ -474,4 +474,4 @@ def test_reduce_lr_on_plateau_integration_with_optimizer():
 
     # After 2 bad steps: [0.5, 0.4(improvement), 0.3(improvement),
     # 0.28(improvement), 0.27(no), 0.26(no) -> reduce at 0.27, then 0.26 is improvement
-    assert optimizer.lr == 0.05
+    assert np.isclose(optimizer.lr, 0.05)

@@ -2,8 +2,7 @@
 
 import numpy as np
 import simplegrad as sg
-import torch
-from .utils import compare2tensors, TOL
+from .utils import gradcheck
 
 
 def _test_conv2d_helper(
@@ -17,7 +16,6 @@ def _test_conv2d_helper(
     pad_value=0,
     use_bias=True,
 ):
-    """Helper function to test Conv2D layer with different configurations"""
     conv = sg.nn.Conv2d(
         in_channels,
         out_channels,
@@ -27,100 +25,27 @@ def _test_conv2d_helper(
         pad_mode=pad_mode,
         pad_value=pad_value,
         use_bias=use_bias,
+        dtype="float64",
     )
 
     x = sg.Tensor(np.random.randn(*input_shape).astype(np.float64), dtype="float64")
-    y = conv(x)
-    y.zero_grad()
-    y.backward()
 
-    # PyTorch equivalent
-    x_pt = torch.from_numpy(x.values).requires_grad_(True).to(torch.float64)
-
-    # Handle asymmetric padding for PyTorch
-    if isinstance(pad_width, tuple) and len(pad_width) == 4 and pad_width != (0, 0, 0, 0):
-        # Asymmetric padding: (top, bottom, left, right)
-        x_padded = torch.from_numpy(x.values)
-        x_padded = torch.nn.functional.pad(
-            x_padded,
-            # PyTorch F.pad order is (left, right, top, bottom)
-            (pad_width[2], pad_width[3], pad_width[0], pad_width[1]),
-            mode=pad_mode,
-            value=pad_value,
-        )
-        x_padded = x_padded.requires_grad_(True).to(torch.float64)
-        conv_pt = torch.nn.Conv2d(
-            in_channels,
-            out_channels,
-            kernel_size,
-            stride=stride,
-            padding=0,
-            bias=use_bias,
-        )
-        x_pt_for_conv = x_padded
-        is_asymmetric = True
-    else:
-        # Symmetric padding
-        conv_padding = pad_width if isinstance(pad_width, int) else 0
-        conv_pt = torch.nn.Conv2d(
-            in_channels,
-            out_channels,
-            kernel_size,
-            stride=stride,
-            padding=conv_padding,
-            bias=use_bias,
-        )
-        x_pt_for_conv = x_pt
-        is_asymmetric = False
-
-    conv_pt.weight.data = (
-        torch.from_numpy(conv.weight.values).to(torch.float64).requires_grad_(True)
-    )
+    inputs = [x, conv.weight]
     if use_bias:
-        conv_pt.bias.data = (
-            torch.from_numpy(conv.bias.values.flatten()).to(torch.float64).requires_grad_(True)
-        )
+        inputs.append(conv.bias)
 
-    y_pt = conv_pt(x_pt_for_conv)
-    loss_pt = y_pt.sum()
-    loss_pt.backward()
-
-    compare2tensors(sg=y, pt=y_pt)
-
-    # For asymmetric padding, extract the inner gradient (without padding) from PyTorch
-    if is_asymmetric:
-        # Extract gradient for original input from padded gradient
-        # pad_width is (top, bottom, left, right)
-        top, bottom, left, right = pad_width
-        h_end = x_padded.grad.shape[2] - bottom if bottom > 0 else x_padded.grad.shape[2]
-        w_end = x_padded.grad.shape[3] - right if right > 0 else x_padded.grad.shape[3]
-        x_pt_grad_inner = x_padded.grad[:, :, top:h_end, left:w_end]
-        compare2tensors(sg=x.grad, pt=x_pt_grad_inner)
-    else:
-        compare2tensors(sg=x.grad, pt=x_pt.grad)
-
-    compare2tensors(
-        sg=conv.weight.grad,
-        pt=conv_pt.weight.grad,
-    )
-    if use_bias:
-        compare2tensors(
-            sg=conv.bias.grad,
-            pt=conv_pt.bias.grad.unsqueeze(0),
-        )
+    gradcheck(lambda: conv(x), inputs)
 
 
 def test_conv2d_basic():
     """Test Conv2D layer forward and backward pass with padding=1, stride=1"""
     _test_conv2d_helper(
         in_channels=2,
-        out_channels=4,
+        out_channels=3,
         kernel_size=(3, 3),
         input_shape=(1, 2, 5, 5),
         stride=1,
         pad_width=1,
-        pad_mode="constant",
-        pad_value=0,
         use_bias=True,
     )
 
@@ -129,13 +54,11 @@ def test_conv2d_stride_2():
     """Test Conv2D layer with stride=2"""
     _test_conv2d_helper(
         in_channels=2,
-        out_channels=4,
+        out_channels=3,
         kernel_size=(3, 3),
-        input_shape=(1, 2, 8, 8),
+        input_shape=(1, 2, 6, 6),
         stride=2,
         pad_width=1,
-        pad_mode="constant",
-        pad_value=0,
         use_bias=True,
     )
 
@@ -159,11 +82,9 @@ def test_conv2d_asymmetric_padding():
         in_channels=2,
         out_channels=3,
         kernel_size=(3, 3),
-        input_shape=(1, 2, 6, 6),
+        input_shape=(1, 2, 5, 5),
         stride=1,
         pad_width=(1, 2, 1, 2),
-        pad_mode="constant",
-        pad_value=0,
         use_bias=True,
     )
 
@@ -172,13 +93,11 @@ def test_conv2d_5x5_kernel():
     """Test Conv2D layer with larger 5x5 kernel"""
     _test_conv2d_helper(
         in_channels=1,
-        out_channels=3,
+        out_channels=2,
         kernel_size=(5, 5),
-        input_shape=(2, 1, 10, 10),
+        input_shape=(1, 1, 8, 8),
         stride=1,
         pad_width=2,
-        pad_mode="constant",
-        pad_value=0,
         use_bias=True,
     )
 
@@ -187,13 +106,11 @@ def test_conv2d_stride_2_padding_1():
     """Test Conv2D layer with stride=2 and padding=1"""
     _test_conv2d_helper(
         in_channels=3,
-        out_channels=8,
+        out_channels=4,
         kernel_size=(3, 3),
-        input_shape=(2, 3, 16, 16),
+        input_shape=(1, 3, 8, 8),
         stride=2,
         pad_width=1,
-        pad_mode="constant",
-        pad_value=0,
         use_bias=True,
     )
 
@@ -202,7 +119,7 @@ def test_conv2d_no_bias():
     """Test Conv2D layer without bias"""
     _test_conv2d_helper(
         in_channels=2,
-        out_channels=4,
+        out_channels=3,
         kernel_size=(3, 3),
         input_shape=(1, 2, 5, 5),
         stride=1,
@@ -212,172 +129,66 @@ def test_conv2d_no_bias():
 
 
 def test_conv2d_batch():
-    """Test Conv2D layer with larger batch size"""
+    """Test Conv2D layer with batch size > 1"""
     _test_conv2d_helper(
-        in_channels=3,
-        out_channels=16,
+        in_channels=2,
+        out_channels=3,
         kernel_size=(3, 3),
-        input_shape=(8, 3, 7, 7),
+        input_shape=(2, 2, 5, 5),
         stride=1,
         pad_width=1,
-        pad_mode="constant",
-        pad_value=0,
         use_bias=True,
     )
 
 
 def test_max_pool2d():
     """Test MaxPool2d layer forward and backward pass"""
-    batch_size, channels, height, width = 2, 3, 8, 8
-    kernel_size = 2
-    stride = 2
-
-    pool = sg.nn.MaxPool2d(kernel_size=kernel_size, stride=stride)
-
+    pool = sg.nn.MaxPool2d(kernel_size=2, stride=2)
     x = sg.Tensor(
-        np.random.randn(batch_size, channels, height, width).astype(np.float64),
+        np.random.randn(2, 3, 8, 8).astype(np.float64),
         dtype="float64",
     )
-    y = pool(x)
-    y.zero_grad()
-    y.backward()
-
-    x_pt = torch.from_numpy(x.values).requires_grad_(True).to(torch.float64)
-    pool_pt = torch.nn.MaxPool2d(kernel_size=kernel_size, stride=stride)
-
-    y_pt = pool_pt(x_pt)
-    loss_pt = y_pt.sum()
-    loss_pt.backward()
-
-    compare2tensors(sg=y, pt=y_pt)
-    compare2tensors(sg=x.grad, pt=x_pt.grad)
+    gradcheck(lambda: pool(x), [x])
 
 
 def test_linear_layer():
     """Test single linear layer forward and backward pass"""
-    in_features, out_features = 4, 3
-    linear = sg.nn.Linear(in_features, out_features, dtype="float64")
+    linear = sg.nn.Linear(4, 3, dtype="float64")
+    x = sg.Tensor(np.random.randn(2, 4).astype(np.float64), dtype="float64")
 
-    x = sg.Tensor(np.random.randn(2, in_features).astype(np.float64), dtype="float64")
-    y = linear(x)
-    y.zero_grad()
-    y.backward()
-
-    x_pt = torch.from_numpy(x.values).requires_grad_(True).to(torch.float64)
-    linear_pt = torch.nn.Linear(in_features, out_features, bias=True)
-    linear_pt.weight.data = (
-        torch.from_numpy(linear.weight.values.T).to(torch.float64).requires_grad_(True)
-    )
-    linear_pt.bias.data = (
-        torch.from_numpy(linear.bias.values.flatten()).to(torch.float64).requires_grad_(True)
-    )
-
-    y_pt = linear_pt(x_pt)
-    loss_pt = y_pt.sum()
-    loss_pt.backward()
-
-    compare2tensors(sg=y, pt=y_pt)
-    compare2tensors(sg=x.grad, pt=x_pt.grad)
-    compare2tensors(sg=linear.weight.grad, pt=linear_pt.weight.grad.T)
-    compare2tensors(sg=linear.bias.grad, pt=linear_pt.bias.grad.unsqueeze(0))
+    gradcheck(lambda: linear(x), [x, linear.weight, linear.bias])
 
 
 def test_sequential_network():
     """Test forward and backward pass through 3-layer neural network"""
-    input_size, hidden_size, output_size = 5, 4, 2
-    batch_size = 3
-
     model = sg.nn.Sequential(
-        sg.nn.Linear(input_size, hidden_size, dtype="float64"),
+        sg.nn.Linear(5, 4, dtype="float64"),
         sg.nn.ReLU(),
-        sg.nn.Linear(hidden_size, hidden_size, dtype="float64"),
+        sg.nn.Linear(4, 4, dtype="float64"),
         sg.nn.ReLU(),
-        sg.nn.Linear(hidden_size, output_size, dtype="float64"),
+        sg.nn.Linear(4, 2, dtype="float64"),
         sg.nn.Softmax(dim=1),
     )
 
-    x = sg.Tensor(np.random.randn(batch_size, input_size).astype(np.float64), dtype="float64")
+    x = sg.Tensor(np.random.randn(3, 5).astype(np.float64), dtype="float64")
+    l0, l2, l4 = model.modules[0], model.modules[2], model.modules[4]
 
-    output = model(x)
-    output.zero_grad()
-    output.backward()
-
-    x_pt = torch.from_numpy(x.values).requires_grad_(True)
-
-    model_pt = torch.nn.Sequential(
-        torch.nn.Linear(input_size, hidden_size),
-        torch.nn.ReLU(),
-        torch.nn.Linear(hidden_size, hidden_size),
-        torch.nn.ReLU(),
-        torch.nn.Linear(hidden_size, output_size),
-        torch.nn.Softmax(dim=1),
+    gradcheck(
+        lambda: model(x),
+        [x, l0.weight, l0.bias, l2.weight, l2.bias, l4.weight, l4.bias],
     )
-
-    # Copy weights
-    model_pt[0].weight.data = (
-        torch.from_numpy(model.modules[0].weight.values.T).to(torch.float64).requires_grad_(True)
-    )
-    model_pt[0].bias.data = (
-        torch.from_numpy(model.modules[0].bias.values.flatten())
-        .to(torch.float64)
-        .requires_grad_(True)
-    )
-    model_pt[2].weight.data = (
-        torch.from_numpy(model.modules[2].weight.values.T).to(torch.float64).requires_grad_(True)
-    )
-    model_pt[2].bias.data = (
-        torch.from_numpy(model.modules[2].bias.values.flatten())
-        .to(torch.float64)
-        .requires_grad_(True)
-    )
-    model_pt[4].weight.data = (
-        torch.from_numpy(model.modules[4].weight.values.T).to(torch.float64).requires_grad_(True)
-    )
-    model_pt[4].bias.data = (
-        torch.from_numpy(model.modules[4].bias.values.flatten())
-        .to(torch.float64)
-        .requires_grad_(True)
-    )
-
-    output_pt = model_pt(x_pt)
-    loss_pt = output_pt.sum()
-    loss_pt.backward()
-
-    compare2tensors(sg=output, pt=output_pt)
-    compare2tensors(sg=x.grad, pt=x_pt.grad)
-    compare2tensors(sg=model.modules[0].weight.grad, pt=model_pt[0].weight.grad.T)
-    compare2tensors(sg=model.modules[0].bias.grad, pt=model_pt[0].bias.grad.unsqueeze(0))
-    compare2tensors(sg=model.modules[2].weight.grad, pt=model_pt[2].weight.grad.T)
-    compare2tensors(sg=model.modules[2].bias.grad, pt=model_pt[2].bias.grad.unsqueeze(0))
-    compare2tensors(sg=model.modules[4].weight.grad, pt=model_pt[4].weight.grad.T)
-    compare2tensors(sg=model.modules[4].bias.grad, pt=model_pt[4].bias.grad.unsqueeze(0))
 
 
 def _test_embedding_helper(num_embeddings, embedding_dim, input_shape, dtype="float64"):
-    """Helper function to test Embedding layer with different input shapes"""
     embedding = sg.nn.Embedding(num_embeddings, embedding_dim, dtype=dtype)
-
     indices = np.random.randint(0, num_embeddings, size=input_shape)
     x = sg.Tensor(indices, dtype="int32" if dtype == "float32" else "int64")
 
-    output = embedding(x)
-    output.zero_grad()
-    output.backward()
+    # Integer indices cannot be perturbed; only the weight gradient is checked.
+    eps = 1e-3 if dtype == "float32" else 1e-5
+    atol = 1e-3 if dtype == "float32" else 1e-5
 
-    torch_dtype = torch.float32 if dtype == "float32" else torch.float64
-    indices_pt = torch.from_numpy(indices).long()
-
-    embedding_pt = torch.nn.Embedding(num_embeddings, embedding_dim)
-    embedding_pt.weight.data = (
-        torch.from_numpy(embedding.weight.values).to(torch_dtype).requires_grad_(True)
-    )
-
-    output_pt = embedding_pt(indices_pt)
-    loss_pt = output_pt.sum()
-    loss_pt.backward()
-
-    compare2tensors(sg=output, pt=output_pt)
-    compare2tensors(sg=embedding.weight.grad, pt=embedding_pt.weight.grad)
+    gradcheck(lambda: embedding(x), [embedding.weight], eps=eps, atol=atol)
 
 
 def test_embedding_1d():

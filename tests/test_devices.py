@@ -324,32 +324,33 @@ def test_cuda_matmul():
 
 @needs_cuda
 def test_cuda_backward():
-    import torch
     data = np.array([[1.0, 2.0], [3.0, 4.0]])
-    a = sg.Tensor(data, device="cuda:0")
-    b = sg.Tensor(data, device="cuda:0")
-    c = a @ b
-    c.backward()
-    at = torch.from_numpy(data).requires_grad_(True)
-    bt = torch.from_numpy(data).requires_grad_(True)
-    ct = at @ bt
-    ct.sum().backward()
-    assert np.allclose(a.grad.get(), at.grad.numpy(), atol=1e-5)
-    assert np.allclose(b.grad.get(), bt.grad.numpy(), atol=1e-5)
+
+    a_cpu = sg.Tensor(data.copy(), device="cpu")
+    b_cpu = sg.Tensor(data.copy(), device="cpu")
+    (a_cpu @ b_cpu).backward()
+
+    a = sg.Tensor(data.copy(), device="cuda:0")
+    b = sg.Tensor(data.copy(), device="cuda:0")
+    (a @ b).backward()
+
+    assert np.allclose(a.grad.get(), a_cpu.grad, atol=1e-5)
+    assert np.allclose(b.grad.get(), b_cpu.grad, atol=1e-5)
 
 
 @needs_cuda
 def test_cuda_activation_backward():
-    import torch
     from simplegrad.functions import relu
+
     data = np.array([-1.0, 0.5, 2.0])
-    a = sg.Tensor(data, device="cuda:0")
-    out = relu(a)
-    out.backward()
-    at = torch.from_numpy(data).requires_grad_(True)
-    out_t = torch.relu(at)
-    out_t.sum().backward()
-    assert np.allclose(a.grad.get(), at.grad.numpy(), atol=1e-5)
+
+    a_cpu = sg.Tensor(data.copy(), device="cpu")
+    relu(a_cpu).backward()
+
+    a = sg.Tensor(data.copy(), device="cuda:0")
+    relu(a).backward()
+
+    assert np.allclose(a.grad.get(), a_cpu.grad, atol=1e-5)
 
 
 @needs_cuda

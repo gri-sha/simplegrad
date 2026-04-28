@@ -106,6 +106,11 @@ def graph(tensor: Tensor, path: str | None = None) -> graphviz.Digraph:
     Returns:
         A ``graphviz.Digraph`` object. Displays inline in Jupyter notebooks.
     """
+    try:
+        graphviz.version()
+    except graphviz.backend.ExecutableNotFound:
+        raise RuntimeError("Graphviz system binaries not found. For installation check: https://graphviz.org/download/") from None
+
     g = graphviz.Digraph(
         format="svg",
         graph_attr={
