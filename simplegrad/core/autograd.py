@@ -399,12 +399,32 @@ class Tensor:
             raise RuntimeError("Cannot move an unrealized tensor. Call .realize() first.")
         validate_device(device)
         xp = get_backend(device)
-        return Tensor(
-            values=xp.array(self.values),
-            dtype=self.dtype,
-            comp_grad=self.comp_grad,
-            device=device,
-        )
+
+        # return Tensor(
+        #     values=xp.array(self.values),
+        #     dtype=self.dtype,
+        #     comp_grad=self.comp_grad,
+        #     device=device,
+        # )
+
+        # Transfer the array in one step: numpy→cupy or cupy→numpy.
+        # We bypass Tensor.__init__ / as_array to avoid a redundant second
+        # cp.array(..., dtype=...) cast that would trigger kernel compilation.
+        t = self.__class__.__new__(self.__class__)
+        t.dtype = self.dtype
+        t.device = device
+        t.values = xp.array(self.values)
+        t.shape = t.values.shape
+        t._forward_fn = None
+        t.label = self.label
+        t.prev = set()
+        t.oper = None
+        t.comp_grad = self.comp_grad
+        t.is_leaf = True
+        t.grad = None
+        t.backward_step = lambda: None
+        t.group = None
+        return t
 
     def __len__(self) -> int:
         if self.values is None:
