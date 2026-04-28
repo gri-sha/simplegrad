@@ -2,7 +2,7 @@ import numpy as np
 from .devices import get_backend
 
 # default dtype
-_DTYPE = "float32"
+_DEFAULT_DTYPE = "float32"
 
 # supported dtypes
 DTYPES = {
@@ -16,22 +16,22 @@ DTYPES = {
 }
 
 
-def set_dtype(dtype: str):
+def default_dtype(dtype: str):
     """Set global default dtype (string key)."""
-    global _DTYPE
+    global _DEFAULT_DTYPE
     if dtype not in DTYPES:
         raise ValueError(f"Unsupported dtype '{dtype}'. Must be one of {list(DTYPES)}.")
-    _DTYPE = dtype
+    _DEFAULT_DTYPE = dtype
 
 
-def get_global_dtype():
+def get_default_dtype():
     """Return current dtype string key."""
-    return _DTYPE
+    return _DEFAULT_DTYPE
 
 
-def get_global_dtype_class():
+def get_default_dtype_class():
     """Return current NumPy dtype class."""
-    return DTYPES[_DTYPE]
+    return DTYPES[_DEFAULT_DTYPE]
 
 
 def get_dtype_class(dtype: str):
@@ -58,10 +58,10 @@ def as_array(values, dtype=None, device: str = "cpu", **kwargs):
     """
     xp = get_backend(device)
     return xp.asarray(
-        values, dtype=dtype if dtype is not None else get_global_dtype_class(), **kwargs
+        values, dtype=dtype if dtype is not None else get_default_dtype_class(), **kwargs
     )
 
 
 def convert_to_dtype(array: np.ndarray, dtype: str | None = None):
-    """Convert a numpy array to the global default dtype."""
-    return array.astype(get_global_dtype_class() if dtype is None else DTYPES[dtype])
+    """Convert a numpy array to the specified dtype or to the global default dtype."""
+    return array.astype(get_default_dtype_class() if dtype is None else DTYPES[dtype])

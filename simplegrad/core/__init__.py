@@ -4,7 +4,7 @@ from .devices import (
     available_devices,
     cuda_is_available,
     get_default_device,
-    set_default_device,
+    default_device,
     get_backend,
     validate_device,
     validate_same_device,

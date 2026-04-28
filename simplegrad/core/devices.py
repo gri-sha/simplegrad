@@ -170,7 +170,7 @@ def get_default_device() -> str:
     return _DEFAULT_DEVICE
 
 
-def set_default_device(device: str) -> None:
+def default_device(device: str) -> None:
     """Set the global default device for new tensor creation.
 
     After calling this, tensors created without an explicit ``device``

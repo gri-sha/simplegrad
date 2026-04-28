@@ -7,7 +7,7 @@ from simplegrad.core.devices import (
     available_devices,
     cuda_is_available,
     get_default_device,
-    set_default_device,
+    default_device,
     validate_device,
     validate_same_device,
     get_backend,
@@ -22,7 +22,7 @@ needs_cuda = pytest.mark.skipif(not CUDA_AVAILABLE, reason="CUDA not available")
 def restore_default_device():
     """Reset the global default device to 'cpu' after every test."""
     yield
-    set_default_device("cpu")
+    default_device("cpu")
 
 
 # available_devices
@@ -111,13 +111,13 @@ def test_default_device_is_cpu():
 
 
 def test_set_default_device():
-    set_default_device("cpu")
+    default_device("cpu")
     assert get_default_device() == "cpu"
 
 
 def test_set_default_device_invalid():
     with pytest.raises(ValueError):
-        set_default_device("gpu")
+        default_device("gpu")
 
 
 # validate_same_device
@@ -382,7 +382,7 @@ def test_module_to_device_and_back():
 
 @needs_cuda
 def test_set_default_device_cuda():
-    set_default_device("cuda:0")
+    default_device("cuda:0")
     assert get_default_device() == "cuda:0"
     x = sg.Tensor([1.0, 2.0])
     assert x.device == "cuda:0"

@@ -20,7 +20,7 @@ dependencies = [
 [project.optional-dependencies]
 cuda12 = ["cupy-cuda12x>=13.0"]
 cuda13 = ["cupy-cuda13x>=13.0"]
-dev = ["pytest>=7.0", "black>=22.0", "mypy>=0.990", "torch"]
+dev = ["pytest>=7.0", "black>=22.0", "mypy>=0.990", "torch", "ipykernel"]
 docs = ["mkdocs>=1.5,<2.0", "mkdocs-material>=9.0", "mkdocstrings[python]>=0.24"]
 
 [project.scripts]
@@ -51,8 +51,3 @@ exclude = '''
   | build
 )/
 '''
-
-[dependency-groups]
-dev = [
-    "pytest>=8.4.2",
-]

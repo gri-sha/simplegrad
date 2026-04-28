@@ -398,38 +398,13 @@ class Tensor:
         if self.values is None:
             raise RuntimeError("Cannot move an unrealized tensor. Call .realize() first.")
         validate_device(device)
-        xp = get_backend(device)
 
-        # return Tensor(
-        #     values=xp.array(self.values),
-        #     dtype=self.dtype,
-        #     comp_grad=self.comp_grad,
-        #     device=device,
-        # )
-
-        # Transfer the array in one step: numpy→cupy or cupy→numpy.
-        # We bypass Tensor.__init__ / as_array to avoid a redundant second
-        # cp.array(..., dtype=...) cast that would trigger kernel compilation.
-        t = self.__class__.__new__(self.__class__)
-        t.dtype = self.dtype
-        t.device = device
-        if hasattr(self.values, "get"):
-            # source is a CuPy array — use .get() to pull to CPU, then move to target
-            raw = self.values.get()
-            t.values = xp.asarray(raw)
-        else:
-            t.values = xp.asarray(self.values)
-        t.shape = t.values.shape
-        t._forward_fn = None
-        t.label = self.label
-        t.prev = set()
-        t.oper = None
-        t.comp_grad = self.comp_grad
-        t.is_leaf = True
-        t.grad = None
-        t.backward_step = lambda: None
-        t.group = None
-        return t
+        return Tensor(
+            values=self.values.get() if hasattr(self.values, "get") else self.values,
+            dtype=self.dtype,
+            comp_grad=self.comp_grad,
+            device=device,
+        )
 
     def __len__(self) -> int:
         if self.values is None:
