@@ -14,7 +14,9 @@ except ImportError:
     _CUPY_AVAILABLE = False
 
 _DEFAULT_DEVICE: str = "cpu"
-_CUDA_DEVICE_RE = re.compile(r"^cuda:\d+$")  # reusable regex object that matches CUDA device strings
+_CUDA_DEVICE_RE = re.compile(
+    r"^cuda:\d+$"
+)  # reusable regex object that matches CUDA device strings
 
 
 def cuda_is_available(verbose: bool = False) -> bool:
@@ -217,9 +219,7 @@ def validate_device(device: str) -> str:
         return device
     if _CUDA_DEVICE_RE.match(device):
         return device
-    raise ValueError(
-        f"Invalid device '{device}'. Expected 'cpu' or 'cuda:N' (e.g. 'cuda:0')."
-    )
+    raise ValueError(f"Invalid device '{device}'. Expected 'cpu' or 'cuda:N' (e.g. 'cuda:0').")
 
 
 def get_backend(device: str):
@@ -255,9 +255,7 @@ def get_backend(device: str):
                 "See https://docs.cupy.dev/en/stable/install.html"
             )
         return cp
-    raise ValueError(
-        f"Unknown device '{device}'. Expected 'cpu' or 'cuda:N' (e.g. 'cuda:0')."
-    )
+    raise ValueError(f"Unknown device '{device}'. Expected 'cpu' or 'cuda:N' (e.g. 'cuda:0').")
 
 
 def validate_same_device(*tensors) -> str:

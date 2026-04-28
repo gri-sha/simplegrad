@@ -19,15 +19,16 @@ git clone https://github.com/gri-sha/simplegrad.git
 cd simplegrad
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -e ".[dev,docs,cuda12]"
+pip install -e .
 ```
-
-For CUDA support, install the extra matching your CUDA version:
+For CUDA support:
 
 ```bash
-pip install -e ".[dev,cuda12]"   # CUDA 12.x
-pip install -e ".[dev,cuda13]"   # CUDA 13.x
+pip install -e ".[cuda]"  # CUDA 12.x
 ```
+
+For development:
+pip install -e ".[dev,docs,cuda]"
 
 ## Quick start
 

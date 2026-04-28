@@ -1,10 +1,10 @@
 # Dtypes
 
-::: simplegrad.core.dtypes.set_dtype
+::: simplegrad.core.dtypes.default_dtype
 
-::: simplegrad.core.dtypes.get_global_dtype
+::: simplegrad.core.dtypes.get_default_dtype
 
-::: simplegrad.core.dtypes.get_global_dtype_class
+::: simplegrad.core.dtypes.get_default_dtype_class
 
 ::: simplegrad.core.dtypes.get_dtype_class
 

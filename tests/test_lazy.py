@@ -2,7 +2,7 @@
 
 import numpy as np
 import simplegrad as sg
-from simplegrad.core import Tensor, is_lazy, lazy, set_mode
+from simplegrad.core import Tensor, is_lazy, lazy, mode
 from simplegrad.core.autograd import _create_op_result
 
 # mode infrastructure
@@ -28,20 +28,20 @@ def test_lazy_context_manager_restores_on_exception():
 
 
 def test_set_mode_lazy():
-    set_mode("lazy")
+    mode("lazy")
     assert is_lazy()
-    set_mode("eager")
+    mode("eager")
     assert not is_lazy()
 
 
 def test_set_mode_invalid_raises():
     try:
-        set_mode("turbo")
+        mode("turbo")
         assert False, "Should have raised"
     except ValueError:
         pass
     finally:
-        set_mode("eager")
+        mode("eager")
 
 
 # Tensor lazy fields and _create_op_result

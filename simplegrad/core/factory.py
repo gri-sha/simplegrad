@@ -23,7 +23,13 @@ def zeros(
     """
     dev = device if device is not None else get_default_device()
     xp = get_backend(dev)
-    return Tensor(values=xp.zeros(shape, dtype=get_dtype_class(dtype)), dtype=dtype, comp_grad=comp_grad, label=label, device=dev)
+    return Tensor(
+        values=xp.zeros(shape, dtype=get_dtype_class(dtype)),
+        dtype=dtype,
+        comp_grad=comp_grad,
+        label=label,
+        device=dev,
+    )
 
 
 def ones(
@@ -44,7 +50,13 @@ def ones(
     """
     dev = device if device is not None else get_default_device()
     xp = get_backend(dev)
-    return Tensor(values=xp.ones(shape, dtype=get_dtype_class(dtype)), dtype=dtype, comp_grad=comp_grad, label=label, device=dev)
+    return Tensor(
+        values=xp.ones(shape, dtype=get_dtype_class(dtype)),
+        dtype=dtype,
+        comp_grad=comp_grad,
+        label=label,
+        device=dev,
+    )
 
 
 def normal(
@@ -129,4 +141,10 @@ def full(
     """
     dev = device if device is not None else get_default_device()
     xp = get_backend(dev)
-    return Tensor(values=xp.full(shape, fill_value, dtype=get_dtype_class(dtype)), dtype=dtype, comp_grad=comp_grad, label=label, device=dev)
+    return Tensor(
+        values=xp.full(shape, fill_value, dtype=get_dtype_class(dtype)),
+        dtype=dtype,
+        comp_grad=comp_grad,
+        label=label,
+        device=dev,
+    )

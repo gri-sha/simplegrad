@@ -1,15 +1,30 @@
 site_name: simplegrad
 site_description: A lightweight autograd engine for education and experimentation.
+site_url: https://simplegrad.github.io/simplegrad/
+
+repo_url: https://github.com/simplegrad/simplegrad
+repo_name: simplegrad/simplegrad
 
 theme:
   name: material
-  favicon: assets/favicon.svg
+  custom_dir: docs/overrides
+  favicon: images/favicon.svg
+  logo: images/favicon.svg
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
   features:
     - navigation.sections
     - navigation.expand
-  palette:
-    scheme: default
-    primary: indigo
+
+extra_css:
+  - stylesheets/extra.css
 
 markdown_extensions:
   - pymdownx.highlight:

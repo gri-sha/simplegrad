@@ -74,7 +74,7 @@ def lazy():
         _LAZY_MODE = prev
 
 
-def set_mode(mode: str) -> None:
+def mode(mode: str) -> None:
     """Set the global execution mode persistently.
 
     Prefer the ``lazy()`` context manager for scoped control. Use
@@ -579,7 +579,11 @@ class Tensor:
         """Raise to a scalar power element-wise."""
         if not isinstance(other, (float, int)):
             raise ValueError(f"Only 'float' or 'int' exponents are supported, got {type(other)}")
-        if not is_lazy() and get_backend(self.device).any(self.values < 0) and not float(other).is_integer():
+        if (
+            not is_lazy()
+            and get_backend(self.device).any(self.values < 0)
+            and not float(other).is_integer()
+        ):
             raise ValueError(
                 f"Invalid: {self.label if self.label else 'Tensor'} ** {other} would be complex."
             )

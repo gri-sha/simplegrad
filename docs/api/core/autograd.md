@@ -10,6 +10,6 @@
 
 ::: simplegrad.core.autograd.lazy
 
-::: simplegrad.core.autograd.set_mode
+::: simplegrad.core.autograd.mode
 
 ::: simplegrad.core.autograd.is_lazy

@@ -27,6 +27,7 @@ def restore_default_device():
 
 # available_devices
 
+
 def test_available_devices_returns_dict():
     devices = available_devices()
     assert isinstance(devices, dict)
@@ -60,11 +61,13 @@ def test_available_devices_cuda_description():
 
 # cuda_is_available
 
+
 def test_cuda_is_available_returns_bool():
     assert isinstance(cuda_is_available(), bool)
 
 
 # validate_device
+
 
 def test_validate_device_cpu():
     assert validate_device("cpu") == "cpu"
@@ -88,14 +91,17 @@ def test_validate_device_invalid():
 
 # get_backend
 
+
 def test_get_backend_cpu_is_numpy():
     import numpy as np_mod
+
     assert get_backend("cpu") is np_mod
 
 
 @needs_cuda
 def test_get_backend_cuda_is_cupy():
     import cupy as cp
+
     assert get_backend("cuda:0") is cp
 
 
@@ -105,6 +111,7 @@ def test_get_backend_invalid():
 
 
 # default device
+
 
 def test_default_device_is_cpu():
     assert get_default_device() == "cpu"
@@ -121,6 +128,7 @@ def test_set_default_device_invalid():
 
 
 # validate_same_device
+
 
 def test_validate_same_device_single():
     a = sg.Tensor([1.0], device="cpu")
@@ -148,6 +156,7 @@ def test_validate_same_device_empty():
 
 # Tensor device attribute
 
+
 def test_tensor_default_device():
     x = sg.Tensor([1.0, 2.0])
     assert x.device == "cpu"
@@ -165,6 +174,7 @@ def test_tensor_values_are_numpy_on_cpu():
 
 
 # factory functions — CPU
+
 
 def test_zeros_device():
     t = sg.zeros((3, 4), device="cpu")
@@ -200,6 +210,7 @@ def test_full_device():
 
 # to_device — cpu → cpu
 
+
 def test_to_device_cpu_to_cpu():
     x = sg.Tensor([1.0, 2.0, 3.0])
     y = x.to_device("cpu")
@@ -228,6 +239,7 @@ def test_to_device_invalid_device():
 
 # ops raise on mixed-device inputs
 
+
 def test_mixed_device_op_raises():
     a = sg.Tensor([1.0], device="cpu")
     b = sg.Tensor.__new__(sg.Tensor)
@@ -241,11 +253,13 @@ def test_mixed_device_op_raises():
 
 # CUDA-specific tests
 
+
 @needs_cuda
 def test_tensor_on_cuda():
     x = sg.Tensor([1.0, 2.0, 3.0], device="cuda:0")
     assert x.device == "cuda:0"
     import cupy as cp
+
     assert isinstance(x.values, cp.ndarray)
 
 
@@ -255,6 +269,7 @@ def test_to_device_cpu_to_cuda():
     y = x.to_device("cuda:0")
     assert y.device == "cuda:0"
     import cupy as cp
+
     assert isinstance(y.values, cp.ndarray)
     assert np.allclose(y.values.get(), x.values)
 
@@ -273,6 +288,7 @@ def test_factory_zeros_cuda():
     t = sg.zeros((3, 4), device="cuda:0")
     assert t.device == "cuda:0"
     import cupy as cp
+
     assert isinstance(t.values, cp.ndarray)
     assert t.values.shape == (3, 4)
     assert cp.all(t.values == 0)
@@ -283,6 +299,7 @@ def test_factory_ones_cuda():
     t = sg.ones((2, 3), device="cuda:0")
     assert t.device == "cuda:0"
     import cupy as cp
+
     assert cp.all(t.values == 1)
 
 
@@ -298,6 +315,7 @@ def test_factory_uniform_cuda():
     t = sg.uniform((100,), low=0, high=1, device="cuda:0")
     assert t.device == "cuda:0"
     import cupy as cp
+
     assert cp.all(t.values >= 0) and cp.all(t.values <= 1)
 
 
@@ -366,6 +384,7 @@ def test_module_to_device():
     model = nn.Linear(4, 2)
     model.to_device("cuda:0")
     import cupy as cp
+
     for param in model._get_parameters().values():
         assert param.device == "cuda:0"
         assert isinstance(param.values, cp.ndarray)
@@ -388,4 +407,5 @@ def test_set_default_device_cuda():
     x = sg.Tensor([1.0, 2.0])
     assert x.device == "cuda:0"
     import cupy as cp
+
     assert isinstance(x.values, cp.ndarray)

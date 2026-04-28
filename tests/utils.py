@@ -3,6 +3,7 @@
 from typing import Callable
 import numpy as np
 
+
 def gradcheck(
     fn: Callable,
     inputs: list,

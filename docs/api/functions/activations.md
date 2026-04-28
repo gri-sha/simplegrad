@@ -6,4 +6,8 @@
 
 ::: simplegrad.functions.activations.sigmoid
 
+::: simplegrad.functions.activations.elu
+
+::: simplegrad.functions.activations.gelu
+
 ::: simplegrad.functions.activations.softmax

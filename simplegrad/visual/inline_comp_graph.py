@@ -109,7 +109,9 @@ def graph(tensor: Tensor, path: str | None = None) -> graphviz.Digraph:
     try:
         graphviz.version()
     except graphviz.backend.ExecutableNotFound:
-        raise RuntimeError("Graphviz system binaries not found. For installation check: https://graphviz.org/download/") from None
+        raise RuntimeError(
+            "Graphviz system binaries not found. For installation check: https://graphviz.org/download/"
+        ) from None
 
     g = graphviz.Digraph(
         format="svg",
