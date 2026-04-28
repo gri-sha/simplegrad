@@ -130,7 +130,11 @@ class Module:
         validate_device(device)
         xp = get_backend(device)
         for param in self._get_parameters().values():
-            param.values = xp.array(param.values)
+            if hasattr(param.values, "get"):
+                raw = param.values.get()
+                param.values = xp.asarray(raw)
+            else:
+                param.values = xp.asarray(param.values)
             param.device = device
         return self
 

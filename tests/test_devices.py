@@ -256,7 +256,7 @@ def test_to_device_cpu_to_cuda():
     assert y.device == "cuda:0"
     import cupy as cp
     assert isinstance(y.values, cp.ndarray)
-    assert np.allclose(np.array(y.values), x.values)
+    assert np.allclose(y.values.get(), x.values)
 
 
 @needs_cuda
@@ -307,7 +307,7 @@ def test_cuda_add():
     b = sg.Tensor([4.0, 5.0, 6.0], device="cuda:0")
     c = a + b
     assert c.device == "cuda:0"
-    assert np.allclose(np.array(c.values), [5.0, 7.0, 9.0])
+    assert np.allclose(c.values.get(), [5.0, 7.0, 9.0])
 
 
 @needs_cuda
@@ -319,7 +319,7 @@ def test_cuda_matmul():
     c = a @ b
     assert c.device == "cuda:0"
     expected = data1 @ data2
-    assert np.allclose(np.array(c.values), expected)
+    assert np.allclose(c.values.get(), expected)
 
 
 @needs_cuda
@@ -334,8 +334,8 @@ def test_cuda_backward():
     bt = torch.from_numpy(data).requires_grad_(True)
     ct = at @ bt
     ct.sum().backward()
-    assert np.allclose(np.array(a.grad), at.grad.numpy(), atol=1e-5)
-    assert np.allclose(np.array(b.grad), bt.grad.numpy(), atol=1e-5)
+    assert np.allclose(a.grad.get(), at.grad.numpy(), atol=1e-5)
+    assert np.allclose(b.grad.get(), bt.grad.numpy(), atol=1e-5)
 
 
 @needs_cuda
@@ -349,7 +349,7 @@ def test_cuda_activation_backward():
     at = torch.from_numpy(data).requires_grad_(True)
     out_t = torch.relu(at)
     out_t.sum().backward()
-    assert np.allclose(np.array(a.grad), at.grad.numpy(), atol=1e-5)
+    assert np.allclose(a.grad.get(), at.grad.numpy(), atol=1e-5)
 
 
 @needs_cuda

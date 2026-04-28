@@ -413,7 +413,12 @@ class Tensor:
         t = self.__class__.__new__(self.__class__)
         t.dtype = self.dtype
         t.device = device
-        t.values = xp.array(self.values)
+        if hasattr(self.values, "get"):
+            # source is a CuPy array — use .get() to pull to CPU, then move to target
+            raw = self.values.get()
+            t.values = xp.asarray(raw)
+        else:
+            t.values = xp.asarray(self.values)
         t.shape = t.values.shape
         t._forward_fn = None
         t.label = self.label
