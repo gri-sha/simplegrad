@@ -1,4 +1,4 @@
-![header logo](./assets/header.png)
+![header logo](./docs/images/header.png)
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)
 ![NumPy](https://img.shields.io/badge/numpy-backed-013243?logo=numpy&logoColor=white)
