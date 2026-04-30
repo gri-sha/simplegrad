@@ -41,18 +41,12 @@ class _Pad(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
         if ctx.mode == "constant":
-            slices = tuple(
-                slice(p[0], grad_output.shape[i] - p[1]) for i, p in enumerate(ctx.width)
-            )
+            slices = tuple(slice(p[0], grad_output.shape[i] - p[1]) for i, p in enumerate(ctx.width))
             return grad_output[slices]
-        raise NotImplementedError(
-            f"Backward pass for padding mode '{ctx.mode}' is not implemented."
-        )
+        raise NotImplementedError(f"Backward pass for padding mode '{ctx.mode}' is not implemented.")
 
 
-def pad(
-    x: Tensor, width: int | tuple[int, int, int, int], mode: str = "constant", value: int = 0
-) -> Tensor:
+def pad(x: Tensor, width: int | tuple[int, int, int, int], mode: str = "constant", value: int = 0) -> Tensor:
     """Pad a tensor along its spatial dimensions.
 
     Args:
@@ -68,7 +62,7 @@ def pad(
 
 
 # the idea of the following functions is to organize the convolution operation as a single matrix multiplication
-# (read more here: https://cs231n.github.io/convolutional-networks/#conv)
+# (read more here: https://cs231n.github.io/convolutional-networks/#conv, https://inria.hal.science/inria-00112631v1/document)
 # this allows us to avoid nested loops and speed up the computation significantly
 # also these functions are used in max pooling implementation
 
@@ -89,19 +83,26 @@ def _get_rec_fields_from_img(img: np.ndarray, kh: int, kw: int, sh: int, sw: int
     out_h = (in_h - kh) // sh + 1
     out_w = (in_w - kw) // sw + 1
 
+    # get the current strides for the input tensor
+    # note: stride - how many bytes to step in memory to move to the next element along each dimension 
+    # for example: s_batch - how many bytes to step to move to the next batch in memory
     s_batch, s_channel, s_h, s_w = img.strides
-
-    strided_shape = (batch_size, channels, out_h, out_w, kh, kw)
-    strided_strides = (s_batch, s_channel, s_h * sh, s_w * sw, s_h, s_w)
-
+    # this is the output shape we need for output
+    strided_shape = (batch_size, channels, kh, kw, out_h, out_w)
+    # define the strides for this output shape, we use the original strides to consider the datatypes (since strides are in bytes)
+    strided_strides = (s_batch, s_channel, s_h, s_w, s_h * sh, s_w * sw)
+    # here we create a view of the input image with the shape of the receptive fields and the appropriate strides (memory layout)
+    # notice that:
+    # num_elements(rec_fields) >= num_elements(img) if we analyse the shapes of the arrays (one element )
+    # but we are not creating copies of some elements yet, for now with this approach we just change the way we access the elements in memory
     rec_fields = np.lib.stride_tricks.as_strided(img, shape=strided_shape, strides=strided_strides)
-    rec_fields = rec_fields.transpose(0, 1, 4, 5, 2, 3)
+    # here we actually create the copies of the elements in memory, WITHOUT USING LOOPS
+    # required because BLAS (Basic Linear Algebra Subroutines) (matmul) cannot work with non-contiguous strided arrays
+    # note: contigous array - an array stored in a single, contiguous block of memory (C order by default in numpy)
     return np.ascontiguousarray(rec_fields)
 
 
-def _get_img_from_rec_fields(
-    rec_fields: np.ndarray, img_shape: tuple[int, int, int, int], kh: int, kw: int, sh: int, sw: int
-) -> np.ndarray:
+def _get_img_from_rec_fields(rec_fields: np.ndarray, img_shape: tuple[int, int, int, int], kh: int, kw: int, sh: int, sw: int) -> np.ndarray:
     """
     Reconstruct image from receptive fields (inverse of _get_rec_fields_from_img).
     Used in backward pass to compute gradient w.r.t. input image.
@@ -154,9 +155,7 @@ class _Conv2dNoPad(Function):
         out_h, out_w = out_shape[-2], out_shape[-1]
 
         rec_fields = _get_rec_fields_from_img(padded_input.values, kh, kw, sh, sw)
-        ctx.rec_fields_flat = rec_fields.transpose(0, 4, 5, 1, 2, 3).reshape(
-            batch_size * out_h * out_w, -1
-        )
+        ctx.rec_fields_flat = rec_fields.transpose(0, 4, 5, 1, 2, 3).reshape(batch_size * out_h * out_w, -1)
         ctx.weight_flat = weight.values.reshape(out_channels, -1).T
         ctx.kh, ctx.kw, ctx.sh, ctx.sw = kh, kw, sh, sw
         ctx.batch_size = batch_size
@@ -182,12 +181,10 @@ class _Conv2dNoPad(Function):
         grad_weight = weight_flat_grad.T.reshape(ctx.weight_shape)
 
         rec_fields_grad = out_grad @ ctx.weight_flat.T
-        rec_fields_grad = rec_fields_grad.reshape(
-            ctx.batch_size, ctx.out_h, ctx.out_w, ctx.in_channels, ctx.kh, ctx.kw
-        ).transpose(0, 3, 4, 5, 1, 2)
-        grad_padded_input = _get_img_from_rec_fields(
-            rec_fields_grad, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw
+        rec_fields_grad = rec_fields_grad.reshape(ctx.batch_size, ctx.out_h, ctx.out_w, ctx.in_channels, ctx.kh, ctx.kw).transpose(
+            0, 3, 4, 5, 1, 2
         )
+        grad_padded_input = _get_img_from_rec_fields(rec_fields_grad, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw)
 
         if ctx.has_bias:
             grad_bias = np.sum(grad_output, axis=(0, 2, 3))
@@ -260,9 +257,7 @@ def conv2d(
                 (pad_width[2], pad_width[3]),
             )
         else:
-            raise ValueError(
-                "pad_width must be an int or a tuple of 4 ints (top, bottom, left, right)"
-            )
+            raise ValueError("pad_width must be an int or a tuple of 4 ints (top, bottom, left, right)")
 
         padded_input = pad(x=x, width=pad_width_np, mode=pad_mode, value=pad_value)
 
