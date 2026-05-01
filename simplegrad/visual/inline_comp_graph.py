@@ -49,7 +49,8 @@ def _render_tensor_node(tensor: Tensor, target) -> None:
         "fontname": "monospace",
         "fontsize": "10",
     }
-    node_attrs["fillcolor"] = "lightsalmon" if tensor.is_leaf else "lightsteelblue"
+    node_attrs["fillcolor"] = "#34b87e" if tensor.is_leaf else "#feba14"
+    node_attrs["fontcolor"] = "#151718"
     target.node(tensor._str_id, _node_signature(tensor), **node_attrs)
     if tensor.oper is not None:
         oper_id = tensor._str_id + tensor.oper
@@ -58,7 +59,8 @@ def _render_tensor_node(tensor: Tensor, target) -> None:
             tensor.oper,
             shape="box",
             style="rounded,filled",
-            fillcolor="lightgoldenrodyellow",
+            fillcolor="#e8e8e8",
+            fontcolor="#151718",
             fontname="monospace",
             fontsize="10",
         )
@@ -95,9 +97,9 @@ def graph(tensor: Tensor, path: str | None = None) -> graphviz.Digraph:
     rectangle, so two calls to ``softmax`` produce two separate boxes.
 
     Node colors:
-        - Salmon: leaf tensors (inputs / parameters)
-        - Steel blue: intermediate tensors
-        - Gold: operation nodes
+        - Green (#34b87e): leaf tensors (inputs / parameters)
+        - Yellow (#feba14): intermediate tensors
+        - Light grey (#e8e8e8): operation nodes
 
     Args:
         tensor: The output tensor whose computation graph to visualize.
@@ -119,7 +121,7 @@ def graph(tensor: Tensor, path: str | None = None) -> graphviz.Digraph:
             "rankdir": "LR",
             "nodesep": "0.5",
             "ranksep": "0.7",
-            "bgcolor": "white",
+            "bgcolor": "#f5f5f5",
         },
     )
     g.strict = True
@@ -143,7 +145,7 @@ def graph(tensor: Tensor, path: str | None = None) -> graphviz.Digraph:
                 label=gname,
                 labelloc="t",
                 labeljust="l",
-                color="black",
+                color="#151718",
                 style="rounded",
                 fontname="monospace",
                 fontsize="10",

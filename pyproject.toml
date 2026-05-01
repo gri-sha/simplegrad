@@ -24,8 +24,9 @@ docs = [
 [project.scripts]
 simpleboard = "simplegrad.simpleboard.cli:main"
 
-[tool.setuptools]
-packages = ["simplegrad"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["simplegrad*"]
 
 [tool.setuptools.package-data]
 simplegrad = ["simpleboard/app/dist/**/*"]
