@@ -6,10 +6,10 @@ Uses SQLite for simplicity and portability.
 import sqlite3
 import json
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from contextlib import contextmanager
 from pathlib import Path
-from pydantic import BaseModel
 
 
 def _format_timestamp(timestamp: float) -> str:
@@ -17,7 +17,8 @@ def _format_timestamp(timestamp: float) -> str:
     return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
 
-class RunInfo(BaseModel):
+@dataclass
+class RunInfo:
     """Metadata for a training run."""
 
     run_id: int
@@ -29,12 +30,50 @@ class RunInfo(BaseModel):
     metrics: list[str] | None = None
 
 
-class RecordInfo(BaseModel):
+@dataclass
+class RecordInfo:
     """A single metric record (data point)."""
 
     step: int
     value: float
     log_time: float
+
+
+def _build_run_info(conn, row) -> RunInfo:
+    metrics = None
+    num_records = None
+
+    if row["status"] == "completed":
+        # Get metrics for this run
+        metric_rows = conn.execute(
+            """SELECT DISTINCT m.name
+               FROM records r
+               JOIN metrics m ON r.metric_id = m.id
+               WHERE r.run_id = ?""",
+            (row["id"],),
+        ).fetchall()
+        metrics = [m["name"] for m in metric_rows]
+
+        # Get record counts per metric
+        record_count_rows = conn.execute(
+            """SELECT m.name, COUNT(*) as count
+               FROM records r
+               JOIN metrics m ON r.metric_id = m.id
+               WHERE r.run_id = ?
+               GROUP BY m.name""",
+            (row["id"],),
+        ).fetchall()
+        num_records = [rc["count"] for rc in record_count_rows]
+
+    return RunInfo(
+        run_id=row["id"],
+        name=row["name"],
+        created_at=_format_timestamp(row["created_at"]),
+        status=row["status"],
+        config=json.loads(row["config"]),
+        metrics=metrics,
+        num_records=num_records,
+    )
 
 
 class ExperimentDBManager:
@@ -132,85 +171,14 @@ class ExperimentDBManager:
         with self._get_connection(readonly=True) as conn:
             row = conn.execute("SELECT * FROM runs WHERE id = ?", (run_id,)).fetchone()
             if row:
-                metrics = None
-                num_records = None
-
-                if row["status"] == "completed":
-                    # Get metrics for this run
-                    metric_rows = conn.execute(
-                        """SELECT DISTINCT m.name 
-                           FROM records r 
-                           JOIN metrics m ON r.metric_id = m.id 
-                           WHERE r.run_id = ?""",
-                        (run_id,),
-                    ).fetchall()
-                    metrics = [m["name"] for m in metric_rows]
-
-                    # Get record counts per metric
-                    record_count_rows = conn.execute(
-                        """SELECT m.name, COUNT(*) as count
-                           FROM records r
-                           JOIN metrics m ON r.metric_id = m.id
-                           WHERE r.run_id = ?
-                           GROUP BY m.name""",
-                        (run_id,),
-                    ).fetchall()
-                    num_records = [rc["count"] for rc in record_count_rows]
-
-                return RunInfo(
-                    run_id=row["id"],
-                    name=row["name"],
-                    created_at=_format_timestamp(row["created_at"]),
-                    status=row["status"],
-                    config=json.loads(row["config"]),
-                    metrics=metrics,
-                    num_records=num_records,
-                )
+                return _build_run_info(conn, row)
         return None
 
     def get_all_runs(self) -> list[RunInfo]:
         """List all runs, newest first."""
         with self._get_connection(readonly=True) as conn:
             rows = conn.execute("SELECT * FROM runs ORDER BY created_at DESC").fetchall()
-            runs = []
-            for row in rows:
-                metrics = None
-                num_records = None
-
-                if row["status"] == "completed":
-                    # Get metrics for this run
-                    metric_rows = conn.execute(
-                        """SELECT DISTINCT m.name 
-                           FROM records r 
-                           JOIN metrics m ON r.metric_id = m.id 
-                           WHERE r.run_id = ?""",
-                        (row["id"],),
-                    ).fetchall()
-                    metrics = [m["name"] for m in metric_rows]
-
-                    # Get record counts per metric
-                    record_count_rows = conn.execute(
-                        """SELECT m.name, COUNT(*) as count
-                           FROM records r
-                           JOIN metrics m ON r.metric_id = m.id
-                           WHERE r.run_id = ?
-                           GROUP BY m.name""",
-                        (row["id"],),
-                    ).fetchall()
-                    num_records = [rc["count"] for rc in record_count_rows]
-
-                runs.append(
-                    RunInfo(
-                        run_id=row["id"],
-                        name=row["name"],
-                        created_at=_format_timestamp(row["created_at"]),
-                        status=row["status"],
-                        config=json.loads(row["config"]),
-                        metrics=metrics,
-                        num_records=num_records,
-                    )
-                )
-            return runs
+            return [_build_run_info(conn, row) for row in rows]
 
     def update_run_status(self, run_id: int, status: str):
         """Update run status."""

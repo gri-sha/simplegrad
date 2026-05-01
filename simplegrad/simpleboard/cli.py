@@ -1,12 +1,10 @@
-"""
-CLI launcher for the simpleboard.
-"""
+"""CLI launcher for the simpleboard."""
 
 import argparse
 import os
-import sys
-import webbrowser
+import threading
 import time
+import webbrowser
 
 
 def main():
@@ -27,53 +25,32 @@ def main():
     parser.add_argument(
         "--no-browser", action="store_true", help="Don't automatically open browser"
     )
-    parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
 
     args = parser.parse_args()
 
-    # Set environment variables for the server
     os.environ["SG_EXPERIMENTS_DIR"] = args.all_exp_dir
 
-    # Import uvicorn here to avoid import errors if not installed
-    try:
-        import uvicorn
-    except ImportError:
-        print("Error: uvicorn is not installed.")
-        print("Install it with: pip install uvicorn")
-        sys.exit(1)
-
-    # Check if FastAPI is available
-    try:
-        from fastapi import FastAPI
-    except ImportError:
-        print("Error: fastapi is not installed.")
-        print("Install it with: pip install fastapi")
-        sys.exit(1)
+    from .server import make_server
 
     url = f"http://{args.host}:{args.port}"
     print(f"Starting simpleboard...")
-    print(f"All experiments directory: {args.all_exp_dir}")
+    print(f"Experiments directory: {args.all_exp_dir}")
     print(f"Server URL: {url}")
 
-    # Open browser after a short delay
     if not args.no_browser:
-
-        def open_browser():
-            time.sleep(1.5)
+        def _open():
+            time.sleep(1.0)
             webbrowser.open(url)
 
-        import threading
+        threading.Thread(target=_open, daemon=True).start()
 
-        threading.Thread(target=open_browser, daemon=True).start()
-
-    # Run the server
-    uvicorn.run(
-        "simplegrad.simpleboard.server:app",
-        host=args.host,
-        port=args.port,
-        reload=args.reload,
-        log_level="info",
-    )
+    server = make_server(args.host, args.port)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
 
 
 if __name__ == "__main__":
