@@ -1,6 +1,9 @@
 """Tests for loss functions: mse_loss, ce_loss."""
 
 import numpy as np
+import pytest
+
+pytestmark = pytest.mark.usefixtures("device")
 import simplegrad as sg
 from .utils import gradcheck
 

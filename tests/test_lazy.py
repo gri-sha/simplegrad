@@ -1,6 +1,9 @@
 """Tests for lazy execution mode."""
 
 import numpy as np
+import pytest
+
+pytestmark = pytest.mark.usefixtures("device")
 import simplegrad as sg
 from simplegrad.core import Tensor, is_lazy, lazy, mode
 from simplegrad.core.autograd import _create_op_result

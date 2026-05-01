@@ -1,6 +1,9 @@
 """Tests for tensor transform operations: flatten, reshape."""
 
 import numpy as np
+import pytest
+
+pytestmark = pytest.mark.usefixtures("device")
 import simplegrad as sg
 from .utils import gradcheck
 

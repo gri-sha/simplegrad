@@ -1,6 +1,9 @@
 """Tests for neural network layers: Linear, Conv2d, MaxPool2d, Embedding, Sequential."""
 
 import numpy as np
+import pytest
+
+pytestmark = pytest.mark.usefixtures("device")
 import simplegrad as sg
 from .utils import gradcheck
 

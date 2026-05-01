@@ -1,6 +1,9 @@
 """Tests for core tensor arithmetic operations and autograd."""
 
 import numpy as np
+import pytest
+
+pytestmark = pytest.mark.usefixtures("device")
 import simplegrad as sg
 from .utils import gradcheck
 

@@ -1,6 +1,5 @@
 """Pooling operations with autograd support."""
 
-import numpy as np
 from ..core import Tensor, Function, Context
 from .conv import pad, _get_rec_fields_from_img, _get_img_from_rec_fields
 
@@ -23,16 +22,14 @@ class _MaxPool2d(Function):
         return _pool_output_shape(padded_input.shape, kh, kw, sh, sw)
 
     @staticmethod
-    def forward(
-        ctx: Context, padded_input: Tensor, kh: int, kw: int, sh: int, sw: int
-    ) -> np.ndarray:
+    def forward(ctx: Context, padded_input: Tensor, kh: int, kw: int, sh: int, sw: int):
         xp = ctx.backend
         out_shape = _pool_output_shape(padded_input.shape, kh, kw, sh, sw)
         batch_size = padded_input.values.shape[0] if padded_input.values.ndim == 4 else 1
         channels = padded_input.values.shape[-3]
         out_h, out_w = out_shape[-2], out_shape[-1]
 
-        rec_fields = _get_rec_fields_from_img(padded_input.values, kh, kw, sh, sw)
+        rec_fields = _get_rec_fields_from_img(padded_input.values, xp, kh, kw, sh, sw)
         ctx.rec_fields_flat = rec_fields.reshape(batch_size, channels, kh * kw, out_h, out_w)
         ctx.max_idx = xp.argmax(ctx.rec_fields_flat, axis=2)
         ctx.padded_input_shape = padded_input.values.shape
@@ -47,7 +44,7 @@ class _MaxPool2d(Function):
         return xp.max(ctx.rec_fields_flat, axis=2)
 
     @staticmethod
-    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+    def backward(ctx: Context, grad_output):
         xp = ctx.backend
         mask = xp.zeros((ctx.batch_size, ctx.channels, ctx.kh * ctx.kw, ctx.out_h, ctx.out_w))
         b_idx = xp.arange(ctx.batch_size)[:, None, None, None]
@@ -61,7 +58,7 @@ class _MaxPool2d(Function):
             ctx.batch_size, ctx.channels, ctx.kh, ctx.kw, ctx.out_h, ctx.out_w
         )
         return _get_img_from_rec_fields(
-            rec_fields_grad, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw
+            rec_fields_grad, xp, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw
         )
 
 
