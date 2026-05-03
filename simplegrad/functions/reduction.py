@@ -1,7 +1,7 @@
-"""Reduction operations: sum, mean, trace, argmax, argmin."""
+"""Reduction operations: sum, mean, variance, trace, argmax, argmin."""
 
 import numpy as np
-from ..core import Tensor, Function, Context, get_dtype_class
+from ..core import Tensor, Function, Context, get_dtype_class, compound_op
 
 
 class _Sum(Function):
@@ -136,6 +136,40 @@ def mean(x: Tensor, dim: int | None = None) -> Tensor:
             n *= s
         return sum(x) / n
     return sum(x, dim=dim) / x.shape[dim]
+
+
+@compound_op
+def variance(x: Tensor, dim: int | None = None, correction: int = 1) -> Tensor:
+    """Compute the variance of tensor elements along a dimension.
+
+    Variance measures how spread out values are from their mean. Two modes are
+    supported via the ``correction`` parameter: Bessel's correction (``correction=1``)
+    gives the unbiased sample variance, while population variance (``correction=0``)
+    is the maximum-likelihood estimate and is the standard choice inside norm layers.
+
+    Because the implementation is built from differentiable primitives (``mean``,
+    element-wise arithmetic), gradients flow through it automatically.
+
+    Args:
+        x: Input tensor of any shape.
+        dim: Dimension to reduce. If None, computes variance over all elements.
+        correction: Degrees-of-freedom correction applied to the denominator.
+            ``1`` (default) gives the unbiased sample variance (Bessel's correction:
+            divides by ``n - 1``). ``0`` gives the population variance (divides by
+            ``n``). Any non-negative integer is accepted.
+
+    Returns:
+        Reduced tensor with the same number of dimensions as ``x`` (keepdims=True).
+    """
+    mu = mean(x, dim=dim)
+    diff_sq = (x - mu) ** 2
+    if dim is None:
+        n = 1
+        for s in x.shape:
+            n *= s
+    else:
+        n = x.shape[dim % len(x.shape)]
+    return sum(diff_sq, dim=dim) / (n - correction)
 
 
 def argmax(x: Tensor, dim: int | None = None, dtype: str = "int32") -> Tensor:
