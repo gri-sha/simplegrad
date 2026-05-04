@@ -4,8 +4,9 @@ Loss layers are `Module` wrappers around the functional loss ops, making it easy
 
 ```python
 import simplegrad as sg
+import simplegrad.nn as nn
 
-criterion = sg.nn.CELoss()
+criterion = nn.CELoss()
 logits = sg.normal((8, 10), requires_grad=True)
 targets = sg.Tensor([0, 1, 2, 3, 4, 5, 6, 7])
 loss = criterion(logits, targets)

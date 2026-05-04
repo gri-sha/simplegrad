@@ -4,8 +4,9 @@
 
 ```python
 import simplegrad as sg
+import simplegrad.nn as nn
 
-fc = sg.nn.Linear(in_features=784, out_features=256)
+fc = nn.Linear(in_features=784, out_features=256)
 x = sg.normal((32, 784))
 out = fc(x)  # shape: (32, 256)
 out.sum().backward()

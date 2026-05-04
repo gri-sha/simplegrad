@@ -4,11 +4,12 @@ Activation layers are `Module` wrappers around the functional activation ops, ma
 
 ```python
 import simplegrad as sg
+import simplegrad.nn as nn
 
-model = sg.nn.Sequential(
-    sg.nn.Linear(16, 32),
-    sg.nn.ReLU(),
-    sg.nn.Linear(32, 10),
+model = nn.Sequential(
+    nn.Linear(16, 32),
+    nn.ReLU(),
+    nn.Linear(32, 10),
 )
 out = model(sg.ones((4, 16)))
 ```
