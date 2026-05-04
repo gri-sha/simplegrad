@@ -4,11 +4,10 @@
 
 ```python
 import simplegrad as sg
-from simplegrad.functions.conv import conv2d
 
-x = sg.normal((1, 3, 28, 28))           # (N, C, H, W)
+x = sg.normal((1, 3, 28, 28))                          # (N, C, H, W)
 kernel = sg.normal((16, 3, 3, 3), requires_grad=True)  # (out_ch, in_ch, kH, kW)
-out = conv2d(x, kernel, stride=1, padding=1)
+out = sg.conv2d(x, kernel, stride=1, padding=1)
 ```
 
 ::: simplegrad.functions.conv.pad

@@ -4,10 +4,9 @@
 
 ```python
 import simplegrad as sg
-from simplegrad.functions.pooling import max_pool2d
 
 x = sg.normal((1, 16, 28, 28), requires_grad=True)
-out = max_pool2d(x, kernel_size=2, stride=2)
+out = sg.max_pool2d(x, kernel_size=2, stride=2)
 # out.shape == (1, 16, 14, 14)
 ```
 

@@ -4,12 +4,13 @@
 
 ```python
 import simplegrad as sg
-from simplegrad.optimizers import SGD
-from simplegrad.schedulers import LinearLR
+import simplegrad.nn as nn
+import simplegrad.optimizers as optim
+import simplegrad.schedulers as schedulers
 
-model = sg.nn.Linear(8, 4)
-opt = SGD(lr=0.1, model=model)
-scheduler = LinearLR(opt, start_factor=1.0, end_factor=0.01, total_iters=10)
+model = nn.Linear(8, 4)
+opt = optim.SGD(lr=0.1, model=model)
+scheduler = schedulers.LinearLR(opt, start_factor=1.0, end_factor=0.01, total_iters=10)
 
 for epoch in range(10):
     # ... training loop ...
