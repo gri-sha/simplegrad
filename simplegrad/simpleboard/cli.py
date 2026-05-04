@@ -38,6 +38,7 @@ def main():
     print(f"Server URL: {url}")
 
     if not args.no_browser:
+
         def _open():
             time.sleep(1.0)
             webbrowser.open(url)

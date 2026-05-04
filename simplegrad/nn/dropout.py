@@ -57,9 +57,6 @@ class Dropout(Module):
 
         Args:
             x: Input tensor.
-
-        Returns:
-            Tensor with random elements zeroed (training) or unchanged (eval).
         """
         if not isinstance(x, Tensor):
             raise TypeError("Input must be a Tensor.")

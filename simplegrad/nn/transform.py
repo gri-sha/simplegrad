@@ -20,14 +20,7 @@ class Flatten(Module):
         self.end_dim = end_dim
 
     def forward(self, x: Tensor) -> Tensor:
-        """Flatten the input tensor.
-
-        Args:
-            x: Input tensor.
-
-        Returns:
-            Tensor with dimensions ``[start_dim, end_dim]`` merged into one.
-        """
+        """Flatten the input tensor."""
         return flatten(x, self.start_dim, self.end_dim)
 
     def __str__(self):

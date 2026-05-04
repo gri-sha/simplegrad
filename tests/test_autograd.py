@@ -27,9 +27,10 @@ def test_matmul():
 
 
 def test_broadcasting_1():
-    array1 = np.random.randn(3, 4, 5).astype(np.float64)
-    array2 = np.random.randn(1, 4, 1).astype(np.float64)
-    array3 = np.random.randn(3, 1, 5).astype(np.float64)
+    rng = np.random.default_rng(1)
+    array1 = rng.standard_normal((3, 4, 5)).astype(np.float64)
+    array2 = rng.standard_normal((1, 4, 1)).astype(np.float64)
+    array3 = rng.standard_normal((3, 1, 5)).astype(np.float64)
     a = sg.Tensor(array1, dtype="float64")
     b = sg.Tensor(array2, dtype="float64")
     c = sg.Tensor(array3, dtype="float64")
@@ -38,10 +39,11 @@ def test_broadcasting_1():
 
 
 def test_broadcasting_2():
-    array1 = np.random.randn(2, 3, 4).astype(np.float64)
-    array2 = np.random.randn(4, 5).astype(np.float64)
-    array3 = np.random.randn(1, 1, 5).astype(np.float64)
-    array4 = np.random.randn(2, 3, 1).astype(np.float64)
+    rng = np.random.default_rng(2)
+    array1 = rng.standard_normal((2, 3, 4)).astype(np.float64)
+    array2 = rng.standard_normal((4, 5)).astype(np.float64)
+    array3 = rng.standard_normal((1, 1, 5)).astype(np.float64)
+    array4 = rng.standard_normal((2, 3, 1)).astype(np.float64)
     a = sg.Tensor(array1, dtype="float64")
     b = sg.Tensor(array2, dtype="float64")
     c = sg.Tensor(array3, dtype="float64")
@@ -52,3 +54,13 @@ def test_broadcasting_2():
         return (mm + c) * d + mm
 
     gradcheck(fn, [a, b, c, d])
+
+
+def test_gradient_accumulates_across_backward_calls():
+    a = sg.Tensor(np.array([1.0, 2.0, 3.0], dtype=np.float64), dtype="float64")
+
+    sg.sum(a * 2.0).backward()
+    grad_after_first = a.grad.copy()
+
+    sg.sum(a * 3.0).backward()
+    assert np.allclose(a.grad, grad_after_first + np.full(3, 3.0))

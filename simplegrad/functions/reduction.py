@@ -91,14 +91,11 @@ class _Argmin(Function):
 
 
 def sum(x: Tensor, dim: int | None = None) -> Tensor:
-    """Sum tensor elements along a dimension.
+    """Sum tensor elements along a dimension (keepdims=True).
 
     Args:
         x: Input tensor.
         dim: Dimension to reduce. If None, sums all elements.
-
-    Returns:
-        Reduced tensor (keepdims=True).
     """
     return _Sum.apply(x, dim, oper=f"sum(d={dim})")
 
@@ -108,9 +105,6 @@ def trace(x: Tensor) -> Tensor:
 
     Args:
         x: 2D square tensor.
-
-    Returns:
-        Scalar tensor containing the trace.
 
     Raises:
         ValueError: If x is not a 2D square tensor (checked in eager mode).
@@ -126,9 +120,6 @@ def mean(x: Tensor, dim: int | None = None) -> Tensor:
     Args:
         x: Input tensor.
         dim: Dimension to reduce. If None, averages all elements.
-
-    Returns:
-        Reduced tensor.
     """
     if dim is None:
         n = 1
@@ -158,8 +149,6 @@ def variance(x: Tensor, dim: int | None = None, correction: int = 1) -> Tensor:
             divides by ``n - 1``). ``0`` gives the population variance (divides by
             ``n``). Any non-negative integer is accepted.
 
-    Returns:
-        Reduced tensor with the same number of dimensions as ``x`` (keepdims=True).
     """
     mu = mean(x, dim=dim)
     diff_sq = (x - mu) ** 2
@@ -181,9 +170,6 @@ def argmax(x: Tensor, dim: int | None = None, dtype: str = "int32") -> Tensor:
         x: Input tensor.
         dim: Dimension to reduce. If None, returns the flat index.
         dtype: Integer dtype for the output indices.
-
-    Returns:
-        Integer tensor of argmax indices.
     """
     out = _Argmax.apply(x, dim, dtype, oper=f"argmax(d={dim})")
     out.dtype = get_dtype_class(dtype)
@@ -199,9 +185,6 @@ def argmin(x: Tensor, dim: int | None = None, dtype: str = "int32") -> Tensor:
         x: Input tensor.
         dim: Dimension to reduce. If None, returns the flat index.
         dtype: Integer dtype for the output indices.
-
-    Returns:
-        Integer tensor of argmin indices.
     """
     out = _Argmin.apply(x, dim, dtype, oper=f"argmin(d={dim})")
     out.dtype = get_dtype_class(dtype)

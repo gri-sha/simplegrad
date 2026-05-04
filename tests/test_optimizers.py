@@ -17,10 +17,11 @@ class TwoLayerNet(sg.Module):
         return self.fc2(sg.relu(self.fc1(x)))
 
 
-def _forward_backward(model, batch_size=3):
+def _forward_backward(model, batch_size=3, seed=42):
     """Run one forward+backward pass and return the loss."""
-    x = sg.Tensor(np.random.randn(batch_size, 4).astype(np.float64), dtype="float64")
-    target = sg.Tensor(np.random.randn(batch_size, 2).astype(np.float64), dtype="float64")
+    rng = np.random.default_rng(seed)
+    x = sg.Tensor(rng.standard_normal((batch_size, 4)).astype(np.float64), dtype="float64")
+    target = sg.Tensor(rng.standard_normal((batch_size, 2)).astype(np.float64), dtype="float64")
     loss = sg.mse_loss(model(x), target)
     loss.backward()
     return loss
@@ -84,18 +85,38 @@ def test_sgd_param_groups_auto_labels():
 
 
 def test_sgd_param_groups_different_momentum():
-    """Each group should use its own momentum value."""
-    model = TwoLayerNet()
+    """Each group uses its own momentum buffer, verified via the update formula."""
+
+    class _Scalar(sg.Module):
+        def __init__(self, val):
+            super().__init__()
+            self.w = sg.Tensor(np.array([float(val)], dtype=np.float64), dtype="float64")
+
+        def forward(self, x):
+            return self.w
+
+    m1, m2 = _Scalar(1.0), _Scalar(1.0)
     optimizer = sg.opt.SGD(
-        lr=0.01,
+        lr=0.1,
         momentum=0.0,
         param_groups=[
-            {"label": "high_mom", "params": model.fc1, "momentum": 0.9},
-            {"label": "no_mom", "params": model.fc2, "momentum": 0.0},
+            {"label": "high_mom", "params": m1, "momentum": 0.9},
+            {"label": "no_mom", "params": m2, "momentum": 0.0},
         ],
     )
     assert optimizer.param_groups[0]["momentum"] == 0.9
     assert optimizer.param_groups[1]["momentum"] == 0.0
+
+    # apply constant gradient g=1.0 for 2 steps, then check hand-computed expected values
+    # high_mom: v1=-0.1, w=0.9;  v2=0.9*(-0.1)-0.1=-0.19, w=0.71
+    # no_mom:   v1=-0.1, w=0.9;  v2=0.0*(-0.1)-0.1=-0.10, w=0.80
+    for _ in range(2):
+        m1.w.grad = np.array([1.0], dtype=np.float64)
+        m2.w.grad = np.array([1.0], dtype=np.float64)
+        optimizer.step()
+
+    np.testing.assert_allclose(m1.w.values, [0.71], atol=1e-10)
+    np.testing.assert_allclose(m2.w.values, [0.80], atol=1e-10)
 
 
 # SGD — state
@@ -279,3 +300,94 @@ def test_set_param_unknown_key_raises():
     optimizer = sg.opt.SGD(model, lr=0.01)
     with pytest.raises(KeyError):
         optimizer.set_param("nonexistent", 1.0)
+
+
+# numerical correctness
+
+
+class _Scalar(sg.Module):
+    """Single-parameter model for testing update formulas against hand-computed values."""
+
+    def __init__(self, val: float = 1.0):
+        super().__init__()
+        self.w = sg.Tensor(np.array([val], dtype=np.float64), dtype="float64")
+
+    def forward(self, x):
+        return self.w * x
+
+
+def test_adam_one_step_formula():
+    # theta=1, grad=0.5, lr=0.01, beta1=0.9, beta2=0.999, eps=1e-8
+    # m1=0.05, v1=0.00025; m_hat=0.5, v_hat=0.25
+    # update = 0.01 * 0.5 / (sqrt(0.25) + 1e-8) = 0.01
+    # theta_new = 1.0 - 0.01 = 0.99
+    model = _Scalar(1.0)
+    optimizer = sg.opt.Adam(model, lr=0.01, beta_1=0.9, beta_2=0.999, eps=1e-8)
+    model.w.grad = np.array([0.5], dtype=np.float64)
+    optimizer.step()
+    np.testing.assert_allclose(model.w.values, [0.99], atol=1e-10)
+
+
+def test_adamw_one_step_formula():
+    # same Adam step as above: theta → 0.99
+    # weight decay is applied to the post-Adam param: 0.99 -= lr * wd * 0.99 = 0.99 * (1 - 0.001) = 0.98901
+    model = _Scalar(1.0)
+    optimizer = sg.opt.AdamW(model, lr=0.01, beta_1=0.9, beta_2=0.999, eps=1e-8, weight_decay=0.1)
+    model.w.grad = np.array([0.5], dtype=np.float64)
+    optimizer.step()
+    np.testing.assert_allclose(model.w.values, [0.99 * (1 - 0.01 * 0.1)], atol=1e-8)
+
+
+def test_adamw_weight_decay_shrinks_params():
+    # with zero gradient, weight decay alone must reduce |param| each step
+    model = _Scalar(2.0)
+    optimizer = sg.opt.AdamW(model, lr=0.1, weight_decay=0.5)
+    before = model.w.values.copy()
+    model.w.grad = np.zeros(1, dtype=np.float64)
+    optimizer.step()
+    assert model.w.values[0] < before[0]
+
+
+# convergence
+
+
+def test_sgd_converges_on_simple_linear():
+    # y = X @ W_true: exact linear relationship, loss must go to near 0
+    rng = np.random.default_rng(20)
+    W_true = rng.standard_normal((4, 2)).astype(np.float64)
+    x_data = rng.standard_normal((16, 4)).astype(np.float64)
+    y_data = x_data @ W_true
+    x = sg.Tensor(x_data, dtype="float64")
+    y = sg.Tensor(y_data, dtype="float64")
+
+    class _Lin(sg.Module):
+        def __init__(self):
+            super().__init__()
+            self.fc = sg.nn.Linear(4, 2, dtype="float64")
+
+        def forward(self, inp):
+            return self.fc(inp)
+
+    model = _Lin()
+    optimizer = sg.opt.SGD(model, lr=0.1)
+
+    loss0 = float(sg.mse_loss(model(x), y).values.sum())
+    for _ in range(200):
+        loss = sg.mse_loss(model(x), y)
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+
+    assert float(loss.values.sum()) < loss0 * 0.001
+
+
+# zero_grad edge case
+
+
+def test_zero_grad_before_any_backward():
+    # zero_grad must not raise when called before any backward pass
+    model = TwoLayerNet()
+    optimizer = sg.opt.SGD(model, lr=0.01)
+    optimizer.zero_grad()
+    for param in model.parameters().values():
+        assert np.all(param.grad == 0)

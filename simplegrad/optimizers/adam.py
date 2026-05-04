@@ -54,7 +54,9 @@ class Adam(Optimizer):
         maximize: bool = False,
         param_groups: list[dict] | None = None,
     ) -> None:
-        super().__init__(lr, model, param_groups, beta_1=beta_1, beta_2=beta_2, eps=eps, maximize=maximize)
+        super().__init__(
+            lr, model, param_groups, beta_1=beta_1, beta_2=beta_2, eps=eps, maximize=maximize
+        )
 
         self.moments1 = {
             (group["label"], name): get_backend(param.device).zeros_like(param.values)

@@ -23,9 +23,6 @@ class CELoss(Module):
         Args:
             z: Logits tensor.
             y: Target probability distribution, same shape as ``z``.
-
-        Returns:
-            Scalar loss tensor.
         """
         return ce_loss(z, y, dim=self.dim, reduction=self.reduction)
 
@@ -50,9 +47,6 @@ class MSELoss(Module):
         Args:
             p: Predictions tensor.
             y: Targets tensor, same shape as ``p``.
-
-        Returns:
-            Scalar loss tensor.
         """
         return mse_loss(p, y, reduction=self.reduction)
 

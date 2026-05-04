@@ -1,3 +1,16 @@
 # Flatten
 
+`Flatten` is a `Module` wrapper that collapses spatial dimensions into a single feature vector, bridging convolutional layers and fully connected layers. It calls the functional `flatten` op under the hood and holds no learnable parameters. Use it inside a `Sequential` model to avoid writing a custom `forward` just for reshaping.
+
+```python
+import simplegrad as sg
+
+model = sg.nn.Sequential(
+    sg.nn.Conv2d(1, 16, kernel_size=3, padding=1),
+    sg.nn.ReLU(),
+    sg.nn.Flatten(),                # (N, 16, 28, 28) -> (N, 12544)
+    sg.nn.Linear(12544, 10),
+)
+```
+
 ::: simplegrad.nn.transform.Flatten

@@ -17,9 +17,6 @@ def _collect_nodes(tensor: Tensor, visited: set = None) -> list:
     Args:
         tensor: Root tensor to start traversal from.
         visited: Set of already-visited tensor ids (used internally for recursion).
-
-    Returns:
-        List of all Tensor objects reachable via ``.prev`` links.
     """
     if visited is None:
         visited = set()

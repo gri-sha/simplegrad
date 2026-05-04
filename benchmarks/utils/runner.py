@@ -42,6 +42,7 @@ class Backend:
 
     fn is called as ``fn(**config.params, n_runs=N, warmup=N) -> TimingResult``.
     """
+
     name: str
     fn: Callable[..., TimingResult]
     device_label: str
@@ -53,6 +54,7 @@ class Config:
 
     Configs sharing the same ``group`` string are printed under a common header.
     """
+
     label: str
     params: dict
     group: str | None = None
@@ -135,9 +137,9 @@ def run_suite(
                     log.info("%s%-14s  %s", result_indent, b.name, r.fmt())
                     cfg_results[b.name] = {
                         "fwd_mean": round(r.fwd_mean, 4),
-                        "fwd_std":  round(r.fwd_std,  4),
+                        "fwd_std": round(r.fwd_std, 4),
                         "bwd_mean": round(r.bwd_mean, 4),
-                        "bwd_std":  round(r.bwd_std,  4),
+                        "bwd_std": round(r.bwd_std, 4),
                     }
                 except Exception as exc:
                     log.warning("%s%-14s  skipped: %s", result_indent, b.name, exc)

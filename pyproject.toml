@@ -8,12 +8,14 @@ version = "0.1.0"
 description = "Simple DL framework"
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = ["numpy>=1.20"]
+dependencies = [
+    "numpy>=1.20",
+    "matplotlib>=3.5",
+    "graphviz>=0.20",
+]
 
 [project.optional-dependencies]
 gpu = ["cupy-cuda12x>=13.0"]
-visual = ["matplotlib>=3.5", "graphviz>=0.20"]
-simpleboard = ["simplegrad[track]"]
 bench = ["torch>=2.0"]
 dev = ["pytest>=7.0", "black>=22.0", "mypy>=0.990", "ipykernel"]
 docs = [
@@ -24,6 +26,9 @@ docs = [
 
 [project.scripts]
 simpleboard = "simplegrad.simpleboard.cli:main"
+
+[tool.setuptools.cmdclass]
+build_py = "tools.build_hooks:BuildPyCommand"
 
 [tool.setuptools.packages.find]
 where = ["."]

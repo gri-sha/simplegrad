@@ -31,6 +31,7 @@ from simplegrad.core.devices import default_device
 # allow `import benchmarks.utils` when running from the repo root or directly
 import sys as _sys
 from pathlib import Path as _Path
+
 _sys.path.insert(0, str(_Path(__file__).parent.parent))
 
 from benchmarks.utils import (
@@ -48,10 +49,10 @@ from benchmarks.utils import (
 )
 
 INPUT_CONFIGS = [
-    {"batch": 1,  "in_ch": 1,  "img": 28,  "out_ch": 32},
-    {"batch": 8,  "in_ch": 3,  "img": 64,  "out_ch": 32},
-    {"batch": 32, "in_ch": 3,  "img": 28,  "out_ch": 64},
-    {"batch": 32, "in_ch": 3,  "img": 64,  "out_ch": 64},
+    {"batch": 1, "in_ch": 1, "img": 28, "out_ch": 32},
+    {"batch": 8, "in_ch": 3, "img": 64, "out_ch": 32},
+    {"batch": 32, "in_ch": 3, "img": 28, "out_ch": 64},
+    {"batch": 32, "in_ch": 3, "img": 64, "out_ch": 64},
 ]
 
 KERNELS = [
@@ -155,6 +156,7 @@ def _device_label(name: str) -> str:
             return f"numpy  cpu  {cpu_name}"
         if name == "sg-gpu":
             import cupy as cp
+
             props = cp.cuda.runtime.getDeviceProperties(0)
             dev_name = props["name"]
             if isinstance(dev_name, bytes):
@@ -191,7 +193,9 @@ def _build_configs() -> list[Config]:
     for inp in INPUT_CONFIGS:
         group = "input ({batch}, {in_ch}, {img}, {img})  out_channels={out_ch}".format(**inp)
         for k in KERNELS:
-            label = "kernel {kernel_size}x{kernel_size}  stride={stride}  padding={padding}".format(**k)
+            label = "kernel {kernel_size}x{kernel_size}  stride={stride}  padding={padding}".format(
+                **k
+            )
             configs.append(Config(label=label, params={**inp, **k}, group=group))
     return configs
 
@@ -205,7 +209,10 @@ def main():
     parser.add_argument("--n-runs", type=int, default=30, metavar="N")
     parser.add_argument("--warmup", type=int, default=5, metavar="N")
     parser.add_argument(
-        "--log-file", type=str, default=None, metavar="PATH",
+        "--log-file",
+        type=str,
+        default=None,
+        metavar="PATH",
         help="custom log file path (default: benchmarks/logs/conv_<datetime>.log)",
     )
     args = parser.parse_args()
@@ -214,14 +221,25 @@ def main():
     if not backends:
         parser.error("specify at least one backend (--sg-cpu, --torch-cpu, --torch-metal, ...)")
 
-    log_path = default_log_path("conv") if args.log_file is None else __import__("pathlib").Path(args.log_file)
+    log_path = (
+        default_log_path("conv")
+        if args.log_file is None
+        else __import__("pathlib").Path(args.log_file)
+    )
     log = setup_logging("conv_benchmark", log_path)
 
     sysinfo.log_system_info(log)
     log.info("")
 
-    run_suite("conv2d", backends, _build_configs(), args.n_runs, args.warmup, log,
-              json_path=json_log_path(log_path))
+    run_suite(
+        "conv2d",
+        backends,
+        _build_configs(),
+        args.n_runs,
+        args.warmup,
+        log,
+        json_path=json_log_path(log_path),
+    )
 
 
 if __name__ == "__main__":
