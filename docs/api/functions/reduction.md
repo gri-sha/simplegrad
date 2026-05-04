@@ -4,10 +4,9 @@ Reduction operations collapse one or more axes of a tensor into a scalar or lowe
 
 ```python
 import simplegrad as sg
-from simplegrad.functions.reduction import sum, mean
 
 x = sg.normal((4, 10), requires_grad=True)
-loss = mean(x)
+loss = sg.mean(x)
 loss.backward()
 
 preds = sg.argmax(x, axis=1)  # predicted class indices

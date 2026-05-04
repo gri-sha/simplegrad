@@ -4,10 +4,9 @@ Shape-transform functions rearrange tensor data without changing its values, ena
 
 ```python
 import simplegrad as sg
-from simplegrad.functions.tranform import flatten
 
 x = sg.normal((4, 16, 7, 7), requires_grad=True)  # (N, C, H, W)
-out = flatten(x, start_dim=1)                       # (4, 784)
+out = sg.flatten(x, start_dim=1)                   # (4, 784)
 ```
 
 ::: simplegrad.functions.tranform.flatten
