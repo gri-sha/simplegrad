@@ -149,6 +149,7 @@ function App() {
   const openSocket = useCallback((runId: number) => {
     if (wsMap.current.has(runId)) return;
     const ws = api.createWebSocket(runId);
+    if (!ws) return;
 
     ws.onmessage = (event) => {
       try {

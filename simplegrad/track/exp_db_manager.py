@@ -176,6 +176,18 @@ class ExperimentDBManager:
                 );
                 
                 CREATE INDEX IF NOT EXISTS idx_images_run_name ON images(run_id, name);
+
+                CREATE TABLE IF NOT EXISTS texts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    step INTEGER NOT NULL,
+                    content TEXT NOT NULL,
+                    wall_time REAL NOT NULL,
+                    FOREIGN KEY (run_id) REFERENCES runs(id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_texts_run_name ON texts(run_id, name);
             """)
 
     def create_run(self, name: str | None = None, config: dict | None = None) -> int:
@@ -219,6 +231,7 @@ class ExperimentDBManager:
             conn.execute("DELETE FROM graphs WHERE run_id = ?", (run_id,))
             conn.execute("DELETE FROM histograms WHERE run_id = ?", (run_id,))
             conn.execute("DELETE FROM images WHERE run_id = ?", (run_id,))
+            conn.execute("DELETE FROM texts WHERE run_id = ?", (run_id,))
             conn.execute("DELETE FROM runs WHERE id = ?", (run_id,))
 
     def record(self, run_id: int, metric_name: str, step: int, value: float):
@@ -347,6 +360,100 @@ class ExperimentDBManager:
                 "INSERT INTO images (run_id, name, step, width, height, channels, image_data, wall_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (run_id, name, step, width, height, channels, image_data, log_time),
             )
+
+    def save_text(self, run_id: int, name: str, step: int, content: str):
+        """Save a text entry for a run.
+
+        Use this to record arbitrary string artifacts associated with a step:
+        sampled model outputs, validation predictions, free-form notes, model
+        summaries, etc. Mirrors TensorBoard's `add_text` semantics.
+        """
+        log_time = time.time()
+        with self._get_connection() as conn:
+            conn.execute(
+                "INSERT INTO texts (run_id, name, step, content, wall_time) VALUES (?, ?, ?, ?, ?)",
+                (run_id, name, step, content, log_time),
+            )
+
+    def get_texts(self, run_id: int) -> dict[str, list[dict]]:
+        """Get all text entries for a run, grouped by name."""
+        with self._get_connection(readonly=True) as conn:
+            rows = conn.execute(
+                "SELECT name, step, content, wall_time FROM texts WHERE run_id = ? ORDER BY step",
+                (run_id,),
+            ).fetchall()
+            result: dict[str, list[dict]] = {}
+            for row in rows:
+                result.setdefault(row["name"], []).append(
+                    {
+                        "step": row["step"],
+                        "content": row["content"],
+                        "log_time": row["wall_time"],
+                    }
+                )
+            return result
+
+    def get_metric_summary(self, run_id: int) -> dict[str, dict]:
+        """Compute per-metric summary stats (min/max/mean/std/last/n) for a run.
+
+        Returns a mapping from metric name to a dict with the standard
+        TensorBoard scalar-summary fields. Cheap because it's a single SQL pass
+        per metric and the records table is indexed on (run_id, step).
+        """
+        with self._get_connection(readonly=True) as conn:
+            metrics = [
+                row["name"]
+                for row in conn.execute(
+                    """SELECT DISTINCT m.name FROM records r
+                       JOIN metrics m ON r.metric_id = m.id
+                       WHERE r.run_id = ?""",
+                    (run_id,),
+                ).fetchall()
+            ]
+            summary: dict[str, dict] = {}
+            for name in metrics:
+                row = conn.execute(
+                    """SELECT MIN(r.value) AS vmin, MAX(r.value) AS vmax,
+                              AVG(r.value) AS vmean, COUNT(*) AS n,
+                              MIN(r.step) AS first_step, MAX(r.step) AS last_step
+                       FROM records r JOIN metrics m ON r.metric_id = m.id
+                       WHERE r.run_id = ? AND m.name = ?""",
+                    (run_id, name),
+                ).fetchone()
+                last_row = conn.execute(
+                    """SELECT r.value FROM records r JOIN metrics m ON r.metric_id = m.id
+                       WHERE r.run_id = ? AND m.name = ?
+                       ORDER BY r.step DESC LIMIT 1""",
+                    (run_id, name),
+                ).fetchone()
+                # SQLite has no built-in stddev — pull values once for std calc.
+                # Cheap for typical metric counts (thousands), and avoids loading
+                # an extension just for a single aggregate.
+                vals = [
+                    r["value"]
+                    for r in conn.execute(
+                        """SELECT r.value FROM records r JOIN metrics m ON r.metric_id = m.id
+                           WHERE r.run_id = ? AND m.name = ?""",
+                        (run_id, name),
+                    ).fetchall()
+                ]
+                if vals:
+                    mean = sum(vals) / len(vals)
+                    var = sum((v - mean) ** 2 for v in vals) / len(vals)
+                    std = var**0.5
+                else:
+                    std = 0.0
+                summary[name] = {
+                    "min": row["vmin"],
+                    "max": row["vmax"],
+                    "mean": row["vmean"],
+                    "std": std,
+                    "last": last_row["value"] if last_row else None,
+                    "n": row["n"],
+                    "first_step": row["first_step"],
+                    "last_step": row["last_step"],
+                }
+            return summary
 
     def get_images(self, run_id: int) -> dict[str, list[dict]]:
         """Get all images for a run."""

@@ -12,7 +12,7 @@ import type {
   ImagesResponse,
 } from './types';
 
-const DEFAULT_API_URL = 'http://localhost:8000';
+const DEFAULT_API_URL = '';
 
 export const getApiUrl = (): string => {
   return localStorage.getItem('simpleboard_api_url') || DEFAULT_API_URL;
@@ -63,7 +63,8 @@ class ApiClient {
   }
 
   async getRecords(runId: number, metricName?: string): Promise<MetricsResponse> {
-    const url = new URL(`${this.getBaseUrl()}/api/runs/${runId}/records`);
+    const base = this.getBaseUrl() || window.location.origin;
+    const url = new URL(`${base}/api/runs/${runId}/records`);
     if (metricName) {
       url.searchParams.append('metric_name', metricName);
     }
@@ -90,9 +91,17 @@ class ApiClient {
     return res.json();
   }
 
-  createWebSocket(runId: number): WebSocket {
-    const wsUrl = this.getBaseUrl().replace('http', 'ws');
-    return new WebSocket(`${wsUrl}/ws/${runId}`);
+  createWebSocket(runId: number): WebSocket | null {
+    try {
+      const base = this.getBaseUrl();
+      const wsUrl = base 
+        ? base.replace('http', 'ws')
+        : (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.host;
+      return new WebSocket(`${wsUrl}/ws/${runId}`);
+    } catch (e) {
+      console.warn("WebSocket not supported by backend", e);
+      return null;
+    }
   }
 }
 
