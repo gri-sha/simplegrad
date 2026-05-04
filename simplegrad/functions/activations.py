@@ -11,13 +11,6 @@ from ..core import Tensor, Function, Context, compound_op
 _erf_np = np.vectorize(_math.erf)
 
 
-def _erf(xp, arr):
-    """Compute erf element-wise, supporting numpy and cupy backends."""
-    if xp is np:
-        return _erf_np(arr)
-    return xp.erf(arr)
-
-
 class _Relu(Function):
     oper = "ReLU"
 
@@ -30,54 +23,6 @@ class _Relu(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
         return grad_output * ctx.mask
-
-
-class _Tanh(Function):
-    oper = "Tanh"
-
-    @staticmethod
-    def forward(ctx: Context, x: Tensor) -> np.ndarray:
-        xp = ctx.backend
-        ctx.out = xp.tanh(x.values)
-        return ctx.out
-
-    @staticmethod
-    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
-        return grad_output * (1 - ctx.out**2)
-
-
-class _Sigmoid(Function):
-    oper = "Sigmoid"
-
-    @staticmethod
-    def forward(ctx: Context, x: Tensor) -> np.ndarray:
-        xp = ctx.backend
-        ctx.out = 1 / (1 + xp.exp(-x.values))
-        return ctx.out
-
-    @staticmethod
-    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
-        return grad_output * ctx.out * (1 - ctx.out)
-
-
-class _GELUErf(Function):
-    oper = "GELUErf"
-
-    @staticmethod
-    def forward(ctx: Context, x: Tensor) -> np.ndarray:
-        xp = ctx.backend
-        ctx.x = x.values
-        ctx.erf_val = _erf(xp, x.values / np.sqrt(2))
-        return 0.5 * x.values * (1 + ctx.erf_val)
-
-    @staticmethod
-    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
-        xp = ctx.backend
-        # d/dx [0.5 * x * (1 + erf(x/sqrt(2)))]
-        # = 0.5*(1 + erf(x/sqrt(2))) + x*exp(-x^2/2)/sqrt(2*pi)
-        deriv = 0.5 * (1 + ctx.erf_val) + ctx.x * xp.exp(-ctx.x**2 / 2) / np.sqrt(2 * np.pi)
-        return grad_output * deriv
-
 
 def relu(x: Tensor) -> Tensor:
     """Apply ReLU activation element-wise: max(0, x).
@@ -102,6 +47,44 @@ def relu(x: Tensor) -> Tensor:
     return _Relu.apply(x)
 
 
+def _erf(xp, arr):
+    """Compute erf element-wise, supporting numpy and cupy backends."""
+    if xp is np:
+        return _erf_np(arr)
+    return xp.erf(arr)
+
+class _GELUErf(Function):
+    oper = "GELUErf"
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        xp = ctx.backend
+        ctx.x = x.values
+        ctx.erf_val = _erf(xp, x.values / np.sqrt(2))
+        return 0.5 * x.values * (1 + ctx.erf_val)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        xp = ctx.backend
+        # d/dx [0.5 * x * (1 + erf(x/sqrt(2)))]
+        # = 0.5*(1 + erf(x/sqrt(2))) + x*exp(-x^2/2)/sqrt(2*pi)
+        deriv = 0.5 * (1 + ctx.erf_val) + ctx.x * xp.exp(-ctx.x**2 / 2) / np.sqrt(2 * np.pi)
+        return grad_output * deriv
+
+class _Tanh(Function):
+    oper = "Tanh"
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        xp = ctx.backend
+        ctx.out = xp.tanh(x.values)
+        return ctx.out
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output * (1 - ctx.out**2)
+
+
 def tanh(x: Tensor) -> Tensor:
     """Apply hyperbolic tangent element-wise.
 
@@ -123,6 +106,19 @@ def tanh(x: Tensor) -> Tensor:
     """
     return _Tanh.apply(x)
 
+class _Sigmoid(Function):
+    oper = "Sigmoid"
+
+    @staticmethod
+    def forward(ctx: Context, x: Tensor) -> np.ndarray:
+        xp = ctx.backend
+        ctx.out = 1 / (1 + xp.exp(-x.values))
+        return ctx.out
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        return grad_output * ctx.out * (1 - ctx.out)
+
 
 def sigmoid(x: Tensor) -> Tensor:
     """Apply sigmoid activation element-wise: 1 / (1 + exp(-x)).
@@ -143,6 +139,21 @@ def sigmoid(x: Tensor) -> Tensor:
         Tensor([0.5, 0.731, 0.269])
     """
     return _Sigmoid.apply(x)
+
+class _ELU(Function):
+    @staticmethod
+    def forward(ctx: Context, x: Tensor, alpha: float) -> np.ndarray:
+        xp = ctx.backend
+        ctx.mask = x.values > 0
+        # clamp to 0 before exp to avoid overflow on large positive values
+        ctx.exp_x = xp.exp(xp.minimum(x.values, 0))
+        ctx.alpha = alpha
+        return xp.where(ctx.mask, x.values, alpha * (ctx.exp_x - 1))
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
+        # derivative: 1 where x>0, alpha*exp(x) where x<=0
+        return grad_output * (ctx.mask + ~ctx.mask * ctx.alpha * ctx.exp_x)
 
 
 def elu(x: Tensor, alpha: float = 1.0) -> Tensor:
@@ -170,24 +181,7 @@ def elu(x: Tensor, alpha: float = 1.0) -> Tensor:
         >>> elu(x)
         Tensor([-0.632, 0.0, 1.0])
     """
-
-    class _ELU(Function):
-        oper = f"ELU(a={alpha})"
-
-        @staticmethod
-        def forward(ctx: Context, x: Tensor) -> np.ndarray:
-            xp = ctx.backend
-            ctx.mask = x.values > 0
-            # clamp to 0 before exp to avoid overflow on large positive values
-            ctx.exp_x = xp.exp(xp.minimum(x.values, 0))
-            return xp.where(ctx.mask, x.values, alpha * (ctx.exp_x - 1))
-
-        @staticmethod
-        def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
-            # derivative: 1 where x>0, alpha*exp(x) where x<=0
-            return grad_output * (ctx.mask + ~ctx.mask * alpha * ctx.exp_x)
-
-    return _ELU.apply(x)
+    return _ELU.apply(x, alpha, oper=f"ELU(a={alpha})")
 
 
 @compound_op

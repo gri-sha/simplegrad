@@ -17,25 +17,11 @@ def test_mse_forward_all_reductions():
     fwdcheck(sg.mse_loss(p, y, reduction=None), [[1.0, 4.0]])
 
 
-def test_mse_mean():
+@pytest.mark.parametrize("reduction", ["mean", "sum", None])
+def test_mse_gradcheck(reduction):
     predictions = sg.Tensor(np.array([[0.2, 0.8, 0.5], [1.5, 0.3, 0.7]]), dtype="float64")
     targets = sg.Tensor(np.array([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0]]), dtype="float64")
-
-    gradcheck(lambda: sg.mse_loss(predictions, targets, reduction="mean"), [predictions])
-
-
-def test_mse_sum():
-    predictions = sg.Tensor(np.array([[0.2, 0.8, 0.5], [1.5, 0.3, 0.7]]), dtype="float64")
-    targets = sg.Tensor(np.array([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0]]), dtype="float64")
-
-    gradcheck(lambda: sg.mse_loss(predictions, targets, reduction="sum"), [predictions])
-
-
-def test_mse_no_reduction():
-    predictions = sg.Tensor(np.array([[0.2, 0.8, 0.5], [1.5, 0.3, 0.7]]), dtype="float64")
-    targets = sg.Tensor(np.array([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0]]), dtype="float64")
-
-    gradcheck(lambda: sg.mse_loss(predictions, targets, reduction=None), [predictions])
+    gradcheck(lambda: sg.mse_loss(predictions, targets, reduction=reduction), [predictions])
 
 
 def _ce_helper(array1, array2, dim=-1):
@@ -107,81 +93,87 @@ def test_ce_2d():
 
 
 def test_ce_3d():
+    rng = np.random.default_rng(10)
     shape = (3, 4, 5)
-    array1 = np.random.randn(*shape)
+    array1 = rng.standard_normal(shape)
     array2 = np.zeros(shape)
     for i in range(shape[0]):
         for j in range(shape[1]):
-            array2[i, j, np.random.randint(0, shape[2])] = 1
+            array2[i, j, rng.integers(0, shape[2])] = 1
     _ce_helper(array1=array1, array2=array2)
 
 
 def test_ce_4d():
+    rng = np.random.default_rng(11)
     shape = (3, 4, 5, 6)
-    array1 = np.random.randn(*shape)
+    array1 = rng.standard_normal(shape)
     array2 = np.zeros(shape)
     for i in range(shape[0]):
         for j in range(shape[1]):
             for k in range(shape[2]):
-                array2[i, j, k, np.random.randint(0, shape[3])] = 1
+                array2[i, j, k, rng.integers(0, shape[3])] = 1
     _ce_helper(array1=array1, array2=array2)
 
 
 def test_ce_dim_0():
+    rng = np.random.default_rng(12)
     shape = (6, 3, 4)
-    array1 = np.random.randn(*shape)
+    array1 = rng.standard_normal(shape)
     array2 = np.zeros(shape)
     for j in range(shape[1]):
         for k in range(shape[2]):
-            array2[np.random.randint(0, shape[0]), j, k] = 1
+            array2[rng.integers(0, shape[0]), j, k] = 1
     _ce_helper(array1=array1, array2=array2, dim=0)
 
 
 def test_ce_dim_1():
+    rng = np.random.default_rng(13)
     shape = (3, 6, 4)
-    array1 = np.random.randn(*shape)
+    array1 = rng.standard_normal(shape)
     array2 = np.zeros(shape)
     for i in range(shape[0]):
         for k in range(shape[2]):
-            array2[i, np.random.randint(0, shape[1]), k] = 1
+            array2[i, rng.integers(0, shape[1]), k] = 1
     _ce_helper(array1=array1, array2=array2, dim=1)
 
 
-def test_ce_dim_2():
-    shape = (3, 4, 6)
-    array1 = np.random.randn(*shape)
-    array2 = np.zeros(shape)
-    for i in range(shape[0]):
-        for j in range(shape[1]):
-            array2[i, j, np.random.randint(0, shape[2])] = 1
-    _ce_helper(array1=array1, array2=array2, dim=2)
-
-
 def test_ce_dim_negative_1():
+    rng = np.random.default_rng(14)
     shape = (3, 4, 6)
-    array1 = np.random.randn(*shape)
+    array1 = rng.standard_normal(shape)
     array2 = np.zeros(shape)
     for i in range(shape[0]):
         for j in range(shape[1]):
-            array2[i, j, np.random.randint(0, shape[2])] = 1
+            array2[i, j, rng.integers(0, shape[2])] = 1
     _ce_helper(array1=array1, array2=array2, dim=-1)
 
 
 def test_ce_dim_negative_2():
+    rng = np.random.default_rng(15)
     shape = (3, 6, 4)
-    array1 = np.random.randn(*shape)
+    array1 = rng.standard_normal(shape)
     array2 = np.zeros(shape)
     for i in range(shape[0]):
         for k in range(shape[2]):
-            array2[i, np.random.randint(0, shape[1]), k] = 1
+            array2[i, rng.integers(0, shape[1]), k] = 1
     _ce_helper(array1=array1, array2=array2, dim=-2)
 
 
 def test_ce_dim_negative_3():
+    rng = np.random.default_rng(16)
     shape = (6, 3, 4)
-    array1 = np.random.randn(*shape)
+    array1 = rng.standard_normal(shape)
     array2 = np.zeros(shape)
     for j in range(shape[1]):
         for k in range(shape[2]):
-            array2[np.random.randint(0, shape[0]), j, k] = 1
+            array2[rng.integers(0, shape[0]), j, k] = 1
     _ce_helper(array1=array1, array2=array2, dim=-3)
+
+
+def test_ce_loss_numerical_stability():
+    # ce_loss uses log-sum-exp internally, so large logits must not produce NaN/Inf
+    z = sg.Tensor(np.array([[1000.0, 1001.0, 1002.0]], dtype=np.float64), dtype="float64")
+    y = sg.Tensor(np.array([[0.0, 0.0, 1.0]], dtype=np.float64), dtype="float64")
+    loss = sg.ce_loss(z, y, dim=-1)
+    assert not np.any(np.isnan(loss.values)), "ce_loss produced NaN for large logits"
+    assert not np.any(np.isinf(loss.values)), "ce_loss produced Inf for large logits"

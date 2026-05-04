@@ -70,3 +70,29 @@ def test_trace_output_shape_and_value():
     out = sg.trace(a)
     assert out.shape == (1, 1), f"expected (1,1) got {out.shape}"
     fwdcheck(out, [[15.0]])
+
+
+def test_argmax_along_dim():
+    x = np.array([[1.0, 3.0, 2.0], [5.0, 1.0, 4.0]], dtype=np.float64)
+    a = sg.Tensor(x.copy(), dtype="float64")
+
+    # row-wise: max at col 1 for row 0, col 0 for row 1
+    out_row = sg.argmax(a, dim=1)
+    assert np.array_equal(out_row.values.flatten(), [1, 0])
+
+    # col-wise: max at row 1 for all cols (5>1, 3>1, 4>2)
+    out_col = sg.argmax(a, dim=0)
+    assert np.array_equal(out_col.values.flatten(), [1, 0, 1])
+
+
+def test_argmin_along_dim():
+    x = np.array([[1.0, 3.0, 2.0], [5.0, 1.0, 4.0]], dtype=np.float64)
+    a = sg.Tensor(x.copy(), dtype="float64")
+
+    # row-wise: min at col 0 for row 0, col 1 for row 1
+    out_row = sg.argmin(a, dim=1)
+    assert np.array_equal(out_row.values.flatten(), [0, 1])
+
+    # col-wise: min at row 0 for col 0 and col 2 (1<5, 2<4), row 1 for col 1 (1<3)
+    out_col = sg.argmin(a, dim=0)
+    assert np.array_equal(out_col.values.flatten(), [0, 1, 0])

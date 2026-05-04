@@ -38,13 +38,9 @@ def test_set_mode_lazy():
 
 
 def test_set_mode_invalid_raises():
-    try:
+    with pytest.raises(ValueError):
         mode("turbo")
-        assert False, "Should have raised"
-    except ValueError:
-        pass
-    finally:
-        mode("eager")
+    mode("eager")
 
 
 # Tensor lazy fields and _create_op_result
@@ -361,9 +357,9 @@ def test_lazy_embedding():
 def test_lazy_linear_forward_matches_eager():
     from simplegrad.nn.linear import Linear
 
-    np.random.seed(42)
+    rng = np.random.default_rng(42)
     layer = Linear(4, 2)
-    x = Tensor(np.random.randn(3, 4).astype("float32"), comp_grad=True)
+    x = Tensor(rng.standard_normal((3, 4)).astype("float32"), comp_grad=True)
 
     out_eager = layer.forward(x)
     eager_values = out_eager.values.copy()
@@ -380,9 +376,9 @@ def test_lazy_full_forward_and_backward():
     from simplegrad.functions.activations import softmax
     from simplegrad.functions.losses import ce_loss
 
-    np.random.seed(0)
+    rng = np.random.default_rng(0)
     layer = Linear(4, 3)
-    x = Tensor(np.random.randn(2, 4).astype("float32"), comp_grad=True)
+    x = Tensor(rng.standard_normal((2, 4)).astype("float32"), comp_grad=True)
     y = Tensor(np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype="float32"))
 
     logits_e = layer.forward(x)
