@@ -4,11 +4,12 @@
 
 ```python
 import simplegrad as sg
+import simplegrad.nn as nn
 
-model = sg.nn.Sequential(
-    sg.nn.Linear(784, 128),
-    sg.nn.ReLU(),
-    sg.nn.Linear(128, 10),
+model = nn.Sequential(
+    nn.Linear(784, 128),
+    nn.ReLU(),
+    nn.Linear(128, 10),
 )
 out = model(sg.normal((32, 784)))
 ```

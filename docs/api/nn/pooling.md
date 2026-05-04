@@ -4,8 +4,9 @@
 
 ```python
 import simplegrad as sg
+import simplegrad.nn as nn
 
-pool = sg.nn.MaxPool2d(kernel_size=2, stride=2)
+pool = nn.MaxPool2d(kernel_size=2, stride=2)
 x = sg.normal((1, 16, 28, 28), requires_grad=True)
 out = pool(x)  # shape: (1, 16, 14, 14)
 ```

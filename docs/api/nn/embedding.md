@@ -4,8 +4,9 @@
 
 ```python
 import simplegrad as sg
+import simplegrad.nn as nn
 
-embed = sg.nn.Embedding(num_embeddings=1000, embedding_dim=64)
+embed = nn.Embedding(num_embeddings=1000, embedding_dim=64)
 token_ids = sg.Tensor([4, 17, 3, 99])   # integer indices
 out = embed(token_ids)                   # shape: (4, 64)
 ```
