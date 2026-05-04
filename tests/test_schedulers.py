@@ -394,8 +394,8 @@ def test_reduce_lr_on_plateau_threshold_rel():
     scheduler.step(10.0)  # best = 10.0, improvement requires metric < 10.0 * (1 - 0.1) = 9.0
     scheduler.step(10.0)  # 10.0 >= 9.0, not improvement -> reduce to 0.05, best = 10.0
     assert scheduler.num_bad_steps == 0
-    scheduler.step(5.0)   # 5.0 < 9.0, improvement -> bad = 0, best = 5.0
-    scheduler.step(4.4)   # 4.4 < 5.0 * 0.9 = 4.5, improvement -> bad = 0
+    scheduler.step(5.0)  # 5.0 < 9.0, improvement -> bad = 0, best = 5.0
+    scheduler.step(4.4)  # 4.4 < 5.0 * 0.9 = 4.5, improvement -> bad = 0
     assert np.isclose(opt.lr, 0.05)
 
 
@@ -415,8 +415,8 @@ def test_reduce_lr_on_plateau_threshold_abs():
     scheduler.step(10.0)  # best = 10.0, improvement requires metric < 10.0 - 0.5 = 9.5
     scheduler.step(10.0)  # 10.0 >= 9.5, not improvement -> reduce to 0.05, best = 10.0
     assert scheduler.num_bad_steps == 0
-    scheduler.step(9.0)   # 9.0 < 9.5, improvement -> bad = 0, best = 9.0
-    scheduler.step(8.4)   # 8.4 < 9.0 - 0.5 = 8.5, improvement -> bad = 0
+    scheduler.step(9.0)  # 9.0 < 9.5, improvement -> bad = 0, best = 9.0
+    scheduler.step(8.4)  # 8.4 < 9.0 - 0.5 = 8.5, improvement -> bad = 0
     assert np.isclose(opt.lr, 0.05)
 
 

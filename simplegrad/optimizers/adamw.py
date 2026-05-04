@@ -63,9 +63,14 @@ class AdamW(Optimizer):
         param_groups: list[dict] | None = None,
     ) -> None:
         super().__init__(
-            lr, model, param_groups,
-            beta_1=beta_1, beta_2=beta_2, eps=eps,
-            weight_decay=weight_decay, maximize=maximize,
+            lr,
+            model,
+            param_groups,
+            beta_1=beta_1,
+            beta_2=beta_2,
+            eps=eps,
+            weight_decay=weight_decay,
+            maximize=maximize,
         )
 
         self.moments1 = {

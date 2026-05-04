@@ -22,10 +22,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/databases":
             state.init_all_exp_dir()
             db_files = list(state.all_exp_dir.glob("*.db"))
-            self._json({
-                "available_databases": [f.name for f in db_files],
-                "current_database": state.exp_db_name,
-            })
+            self._json(
+                {
+                    "available_databases": [f.name for f in db_files],
+                    "current_database": state.exp_db_name,
+                }
+            )
 
         elif path == "/api/runs":
             if state.exp_db is None:
@@ -59,7 +61,9 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     names = state.exp_db.get_metrics(run_id)
                     metrics = {
-                        name: [dataclasses.asdict(r) for r in state.exp_db.get_records(run_id, name)]
+                        name: [
+                            dataclasses.asdict(r) for r in state.exp_db.get_records(run_id, name)
+                        ]
                         for name in names
                     }
                 self._json({"run_id": run_id, "metrics": metrics})
@@ -113,9 +117,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._error(400, "No database selected")
             else:
                 body = self._read_body()
-                run_id = state.exp_db.create_run(
-                    name=body.get("name"), config=body.get("config")
-                )
+                run_id = state.exp_db.create_run(name=body.get("name"), config=body.get("config"))
                 run = state.exp_db.get_run(run_id)
                 self._json(dataclasses.asdict(run), status=201)
 

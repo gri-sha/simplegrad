@@ -95,7 +95,9 @@ def make_server(host: str, port: int, logs_dir: Path) -> ThreadingHTTPServer:
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--logs-dir", type=str, default="benchmarks/logs")

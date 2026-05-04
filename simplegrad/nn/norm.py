@@ -53,7 +53,9 @@ class Norm(Module):
         self.elementwise_affine = elementwise_affine
         self.dtype = dtype
 
-        shape = (normalized_shape,) if isinstance(normalized_shape, int) else tuple(normalized_shape)
+        shape = (
+            (normalized_shape,) if isinstance(normalized_shape, int) else tuple(normalized_shape)
+        )
         if elementwise_affine:
             self.weight = ones(shape, dtype=dtype, label="gamma")
             self.bias = zeros(shape, dtype=dtype, label="beta")
@@ -71,6 +73,5 @@ class Norm(Module):
 
     def __str__(self) -> str:
         return (
-            f"{self.label}(dims={self.dims}, eps={self.eps}, "
-            f"affine={self.elementwise_affine})"
+            f"{self.label}(dims={self.dims}, eps={self.eps}, " f"affine={self.elementwise_affine})"
         )
