@@ -35,11 +35,6 @@ class Norm(Module):
             values with no learnable parameters.
         dtype: Data type for ``weight`` and ``bias``. Default ``"float32"``.
 
-    Example:
-        >>> layer_norm = Norm(normalized_shape=64, dims=[-1])
-        >>> instance_norm = Norm(normalized_shape=[8, 8], dims=[-2, -1])
-        >>> x = Tensor(np.random.randn(4, 16, 64).astype(np.float32))
-        >>> out = layer_norm(x)   # shape (4, 16, 64)
     """
 
     def __init__(
@@ -64,14 +59,7 @@ class Norm(Module):
             self.bias = zeros(shape, dtype=dtype, label="beta")
 
     def forward(self, x: Tensor) -> Tensor:
-        """Normalize ``x`` over ``self.dims`` and apply affine transform.
-
-        Args:
-            x: Input tensor of any shape.
-
-        Returns:
-            Normalized tensor of the same shape as ``x``.
-        """
+        """Normalize ``x`` over ``self.dims`` and apply affine transform."""
         return norm(
             x,
             dims=self.dims,
