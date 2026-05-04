@@ -124,9 +124,6 @@ class Conv2d(Module):
         Args:
             x: Input of shape ``(batch, in_channels, H, W)`` or
                 ``(in_channels, H, W)``.
-
-        Returns:
-            Output of shape ``(batch, out_channels, out_H, out_W)``.
         """
         assert (
             len(x.shape) == 4 or len(x.shape) == 3

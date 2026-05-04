@@ -77,9 +77,6 @@ class Linear(Module):
 
         Args:
             x: Input tensor of shape ``(..., in_features)``.
-
-        Returns:
-            Output tensor of shape ``(..., out_features)``.
         """
         res = x @ self.weight
         if self.use_bias:

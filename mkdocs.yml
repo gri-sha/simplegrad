@@ -11,19 +11,15 @@ theme:
   favicon: images/favicon.svg
   logo: images/favicon.svg
   palette:
-    - scheme: default
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - scheme: slate
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+    scheme: slate
+    primary: custom
+    accent: custom
   features:
     - navigation.sections
     - navigation.expand
 
 extra_css:
+  - https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap
   - stylesheets/extra.css
 
 markdown_extensions:
@@ -37,7 +33,7 @@ plugins:
       handlers:
         python:
           options:
-            show_source: true
+            show_source: false
             show_root_heading: true
             heading_level: 3
             docstring_style: google

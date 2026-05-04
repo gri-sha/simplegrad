@@ -56,9 +56,6 @@ def flatten(x: Tensor, start_dim: int = 0, end_dim: int = -1) -> Tensor:
         x: Input tensor.
         start_dim: First dimension to flatten (inclusive). Supports negative indexing.
         end_dim: Last dimension to flatten (inclusive). Supports negative indexing.
-
-    Returns:
-        Tensor with dimensions ``[start_dim, end_dim]`` merged into one.
     """
     return _Flatten.apply(x, start_dim, end_dim)
 
@@ -69,8 +66,5 @@ def reshape(x: Tensor, new_shape: tuple[int, ...]) -> Tensor:
     Args:
         x: Input tensor.
         new_shape: Target shape. Total number of elements must match.
-
-    Returns:
-        Tensor with values laid out in ``new_shape``.
     """
     return _Reshape.apply(x, new_shape, oper=f"reshape({new_shape})")

@@ -9,11 +9,6 @@ class Sequential(Module):
     Args:
         *modules: Any number of Module instances to chain together.
 
-    Example:
-        ```python
-        model = Sequential(Linear(4, 8), ReLU(), Linear(8, 2))
-        output = model(x)
-        ```
     """
 
     def __init__(self, *modules: Module) -> None:
@@ -21,14 +16,7 @@ class Sequential(Module):
         self.modules = modules
 
     def forward(self, x: Tensor) -> Tensor:
-        """Pass input through each module in sequence.
-
-        Args:
-            x: Input tensor.
-
-        Returns:
-            Output tensor after all modules have been applied.
-        """
+        """Pass input through each module in sequence."""
         for module in self.modules:
             x = module(x)
         return x

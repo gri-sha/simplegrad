@@ -122,10 +122,6 @@ class Module:
 
         Raises:
             ValueError: If the device string is invalid.
-
-        Example:
-            >>> model = Linear(4, 2)
-            >>> model.to_device("cuda:0")
         """
         validate_device(device)
         xp = get_backend(device)

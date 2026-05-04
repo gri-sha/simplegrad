@@ -1,5 +1,18 @@
 # Activation Layers
 
+Activation layers are `Module` wrappers around the functional activation ops, making it convenient to compose them inside `Sequential` or custom `Module` subclasses. Each layer holds no trainable parameters — it simply calls the corresponding function from `simplegrad.functions.activations` in its `forward` method.
+
+```python
+import simplegrad as sg
+
+model = sg.nn.Sequential(
+    sg.nn.Linear(16, 32),
+    sg.nn.ReLU(),
+    sg.nn.Linear(32, 10),
+)
+out = model(sg.ones((4, 16)))
+```
+
 ::: simplegrad.nn.activation_layers.ReLU
 
 ::: simplegrad.nn.activation_layers.ELU

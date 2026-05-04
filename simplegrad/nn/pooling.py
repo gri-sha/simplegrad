@@ -51,9 +51,6 @@ class MaxPool2d(Module):
 
         Args:
             x: Input of shape ``(batch, channels, H, W)`` or ``(channels, H, W)``.
-
-        Returns:
-            Pooled output of shape ``(batch, channels, out_H, out_W)``.
         """
         return max_pool2d(
             x,

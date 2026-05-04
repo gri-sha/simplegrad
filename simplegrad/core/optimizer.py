@@ -125,10 +125,6 @@ class Optimizer:
 
         Raises:
             KeyError: If ``key`` does not exist in the targeted group(s).
-
-        Example:
-            >>> optimizer.set_param("lr", 1e-4)
-            >>> optimizer.set_param("momentum", 0.99, group="encoder")
         """
         for g in self.param_groups:
             if group is None or g["label"] == group:
