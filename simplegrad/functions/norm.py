@@ -49,13 +49,6 @@ def norm(
             (default) uses population variance, which is standard for norm layers.
             ``1`` uses Bessel's correction (unbiased sample variance).
 
-    Returns:
-        Normalized tensor of the same shape as ``x``.
-
-    Example:
-        >>> x = Tensor(np.random.randn(2, 4, 8).astype(np.float32))
-        >>> y = norm(x, dims=[-1])               # layer norm over last dim
-        >>> y = norm(x, dims=[-2, -1])           # instance norm over spatial dims
     """
     mu = x
     for d in dims:

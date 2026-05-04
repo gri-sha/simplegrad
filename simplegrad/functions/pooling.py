@@ -74,8 +74,6 @@ def max_pool2d(
         pad_mode: Padding mode. Defaults to ``"constant"``.
         pad_value: Fill value for constant padding. Defaults to 0.
 
-    Returns:
-        Output tensor of shape ``(batch, channels, out_H, out_W)``.
     """
     assert len(x.shape) == 4 or len(x.shape) == 3, "Input tensor must be 4D (batch, channels, H, W) or 3D (channels, H, W)"
 

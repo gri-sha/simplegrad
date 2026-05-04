@@ -35,9 +35,6 @@ def pad(x: Tensor, width: int | tuple[int, int, int, int], mode: str = "constant
         width: Padding widths. An int or nested tuples as accepted by ``numpy.pad``.
         mode: Padding mode (e.g. ``"constant"``, ``"reflect"``). See numpy.pad docs.
         value: Fill value for ``"constant"`` mode.
-
-    Returns:
-        Padded tensor.
     """
     return _Pad.apply(x, width, mode, value, oper=f"pad(width={width}, mode={mode})")
 
@@ -228,8 +225,6 @@ def conv2d(
         pad_mode: Padding mode passed to ``numpy.pad``. Defaults to ``"constant"``.
         pad_value: Fill value for constant padding. Defaults to 0.
 
-    Returns:
-        Output tensor of shape ``(batch, out_channels, out_H, out_W)``.
     """
     assert (
         len(x.shape) == 4 or len(x.shape) == 3

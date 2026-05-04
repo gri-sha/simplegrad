@@ -35,9 +35,6 @@ def ce_loss(z: Tensor, y: Tensor, dim: int = -1, reduction: str = "mean") -> Ten
         reduction: How to reduce the per-sample losses. One of ``"mean"``,
             ``"sum"``, or ``None`` (return per-sample losses).
 
-    Returns:
-        Scalar loss tensor (or per-sample if ``reduction=None``).
-
     Raises:
         ValueError: If ``reduction`` is not a valid option.
     """
@@ -62,9 +59,6 @@ def mse_loss(p: Tensor, y: Tensor, reduction: str = "mean") -> Tensor:
         p: Predictions tensor.
         y: Targets tensor, same shape as ``p``.
         reduction: One of ``"mean"``, ``"sum"``, or ``None``.
-
-    Returns:
-        Scalar loss tensor (or element-wise if ``reduction=None``).
 
     Raises:
         ValueError: If ``reduction`` is not a valid option.
