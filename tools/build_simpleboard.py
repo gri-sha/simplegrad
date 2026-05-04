@@ -10,10 +10,16 @@ from pathlib import Path
 
 def build_web_app():
     """Build the React web app using npm."""
-    app_dir = Path(__file__).parent / "simplegrad" / "simpleboard" / "app"
+    import shutil
+
+    app_dir = Path(__file__).parent.parent / "simplegrad" / "simpleboard" / "app"
 
     if not app_dir.exists():
         print(f"Error: Web app directory not found at {app_dir}")
+        return False
+
+    if not shutil.which("npm"):
+        print("Error: npm is not installed or not in PATH")
         return False
 
     print(f"Building web app in {app_dir}...")
