@@ -4,14 +4,13 @@ Simplegrad includes inline visualisation utilities for Jupyter notebooks. `graph
 
 ```python
 import simplegrad as sg
-from simplegrad.visual import graph, plot
 
 x = sg.Tensor([1.0, 2.0], requires_grad=True)
 y = (x * x).sum()
-graph(y)           # renders the computation graph inline
+sg.graph(y)           # renders the computation graph inline
 
 losses = [0.9, 0.7, 0.5, 0.3]
-plot(losses, title="Training loss")
+sg.plot(losses, title="Training loss")
 ```
 
 ## Computation Graph
