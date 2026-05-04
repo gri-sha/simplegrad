@@ -24,11 +24,6 @@ def graph_group(name: str):
     Args:
         name: Display name for the group, shown as a label on the cluster
             rectangle in the computation graph.
-
-    Example:
-        >>> with graph_group("softmax"):
-        ...     exps = exp(x)
-        ...     result = exps / sum(exps, dim)
     """
     global _CURRENT_GROUP, _GROUP_COUNTER
     _GROUP_COUNTER += 1
@@ -50,15 +45,6 @@ def compound_op(func: Callable) -> Callable:
 
     Args:
         func: The compound function to decorate. Its ``__name__`` is used as the cluster label.
-
-    Returns:
-        Wrapped function with identical signature and docstring.
-
-    Example:
-        >>> @compound_op
-        ... def softmax(x: Tensor, dim: int | None = None) -> Tensor:
-        ...     exps = exp(x)
-        ...     return exps / sum(exps, dim)
     """
 
     @functools.wraps(func)

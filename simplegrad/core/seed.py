@@ -5,11 +5,7 @@ _SEED = None
 
 
 def seed(value: int) -> None:
-    """Set the global random seed for reproducibility.
-
-    Args:
-        value: The integer seed value to set.
-    """
+    """Set the global random seed for reproducibility."""
     random.seed(value)
     np.random.seed(value)
     global _SEED

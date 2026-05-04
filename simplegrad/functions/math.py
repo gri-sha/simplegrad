@@ -84,9 +84,6 @@ def log(x: Tensor) -> Tensor:
     Args:
         x: Input tensor. All values must be positive.
 
-    Returns:
-        Tensor of ln(x).
-
     Raises:
         ValueError: If any value in x is <= 0 (checked in eager mode only).
     """
@@ -96,48 +93,20 @@ def log(x: Tensor) -> Tensor:
 
 
 def exp(x: Tensor) -> Tensor:
-    """Compute element-wise exponential.
-
-    Args:
-        x: Input tensor.
-
-    Returns:
-        Tensor of e^x.
-    """
+    """Compute element-wise exponential (e^x)."""
     return _Exp.apply(x)
 
 
 def sin(x: Tensor) -> Tensor:
-    """Compute element-wise sine.
-
-    Args:
-        x: Input tensor (radians).
-
-    Returns:
-        Tensor of sin(x).
-    """
+    """Compute element-wise sine (input in radians)."""
     return _Sin.apply(x)
 
 
 def cos(x: Tensor) -> Tensor:
-    """Compute element-wise cosine.
-
-    Args:
-        x: Input tensor (radians).
-
-    Returns:
-        Tensor of cos(x).
-    """
+    """Compute element-wise cosine (input in radians)."""
     return _Cos.apply(x)
 
 
 def tan(x: Tensor) -> Tensor:
-    """Compute element-wise tangent.
-
-    Args:
-        x: Input tensor (radians).
-
-    Returns:
-        Tensor of tan(x).
-    """
+    """Compute element-wise tangent (input in radians)."""
     return _Tan.apply(x)
