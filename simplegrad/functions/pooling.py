@@ -26,7 +26,9 @@ class _MaxPool2d(Function):
         out_h, out_w = out_shape[-2], out_shape[-1]
 
         rec_fields = _get_rec_fields_from_img(padded_input.values, xp, kh, kw, sh, sw)
-        rec_fields = xp.ascontiguousarray(rec_fields) # in fact reshape silently make contiguous copy, but we make it explicitly
+        rec_fields = xp.ascontiguousarray(
+            rec_fields
+        )  # in fact reshape silently make contiguous copy, but we make it explicitly
         ctx.rec_fields_flat = rec_fields.reshape(batch_size, channels, kh * kw, out_h, out_w)
         ctx.max_idx = xp.argmax(ctx.rec_fields_flat, axis=2)
         ctx.padded_input_shape = padded_input.values.shape
@@ -51,8 +53,12 @@ class _MaxPool2d(Function):
         mask[b_idx, c_idx, ctx.max_idx, h_idx, w_idx] = 1.0
 
         rec_fields_grad = mask * grad_output[:, :, None, :, :]
-        rec_fields_grad = rec_fields_grad.reshape(ctx.batch_size, ctx.channels, ctx.kh, ctx.kw, ctx.out_h, ctx.out_w)
-        return _get_img_from_rec_fields(rec_fields_grad, xp, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw)
+        rec_fields_grad = rec_fields_grad.reshape(
+            ctx.batch_size, ctx.channels, ctx.kh, ctx.kw, ctx.out_h, ctx.out_w
+        )
+        return _get_img_from_rec_fields(
+            rec_fields_grad, xp, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw
+        )
 
 
 def max_pool2d(
@@ -75,7 +81,9 @@ def max_pool2d(
         pad_value: Fill value for constant padding. Defaults to 0.
 
     """
-    assert len(x.shape) == 4 or len(x.shape) == 3, "Input tensor must be 4D (batch, channels, H, W) or 3D (channels, H, W)"
+    assert (
+        len(x.shape) == 4 or len(x.shape) == 3
+    ), "Input tensor must be 4D (batch, channels, H, W) or 3D (channels, H, W)"
 
     kh, kw = (kernel_size, kernel_size) if isinstance(kernel_size, int) else kernel_size
     if stride is None:

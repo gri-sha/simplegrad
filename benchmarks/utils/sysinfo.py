@@ -22,7 +22,9 @@ def _fmt_cuda_version(v: int) -> str:
 
 
 def _sysctl(key: str) -> str:
-    return subprocess.check_output(["sysctl", "-n", key], stderr=subprocess.DEVNULL).decode().strip()
+    return (
+        subprocess.check_output(["sysctl", "-n", key], stderr=subprocess.DEVNULL).decode().strip()
+    )
 
 
 def _cpu_info() -> dict:
@@ -83,7 +85,11 @@ def _ram_gb() -> str:
             out = subprocess.check_output(
                 ["wmic", "os", "get", "TotalVisibleMemorySize"], stderr=subprocess.DEVNULL
             ).decode()
-            lines = [l.strip() for l in out.splitlines() if l.strip() and not l.strip().startswith("Total")]
+            lines = [
+                l.strip()
+                for l in out.splitlines()
+                if l.strip() and not l.strip().startswith("Total")
+            ]
             if lines:
                 return f"{int(lines[0]) // (1024 ** 2)} GB"
     except Exception:
@@ -108,6 +114,7 @@ def _metal_gpu_name() -> str | None:
 def _numpy_version() -> str:
     try:
         import numpy as np
+
         return np.__version__
     except ImportError:
         return "not installed"
@@ -116,6 +123,7 @@ def _numpy_version() -> str:
 def _torch_info() -> dict:
     try:
         import torch
+
         cuda_build = torch.version.cuda or "cpu-only"
         return {"version": torch.__version__, "cuda_build": cuda_build}
     except ImportError:
@@ -125,6 +133,7 @@ def _torch_info() -> dict:
 def _cupy_info() -> dict:
     try:
         import cupy as cp
+
         runtime_v = _fmt_cuda_version(cp.cuda.runtime.runtimeGetVersion())
         return {"version": cp.__version__, "cuda_runtime": runtime_v}
     except Exception:
@@ -135,6 +144,7 @@ def _cuda_devices() -> list[dict]:
     devices = []
     try:
         import cupy as cp
+
         n = cp.cuda.runtime.getDeviceCount()
         driver_v = _fmt_cuda_version(cp.cuda.runtime.driverGetVersion())
         runtime_v = _fmt_cuda_version(cp.cuda.runtime.runtimeGetVersion())
@@ -143,16 +153,18 @@ def _cuda_devices() -> list[dict]:
             name = props["name"]
             if isinstance(name, bytes):
                 name = name.decode()
-            devices.append({
-                "index": i,
-                "name": name,
-                "compute": f"{props['major']}.{props['minor']}",
-                "memory": _fmt_bytes(props["totalGlobalMem"]),
-                "multiprocessors": props["multiProcessorCount"],
-                "clock_mhz": props["clockRate"] // 1000,
-                "driver": driver_v,
-                "runtime": runtime_v,
-            })
+            devices.append(
+                {
+                    "index": i,
+                    "name": name,
+                    "compute": f"{props['major']}.{props['minor']}",
+                    "memory": _fmt_bytes(props["totalGlobalMem"]),
+                    "multiprocessors": props["multiProcessorCount"],
+                    "clock_mhz": props["clockRate"] // 1000,
+                    "driver": driver_v,
+                    "runtime": runtime_v,
+                }
+            )
     except Exception:
         pass
     return devices
@@ -161,6 +173,7 @@ def _cuda_devices() -> list[dict]:
 def _mps_available() -> bool:
     try:
         import torch
+
         return torch.backends.mps.is_available()
     except Exception:
         return False

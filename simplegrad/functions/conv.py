@@ -22,12 +22,18 @@ class _Pad(Function):
     @staticmethod
     def backward(ctx: Context, grad_output):
         if ctx.mode == "constant":
-            slices = tuple(slice(p[0], grad_output.shape[i] - p[1]) for i, p in enumerate(ctx.width))
+            slices = tuple(
+                slice(p[0], grad_output.shape[i] - p[1]) for i, p in enumerate(ctx.width)
+            )
             return grad_output[slices]
-        raise NotImplementedError(f"Backward pass for padding mode '{ctx.mode}' is not implemented.")
+        raise NotImplementedError(
+            f"Backward pass for padding mode '{ctx.mode}' is not implemented."
+        )
 
 
-def pad(x: Tensor, width: int | tuple[int, int, int, int], mode: str = "constant", value: int = 0) -> Tensor:
+def pad(
+    x: Tensor, width: int | tuple[int, int, int, int], mode: str = "constant", value: int = 0
+) -> Tensor:
     """Pad a tensor along its spatial dimensions.
 
     Args:
@@ -76,7 +82,9 @@ def _get_rec_fields_from_img(img, xp, kh: int, kw: int, sh: int, sw: int):
     return xp.lib.stride_tricks.as_strided(img, shape=strided_shape, strides=strided_strides)
 
 
-def _get_img_from_rec_fields(rec_fields, xp, img_shape: tuple[int, int, int, int], kh: int, kw: int, sh: int, sw: int):
+def _get_img_from_rec_fields(
+    rec_fields, xp, img_shape: tuple[int, int, int, int], kh: int, kw: int, sh: int, sw: int
+):
     """
     Reconstruct image from receptive fields (inverse of _get_rec_fields_from_img).
     Used in backward pass to compute gradient w.r.t. input image.
@@ -139,7 +147,17 @@ class _Conv2dNoPad(Function):
         rec_fields = _get_rec_fields_from_img(padded_input.values, xp, kh, kw, sh, sw)
 
         ctx.rec_fields, ctx.weight = rec_fields, weight.values
-        ctx.kh, ctx.kw, ctx.sh, ctx.sw, ctx.batch_size, ctx.out_h, ctx.out_w, ctx.in_channels, ctx.out_channels = (
+        (
+            ctx.kh,
+            ctx.kw,
+            ctx.sh,
+            ctx.sw,
+            ctx.batch_size,
+            ctx.out_h,
+            ctx.out_w,
+            ctx.in_channels,
+            ctx.out_channels,
+        ) = (
             kh,
             kw,
             sh,
@@ -177,7 +195,9 @@ class _Conv2dNoPad(Function):
         # sanity check: shape of grad_weight.shape = weight.shape
         grad_weight = xp.einsum("bihwpq,bopq->oihw", ctx.rec_fields, grad_output, optimize=True)
         rec_fields_grad = xp.einsum("bopq,oihw->bihwpq", grad_output, ctx.weight, optimize=True)
-        grad_padded_input = _get_img_from_rec_fields(rec_fields_grad, xp, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw)
+        grad_padded_input = _get_img_from_rec_fields(
+            rec_fields_grad, xp, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw
+        )
 
         if ctx.has_bias:
             grad_bias = xp.sum(grad_output, axis=(0, 2, 3))
@@ -249,7 +269,9 @@ def conv2d(
                 (pad_width[2], pad_width[3]),
             )
         else:
-            raise ValueError("pad_width must be an int or a tuple of 4 ints (top, bottom, left, right)")
+            raise ValueError(
+                "pad_width must be an int or a tuple of 4 ints (top, bottom, left, right)"
+            )
 
         padded_input = pad(x=x, width=pad_width_np, mode=pad_mode, value=pad_value)
 

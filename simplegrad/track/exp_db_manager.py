@@ -297,57 +297,79 @@ class ExperimentDBManager:
                 for row in rows
             ]
 
-    def save_histogram(self, run_id: int, name: str, step: int, bucket_edges: list[float], bucket_counts: list[int]):
+    def save_histogram(
+        self, run_id: int, name: str, step: int, bucket_edges: list[float], bucket_counts: list[int]
+    ):
         """Save a histogram."""
         log_time = time.time()
         with self._get_connection() as conn:
             conn.execute(
                 "INSERT INTO histograms (run_id, name, step, bucket_edges, bucket_counts, wall_time) VALUES (?, ?, ?, ?, ?, ?)",
-                (run_id, name, step, json.dumps(bucket_edges), json.dumps(bucket_counts), log_time)
+                (run_id, name, step, json.dumps(bucket_edges), json.dumps(bucket_counts), log_time),
             )
 
     def get_histograms(self, run_id: int) -> dict[str, list[dict]]:
         """Get all histograms for a run."""
         with self._get_connection(readonly=True) as conn:
-            rows = conn.execute("SELECT name, step, bucket_edges, bucket_counts, wall_time FROM histograms WHERE run_id = ? ORDER BY step", (run_id,)).fetchall()
+            rows = conn.execute(
+                "SELECT name, step, bucket_edges, bucket_counts, wall_time FROM histograms WHERE run_id = ? ORDER BY step",
+                (run_id,),
+            ).fetchall()
             result = {}
             for row in rows:
                 name = row["name"]
                 if name not in result:
                     result[name] = []
-                result[name].append({
-                    "step": row["step"],
-                    "bucket_edges": json.loads(row["bucket_edges"]),
-                    "bucket_counts": json.loads(row["bucket_counts"]),
-                    "log_time": row["wall_time"]
-                })
+                result[name].append(
+                    {
+                        "step": row["step"],
+                        "bucket_edges": json.loads(row["bucket_edges"]),
+                        "bucket_counts": json.loads(row["bucket_counts"]),
+                        "log_time": row["wall_time"],
+                    }
+                )
             return result
 
-    def save_image(self, run_id: int, name: str, step: int, width: int, height: int, channels: int, image_data: bytes):
+    def save_image(
+        self,
+        run_id: int,
+        name: str,
+        step: int,
+        width: int,
+        height: int,
+        channels: int,
+        image_data: bytes,
+    ):
         """Save raw image data."""
         log_time = time.time()
         with self._get_connection() as conn:
             conn.execute(
                 "INSERT INTO images (run_id, name, step, width, height, channels, image_data, wall_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (run_id, name, step, width, height, channels, image_data, log_time)
+                (run_id, name, step, width, height, channels, image_data, log_time),
             )
 
     def get_images(self, run_id: int) -> dict[str, list[dict]]:
         """Get all images for a run."""
         with self._get_connection(readonly=True) as conn:
-            rows = conn.execute("SELECT name, step, width, height, channels, image_data, wall_time FROM images WHERE run_id = ? ORDER BY step", (run_id,)).fetchall()
+            rows = conn.execute(
+                "SELECT name, step, width, height, channels, image_data, wall_time FROM images WHERE run_id = ? ORDER BY step",
+                (run_id,),
+            ).fetchall()
             result = {}
             import base64
+
             for row in rows:
                 name = row["name"]
                 if name not in result:
                     result[name] = []
-                result[name].append({
-                    "step": row["step"],
-                    "width": row["width"],
-                    "height": row["height"],
-                    "channels": row["channels"],
-                    "data_b64": base64.b64encode(row["image_data"]).decode('ascii'),
-                    "log_time": row["wall_time"]
-                })
+                result[name].append(
+                    {
+                        "step": row["step"],
+                        "width": row["width"],
+                        "height": row["height"],
+                        "channels": row["channels"],
+                        "data_b64": base64.b64encode(row["image_data"]).decode("ascii"),
+                        "log_time": row["wall_time"],
+                    }
+                )
             return result

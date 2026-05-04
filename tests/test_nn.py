@@ -206,17 +206,25 @@ def test_max_pool2d():
 
 def test_max_pool2d_forward_values():
     # 1×1×4×4 input with known values — each 2×2 window's max is computable by hand
-    x_data = np.array([[[[1., 3., 2., 5.],
-                          [4., 2., 6., 1.],
-                          [0., 7., 3., 2.],
-                          [5., 1., 8., 4.]]]], dtype=np.float64)
+    x_data = np.array(
+        [
+            [
+                [
+                    [1.0, 3.0, 2.0, 5.0],
+                    [4.0, 2.0, 6.0, 1.0],
+                    [0.0, 7.0, 3.0, 2.0],
+                    [5.0, 1.0, 8.0, 4.0],
+                ]
+            ]
+        ],
+        dtype=np.float64,
+    )
     x = sg.Tensor(x_data, dtype="float64")
     out = sg.max_pool2d(x, kernel_size=2, stride=2)
 
     # top-left 2×2: max(1,3,4,2)=4; top-right: max(2,5,6,1)=6
     # bot-left 2×2: max(0,7,5,1)=7; bot-right: max(3,2,8,4)=8
-    fwdcheck(out, [[[[4., 6.],
-                     [7., 8.]]]])
+    fwdcheck(out, [[[[4.0, 6.0], [7.0, 8.0]]]])
 
 
 def test_linear_layer():

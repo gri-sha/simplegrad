@@ -24,6 +24,7 @@ class _Relu(Function):
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
         return grad_output * ctx.mask
 
+
 def relu(x: Tensor) -> Tensor:
     """Apply ReLU activation element-wise: max(0, x)."""
     return _Relu.apply(x)
@@ -34,6 +35,7 @@ def _erf(xp, arr):
     if xp is np:
         return _erf_np(arr)
     return xp.erf(arr)
+
 
 class _GELUErf(Function):
     oper = "GELUErf"
@@ -53,6 +55,7 @@ class _GELUErf(Function):
         deriv = 0.5 * (1 + ctx.erf_val) + ctx.x * xp.exp(-ctx.x**2 / 2) / np.sqrt(2 * np.pi)
         return grad_output * deriv
 
+
 class _Tanh(Function):
     oper = "Tanh"
 
@@ -71,6 +74,7 @@ def tanh(x: Tensor) -> Tensor:
     """Apply hyperbolic tangent element-wise, mapping inputs to (-1, 1)."""
     return _Tanh.apply(x)
 
+
 class _Sigmoid(Function):
     oper = "Sigmoid"
 
@@ -88,6 +92,7 @@ class _Sigmoid(Function):
 def sigmoid(x: Tensor) -> Tensor:
     """Apply sigmoid activation element-wise: 1 / (1 + exp(-x)), mapping inputs to (0, 1)."""
     return _Sigmoid.apply(x)
+
 
 class _ELU(Function):
     @staticmethod
