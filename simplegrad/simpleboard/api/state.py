@@ -35,5 +35,10 @@ def set_exp_db(db_name: str) -> bool:
         exp_db = None
         exp_db_name = None
         return False
+    # Run the schema creation so any tables added since this DB was first
+    # written (e.g. histograms, images) exist before we start serving queries.
+    # All CREATE statements use IF NOT EXISTS, so this is safe for both fresh
+    # and pre-existing databases.
+    exp_db.init_exp_db()
     exp_db_name = db_name
     return True

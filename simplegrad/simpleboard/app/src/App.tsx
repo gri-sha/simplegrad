@@ -5,7 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { MainContent } from './components/MainContent';
 import { SettingsModal } from './components/SettingsModal';
 import { api } from './api';
-import type { RunInfo, RecordInfo, CompGraphData } from './types';
+import type { RunInfo, RecordInfo, CompGraphData, RunMeta, HistogramInfo, ImageInfo } from './types';
 
 interface GraphInfo {
   id: number;
@@ -14,26 +14,50 @@ interface GraphInfo {
 }
 
 function App() {
-  // UI state
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'metrics' | 'graphs'>('metrics');
+  const [activeTab, setActiveTab] = useState<'metrics' | 'graphs' | 'hparams' | 'diff' | 'histograms' | 'images'>('metrics');
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('sb_theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+    return 'light';
+  });
+
+  const [runMeta, setRunMeta] = useState<Record<number, RunMeta>>(() => {
+    const saved = localStorage.getItem('sb_run_meta');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const updateRunMeta = (runId: number, meta: Partial<RunMeta>) => {
+    setRunMeta(prev => {
+      const next = { ...prev, [runId]: { ...(prev[runId] || {}), ...meta } };
+      localStorage.setItem('sb_run_meta', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('sb_theme', theme);
+  }, [theme]);
 
   // Data state
   const [databases, setDatabases] = useState<string[]>([]);
   const [selectedDb, setSelectedDb] = useState<string | null>(null);
   const [runs, setRuns] = useState<RunInfo[]>([]);
-  const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
-  const [selectedRunName, setSelectedRunName] = useState<string | null>(null);
-  const [metrics, setMetrics] = useState<Record<string, RecordInfo[]>>({});
-  const [graphs, setGraphs] = useState<GraphInfo[]>([]);
+  const [selectedRunIds, setSelectedRunIds] = useState<number[]>([]);
+  const [runNames, setRunNames] = useState<Record<number, string>>({});
+  const [metricsByRun, setMetricsByRun] = useState<Record<number, Record<string, RecordInfo[]>>>({});
+  const [graphsByRun, setGraphsByRun] = useState<Record<number, GraphInfo[]>>({});
+  const [histogramsByRun, setHistogramsByRun] = useState<Record<number, Record<string, HistogramInfo[]>>>({});
+  const [imagesByRun, setImagesByRun] = useState<Record<number, Record<string, ImageInfo[]>>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // WebSocket ref
-  const wsRef = useRef<WebSocket | null>(null);
+  // One WebSocket per selected run
+  const wsMap = useRef<Map<number, WebSocket>>(new Map());
 
-  // Fetch databases
   const fetchDatabases = useCallback(async () => {
     try {
       setError(null);
@@ -48,7 +72,6 @@ function App() {
     }
   }, []);
 
-  // Fetch runs for selected database
   const fetchRuns = useCallback(async () => {
     if (!selectedDb) {
       setRuns([]);
@@ -66,80 +89,85 @@ function App() {
     }
   }, [selectedDb]);
 
-  // Fetch metrics and graphs for selected run
-  const fetchRunData = useCallback(async (runId: number) => {
-    try {
-      setLoading(true);
-      setError(null);
+  const fetchRunData = useCallback(async (runId: number, withSpinner = true) => {
+    if (withSpinner) setLoading(true);
+    setError(null);
 
-      // Fetch run info
-      const runInfo = await api.getRun(runId);
-      setSelectedRunName(runInfo.name);
+    // Use allSettled so a single failed endpoint (e.g. histograms on an old DB)
+    // doesn't tank the whole load — scalars and graphs should still display.
+    const [runInfoR, metricsR, graphsR, histsR, imgsR] = await Promise.allSettled([
+      api.getRun(runId),
+      api.getRecords(runId),
+      api.getGraphs(runId),
+      api.getHistograms(runId),
+      api.getImages(runId),
+    ]);
 
-      // Fetch metrics
-      const metricsData = await api.getRecords(runId);
-      setMetrics(metricsData.metrics || {});
-
-      // Fetch graphs
-      const graphsData = await api.getGraphs(runId);
-      setGraphs(graphsData.graphs || []);
-    } catch (err) {
-      setError('Failed to fetch run data');
-      console.error(err);
-    } finally {
-      setLoading(false);
+    if (runInfoR.status === 'fulfilled') {
+      setRunNames((prev) => ({ ...prev, [runId]: runInfoR.value.name }));
+    } else {
+      setError('Failed to fetch run');
+      console.error(runInfoR.reason);
     }
+    if (metricsR.status === 'fulfilled') {
+      setMetricsByRun((prev) => ({ ...prev, [runId]: metricsR.value.metrics || {} }));
+    } else console.error('records fetch failed', metricsR.reason);
+    if (graphsR.status === 'fulfilled') {
+      setGraphsByRun((prev) => ({ ...prev, [runId]: graphsR.value.graphs || [] }));
+    } else console.error('graphs fetch failed', graphsR.reason);
+    if (histsR.status === 'fulfilled') {
+      setHistogramsByRun((prev) => ({ ...prev, [runId]: histsR.value.histograms || {} }));
+    } else console.error('histograms fetch failed', histsR.reason);
+    if (imgsR.status === 'fulfilled') {
+      setImagesByRun((prev) => ({ ...prev, [runId]: imgsR.value.images || {} }));
+    } else console.error('images fetch failed', imgsR.reason);
+
+    if (withSpinner) setLoading(false);
   }, []);
 
-  // Handle database selection
+  // Database selection clears all selected runs
   const handleDbSelect = async (dbName: string) => {
-    if (!dbName) {
-      return;
-    }
+    if (!dbName) return;
     try {
       await api.selectDatabase(dbName);
       setSelectedDb(dbName);
-      setSelectedRunId(null);
-      setSelectedRunName(null);
-      setMetrics({});
-      setGraphs([]);
+      setSelectedRunIds([]);
+      setRunNames({});
+      setMetricsByRun({});
+      setGraphsByRun({});
+      setHistogramsByRun({});
+      setImagesByRun({});
+      // Close all sockets
+      wsMap.current.forEach((ws) => ws.close());
+      wsMap.current.clear();
     } catch (err) {
       setError('Failed to select database');
       console.error(err);
     }
   };
 
-  // Handle run selection
-  const handleRunSelect = (runId: number) => {
-    setSelectedRunId(runId);
-    fetchRunData(runId);
-    connectWebSocket(runId);
-  };
-
-  // WebSocket connection for real-time updates
-  const connectWebSocket = useCallback((runId: number) => {
-    // Close existing connection
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
-
+  const openSocket = useCallback((runId: number) => {
+    if (wsMap.current.has(runId)) return;
     const ws = api.createWebSocket(runId);
 
     ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
         if (message.type === 'metric_update') {
-          setMetrics((prev) => {
-            const updated = { ...prev };
+          setMetricsByRun((prev) => {
+            const runMetrics = { ...(prev[runId] || {}) };
             const metricName = message.data.metric_name;
-            if (!updated[metricName]) {
-              updated[metricName] = [];
-            }
-            updated[metricName] = [...updated[metricName], message.data];
-            return updated;
+            const list = runMetrics[metricName] ? [...runMetrics[metricName]] : [];
+            list.push(message.data);
+            runMetrics[metricName] = list;
+            return { ...prev, [runId]: runMetrics };
           });
         } else if (message.type === 'graph_update') {
-          setGraphs((prev) => [...prev, message.data]);
+          setGraphsByRun((prev) => {
+            const list = prev[runId] ? [...prev[runId]] : [];
+            list.push(message.data);
+            return { ...prev, [runId]: list };
+          });
         }
       } catch (err) {
         console.error('WebSocket message error:', err);
@@ -150,31 +178,68 @@ function App() {
       console.error('WebSocket error:', err);
     };
 
-    wsRef.current = ws;
+    wsMap.current.set(runId, ws);
   }, []);
 
-  // Handle settings save
+  const closeSocket = useCallback((runId: number) => {
+    const ws = wsMap.current.get(runId);
+    if (ws) {
+      ws.close();
+      wsMap.current.delete(runId);
+    }
+  }, []);
+
+  const handleToggleRun = (runId: number) => {
+    setSelectedRunIds((prev) => {
+      if (prev.includes(runId)) {
+        closeSocket(runId);
+        // Drop cached data so it doesn't leak into future selections
+        const dropOne = <T,>(m: Record<number, T>) => {
+          const next = { ...m };
+          delete next[runId];
+          return next;
+        };
+        setMetricsByRun(dropOne);
+        setGraphsByRun(dropOne);
+        setHistogramsByRun(dropOne);
+        setImagesByRun(dropOne);
+        return prev.filter((id) => id !== runId);
+      }
+      fetchRunData(runId);
+      openSocket(runId);
+      return [...prev, runId];
+    });
+  };
+
+  const handleClearRuns = () => {
+    selectedRunIds.forEach(closeSocket);
+    setSelectedRunIds([]);
+    setMetricsByRun({});
+    setGraphsByRun({});
+    setHistogramsByRun({});
+    setImagesByRun({});
+    setRunNames({});
+  };
+
   const handleSettingsSave = () => {
-    // Reset state and refetch
+    wsMap.current.forEach((ws) => ws.close());
+    wsMap.current.clear();
     setDatabases([]);
     setSelectedDb(null);
     setRuns([]);
-    setSelectedRunId(null);
-    setSelectedRunName(null);
-    setMetrics({});
-    setGraphs([]);
+    setSelectedRunIds([]);
+    setRunNames({});
+    setMetricsByRun({});
+    setGraphsByRun({});
+    setHistogramsByRun({});
+    setImagesByRun({});
     fetchDatabases();
   };
 
-  // Refresh all data
   const handleRefresh = () => {
     fetchDatabases();
-    if (selectedDb) {
-      fetchRuns();
-    }
-    if (selectedRunId) {
-      fetchRunData(selectedRunId);
-    }
+    if (selectedDb) fetchRuns();
+    selectedRunIds.forEach((id) => fetchRunData(id));
   };
 
   // Initial fetch
@@ -182,79 +247,79 @@ function App() {
     fetchDatabases();
   }, [fetchDatabases]);
 
-  // Fetch runs when database changes
   useEffect(() => {
     fetchRuns();
   }, [selectedDb, fetchRuns]);
 
-  // Poll for databases and runs (every 3 seconds)
+  // Background poll for databases + runs
   useEffect(() => {
     const pollInterval = setInterval(() => {
-      // Silently fetch databases
       api
         .getDatabases()
         .then((data) => {
           setDatabases(data.available_databases);
-          // Update selected db if it was set on server side
           if (data.current_database && !selectedDb) {
             setSelectedDb(data.current_database);
           }
         })
-        .catch((err) => {
-          console.error('Polling databases error:', err);
-        });
+        .catch((err) => console.error('Polling databases error:', err));
 
-      // Silently fetch runs if a database is selected
       if (selectedDb) {
         api
           .getRuns()
-          .then((data) => {
-            setRuns(data || []);
-          })
-          .catch((err) => {
-            console.error('Polling runs error:', err);
-          });
+          .then((data) => setRuns(data || []))
+          .catch((err) => console.error('Polling runs error:', err));
       }
     }, 3000);
 
     return () => clearInterval(pollInterval);
   }, [selectedDb]);
 
-  // Poll for metrics/graphs when a run is selected (every 2 seconds)
+  // Background poll for metrics/graphs/histograms/images of every selected run
   useEffect(() => {
-    if (!selectedRunId) return;
+    if (selectedRunIds.length === 0) return;
 
     const pollInterval = setInterval(() => {
-      // Silently fetch updated metrics without setting loading state
-      api
-        .getRecords(selectedRunId)
-        .then((metricsData) => {
-          setMetrics(metricsData.metrics || {});
-        })
-        .catch((err) => {
-          console.error('Polling error:', err);
-        });
+      selectedRunIds.forEach((runId) => {
+        api
+          .getRecords(runId)
+          .then((metricsData) => {
+            setMetricsByRun((prev) => ({ ...prev, [runId]: metricsData.metrics || {} }));
+          })
+          .catch((err) => console.error('Polling records error:', err));
 
-      // Also fetch graphs
-      api
-        .getGraphs(selectedRunId)
-        .then((graphsData) => {
-          setGraphs(graphsData.graphs || []);
-        })
-        .catch((err) => {
-          console.error('Polling graphs error:', err);
-        });
+        api
+          .getGraphs(runId)
+          .then((graphsData) => {
+            setGraphsByRun((prev) => ({ ...prev, [runId]: graphsData.graphs || [] }));
+          })
+          .catch((err) => console.error('Polling graphs error:', err));
+
+        api
+          .getHistograms(runId)
+          .then((histsData) => {
+            setHistogramsByRun((prev) => ({ ...prev, [runId]: histsData.histograms || {} }));
+          })
+          .catch((err) => console.error('Polling histograms error:', err));
+
+        api
+          .getImages(runId)
+          .then((imgsData) => {
+            setImagesByRun((prev) => ({ ...prev, [runId]: imgsData.images || {} }));
+          })
+          .catch((err) => console.error('Polling images error:', err));
+      });
     }, 2000);
 
     return () => clearInterval(pollInterval);
-  }, [selectedRunId]);
+  }, [selectedRunIds]);
 
-  // Cleanup WebSocket on unmount
+  // Cleanup all WebSockets on unmount
   useEffect(() => {
+    const map = wsMap.current;
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      map.forEach((ws) => ws.close());
+      map.clear();
     };
   }, []);
 
@@ -264,29 +329,42 @@ function App() {
         onRefresh={handleRefresh}
         onOpenSettings={() => setSettingsOpen(true)}
         isLoading={loading}
+        theme={theme}
+        onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
       />
 
       <div className="app-body">
         <Sidebar
           runs={runs}
-          selectedRunId={selectedRunId}
-          onSelectRun={handleRunSelect}
+          selectedRunIds={selectedRunIds}
+          onToggleRun={handleToggleRun}
+          onClearRuns={handleClearRuns}
           isOpen={sidebarOpen}
           onToggle={() => setSidebarOpen(!sidebarOpen)}
           databases={databases}
           currentDatabase={selectedDb}
           onSelectDatabase={handleDbSelect}
+          runMeta={runMeta}
+          updateRunMeta={updateRunMeta}
         />
 
         <MainContent
-          selectedRunId={selectedRunId}
-          runName={selectedRunName}
-          metrics={metrics}
-          graphs={graphs}
+          selectedRunIds={selectedRunIds}
+          runNames={Object.fromEntries(
+            Object.entries(runNames).map(([id, name]) => [id, runMeta[Number(id)]?.rename || name])
+          )}
+          rawRunNames={runNames}
+          runMeta={runMeta}
+          runs={runs}
+          metricsByRun={metricsByRun}
+          graphsByRun={graphsByRun}
+          histogramsByRun={histogramsByRun}
+          imagesByRun={imagesByRun}
           isLoading={loading}
           error={error}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          theme={theme}
         />
       </div>
 

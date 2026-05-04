@@ -11,6 +11,7 @@ import type { CompGraphData, CompGraphNode, CompGraphEdge } from '../types';
 interface CompGraphProps {
   data: CompGraphData;
   title?: string;
+  theme?: 'light' | 'dark';
 }
 
 interface LayoutNode {
@@ -32,14 +33,21 @@ interface LayoutLink {
   target: LayoutNode;
 }
 
-// Node colors matching inline_comp_graph.py style
-const NODE_COLORS: Record<string, string> = {
-  leaf: '#FFA07A', // lightsalmon - for leaf tensors (inputs/params)
-  tensor: '#B0C4DE', // lightsteelblue - for intermediate tensors
-  operation: '#FAFAD2', // lightgoldenrodyellow - for operations
-  op: '#FAFAD2',
-  default: '#B0C4DE',
-};
+// Resolve node/edge colors from CSS variables so dark mode picks them up.
+function resolveGraphColors() {
+  const styles = getComputedStyle(document.documentElement);
+  const v = (name: string, fallback: string) =>
+    styles.getPropertyValue(name).trim() || fallback;
+  return {
+    leaf: v('--graph-node-leaf', '#FFA07A'),
+    tensor: v('--graph-node-tensor', '#B0C4DE'),
+    op: v('--graph-node-op', '#FAFAD2'),
+    edge: v('--graph-edge', '#333'),
+    arrow: v('--graph-arrow', '#666'),
+    nodeStroke: v('--graph-node-stroke', '#666'),
+    nodeText: v('--graph-node-text', '#333'),
+  };
+}
 
 /**
  * Format node label similar to inline version
@@ -227,9 +235,11 @@ function computeDAGLayout(
   return { nodes: layoutNodes, links: layoutLinks, width: totalWidth, height: totalHeight };
 }
 
-export function CompGraph({ data, title }: CompGraphProps) {
+export function CompGraph({ data, title, theme }: CompGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const zoomRef = useRef<any>(null);
+  const fitTransformRef = useRef<any>(null);
 
   useEffect(() => {
     if (
@@ -243,6 +253,7 @@ export function CompGraph({ data, title }: CompGraphProps) {
     }
 
     const svg = d3.select(svgRef.current);
+    const colors = resolveGraphColors();
 
     // Clear previous content
     svg.selectAll('*').remove();
@@ -250,7 +261,25 @@ export function CompGraph({ data, title }: CompGraphProps) {
     // Compute DAG layout
     const { nodes, links, width, height } = computeDAGLayout(data.nodes, data.edges);
 
-    svg.attr('width', Math.max(width, 400)).attr('height', Math.max(height, 200));
+    // No viewBox: d3.zoom transforms work in pixel space so the mouse wheel
+    // zooms toward the cursor at a predictable rate. Size the <svg> to its
+    // container and translate the inner <g> ourselves.
+    const containerEl = containerRef.current!;
+    const containerW = Math.max(200, containerEl.clientWidth);
+    const containerH = Math.max(200, containerEl.clientHeight - 56);
+    svg.attr('width', containerW).attr('height', containerH);
+
+    // Compute the fit-to-view transform once so we can use it for the initial
+    // render and for "Reset Zoom".
+    const padding = 24;
+    const fitScale = Math.min(
+      (containerW - padding * 2) / Math.max(width, 1),
+      (containerH - padding * 2) / Math.max(height, 1),
+      1.5,
+    );
+    const fitTx = (containerW - width * fitScale) / 2;
+    const fitTy = (containerH - height * fitScale) / 2;
+    const fitTransform = d3.zoomIdentity.translate(fitTx, fitTy).scale(fitScale);
 
     // Create defs for arrow markers
     const defs = svg.append('defs');
@@ -267,11 +296,33 @@ export function CompGraph({ data, title }: CompGraphProps) {
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0,-2L6,0L0,2')
-      .attr('fill', '#666');
+      .attr('fill', colors.arrow);
 
-    // Container group (no zoom - use native scrolling)
+    // Add invisible background rect to capture pan/drag events anywhere
+    svg.append('rect')
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .attr('fill', 'transparent')
+      .attr('style', 'cursor: grab');
+
+    // Container group with zoom support
     const g = svg.append('g');
 
+    zoomRef.current = d3
+      .zoom()
+      .scaleExtent([0.05, 10])
+      // Smoother wheel-zoom — d3's default doubles per scroll; this is gentler.
+      .wheelDelta((event: WheelEvent) => -event.deltaY * (event.deltaMode ? 0.05 : 0.002))
+      .on('zoom', (event: any) => {
+        g.attr('transform', event.transform);
+      });
+
+    svg.call(zoomRef.current as any);
+    // Apply the fit-to-view transform on first render so the graph is centered
+    // and fully visible before any user interaction.
+    svg.call(zoomRef.current.transform as any, fitTransform);
+    fitTransformRef.current = fitTransform;
+    
     // Draw edges with curved paths
     g.append('g')
       .attr('class', 'edges')
@@ -291,7 +342,7 @@ export function CompGraph({ data, title }: CompGraphProps) {
         return `M${sourceX},${sourceY} C${midX},${sourceY} ${midX},${targetY} ${targetX},${targetY}`;
       })
       .attr('fill', 'none')
-      .attr('stroke', '#333')
+      .attr('stroke', colors.edge)
       .attr('stroke-width', 1)
       .attr('marker-end', 'url(#arrow-vee)');
 
@@ -312,14 +363,7 @@ export function CompGraph({ data, title }: CompGraphProps) {
       // Use is_leaf from backend data for accurate coloring
       const isLeaf = d.is_leaf === true;
 
-      let fillColor: string;
-      if (isOp) {
-        fillColor = NODE_COLORS.operation;
-      } else if (isLeaf) {
-        fillColor = NODE_COLORS.leaf;
-      } else {
-        fillColor = NODE_COLORS.tensor;
-      }
+      const fillColor = isOp ? colors.op : isLeaf ? colors.leaf : colors.tensor;
 
       // All nodes are rounded rectangles (like graphviz record shape)
       nodeG
@@ -331,7 +375,7 @@ export function CompGraph({ data, title }: CompGraphProps) {
         .attr('rx', 6)
         .attr('ry', 6)
         .attr('fill', fillColor)
-        .attr('stroke', '#666')
+        .attr('stroke', colors.nodeStroke)
         .attr('stroke-width', 1);
     });
 
@@ -352,7 +396,7 @@ export function CompGraph({ data, title }: CompGraphProps) {
           .attr('y', startY + i * lineHeight)
           .attr('dy', '0.35em')
           .attr('text-anchor', 'middle')
-          .attr('fill', '#333')
+          .attr('fill', colors.nodeText)
           .attr('font-size', isOp ? '10px' : '9px')
           .attr('font-weight', isOp ? '500' : '400')
           .attr('font-family', 'monospace');
@@ -366,13 +410,28 @@ export function CompGraph({ data, title }: CompGraphProps) {
       if (d.shape) tooltip += `\nShape: [${d.shape.join(', ')}]`;
       return tooltip;
     });
-  }, [data]);
+  }, [data, theme]);
 
   return (
-    <div className="comp-graph" ref={containerRef}>
-      {title && <h3 className="comp-graph-title">{title}</h3>}
-      <div className="comp-graph-container">
-        <svg ref={svgRef} />
+    <div className="comp-graph" ref={containerRef} style={{ position: 'relative', resize: 'both', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div className="comp-graph-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexShrink: 0 }}>
+        {title && <h3 className="comp-graph-title" style={{ margin: 0 }}>{title}</h3>}
+        <button 
+          className="topbar-button"
+          style={{ padding: '4px 8px', fontSize: '12px', borderRadius: '4px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', cursor: 'pointer' }}
+          onClick={() => {
+            if (svgRef.current && zoomRef.current) {
+              const svg = d3.select(svgRef.current);
+              const target = fitTransformRef.current ?? d3.zoomIdentity;
+              svg.transition().duration(500).call(zoomRef.current.transform as any, target);
+            }
+          }}
+        >
+          Reset Zoom
+        </button>
+      </div>
+      <div className="comp-graph-container" style={{ overflow: 'hidden', border: '1px solid var(--border)', borderRadius: '8px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+        <svg ref={svgRef} style={{ width: '100%', height: '100%', flexGrow: 1, display: 'block' }} />
       </div>
       {(!data || !data.nodes || data.nodes.length === 0) && (
         <div className="comp-graph-empty">No computation graph available</div>

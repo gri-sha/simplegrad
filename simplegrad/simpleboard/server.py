@@ -80,6 +80,20 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._json({"run_id": run_id, "graphs": state.exp_db.get_comp_graphs(run_id)})
 
+        elif m := re.fullmatch(r"/api/runs/(\d+)/histograms", path):
+            run_id = int(m.group(1))
+            if state.exp_db is None:
+                self._error(400, "No database selected")
+            else:
+                self._json({"run_id": run_id, "histograms": state.exp_db.get_histograms(run_id)})
+
+        elif m := re.fullmatch(r"/api/runs/(\d+)/images", path):
+            run_id = int(m.group(1))
+            if state.exp_db is None:
+                self._error(400, "No database selected")
+            else:
+                self._json({"run_id": run_id, "images": state.exp_db.get_images(run_id)})
+
         else:
             self._serve_static(path)
 
