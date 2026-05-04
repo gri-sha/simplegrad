@@ -8,6 +8,11 @@ A lightweight deep learning framework built on NumPy with automatic differentiat
 pip install simplegrad
 ```
 
+The SimpleBoard frontend is built automatically from npm sources during installation. If you do not have Node.js installed or want to skip the build, set `SIMPLEGRAD_NO_BUILD_WEB=1`:
+```bash
+SIMPLEGRAD_NO_BUILD_WEB=1 pip install simplegrad
+```
+
 ## Quick start
 
 ```python
