@@ -56,3 +56,13 @@ class CompGraphsResponse(BaseModel):
 
     run_id: int
     graphs: list[dict]
+
+class HistogramsResponse(BaseModel):
+    """Response containing histograms for a run."""
+    run_id: int
+    histograms: dict[str, list[dict]]
+
+class ImagesResponse(BaseModel):
+    """Response containing images for a run."""
+    run_id: int
+    images: dict[str, list[dict]]

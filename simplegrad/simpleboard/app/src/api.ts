@@ -8,6 +8,8 @@ import type {
   MetricsResponse,
   MetricNamesResponse,
   CompGraphsResponse,
+  HistogramsResponse,
+  ImagesResponse,
 } from './types';
 
 const DEFAULT_API_URL = 'http://localhost:8000';
@@ -73,6 +75,18 @@ class ApiClient {
   async getGraphs(runId: number): Promise<CompGraphsResponse> {
     const res = await fetch(`${this.getBaseUrl()}/api/runs/${runId}/graphs`);
     if (!res.ok) throw new Error('Failed to fetch graphs');
+    return res.json();
+  }
+
+  async getHistograms(runId: number): Promise<HistogramsResponse> {
+    const res = await fetch(`${this.getBaseUrl()}/api/runs/${runId}/histograms`);
+    if (!res.ok) throw new Error('Failed to fetch histograms');
+    return res.json();
+  }
+
+  async getImages(runId: number): Promise<ImagesResponse> {
+    const res = await fetch(`${this.getBaseUrl()}/api/runs/${runId}/images`);
+    if (!res.ok) throw new Error('Failed to fetch images');
     return res.json();
   }
 

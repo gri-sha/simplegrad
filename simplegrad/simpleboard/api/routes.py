@@ -14,6 +14,8 @@ from .models import (
     MetricsResponse,
     MetricNamesResponse,
     CompGraphsResponse,
+    HistogramsResponse,
+    ImagesResponse,
 )
 
 router = APIRouter(prefix="/api")
@@ -147,3 +149,27 @@ async def get_graphs(run_id: int):
 
     graphs = state.exp_db.get_comp_graphs(run_id)
     return CompGraphsResponse(run_id=run_id, graphs=graphs)
+
+@router.get("/runs/{run_id}/histograms", response_model=HistogramsResponse)
+async def get_histograms(run_id: int):
+    """Get histograms for a run."""
+    if state.exp_db is None:
+        raise HTTPException(status_code=400, detail="No database selected")
+    run = state.exp_db.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+    
+    hists = state.exp_db.get_histograms(run_id)
+    return HistogramsResponse(run_id=run_id, histograms=hists)
+
+@router.get("/runs/{run_id}/images", response_model=ImagesResponse)
+async def get_images(run_id: int):
+    """Get images for a run."""
+    if state.exp_db is None:
+        raise HTTPException(status_code=400, detail="No database selected")
+    run = state.exp_db.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+    
+    imgs = state.exp_db.get_images(run_id)
+    return ImagesResponse(run_id=run_id, images=imgs)

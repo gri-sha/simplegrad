@@ -4,6 +4,7 @@ from pathlib import Path
 from .exp_db_manager import ExperimentDBManager, RunInfo, RecordInfo
 from .comp_graph import _build_graph_data
 from simplegrad.core import Tensor
+import numpy as np
 
 
 class Tracker:
@@ -58,6 +59,56 @@ class Tracker:
         if self.current_run_id is None:
             raise RuntimeError("No active run. Call start_run() first.")
         self.db_manager.record(self.current_run_id, metric_name, step, value)
+
+    def histogram(self, name: str, tensor: Tensor | np.ndarray, step: int, bins: int = 30):
+        """Log a histogram of values at a given step"""
+        if self.current_run_id is None:
+            raise RuntimeError("No active run. Call start_run() first.")
+        
+        if isinstance(tensor, Tensor):
+            data = tensor.realize().numpy()
+        else:
+            data = np.asarray(tensor)
+            
+        counts, edges = np.histogram(data, bins=bins)
+        self.db_manager.save_histogram(
+            self.current_run_id, 
+            name, 
+            step, 
+            edges.tolist(), 
+            counts.tolist()
+        )
+
+    def image(self, name: str, image_data: np.ndarray, step: int):
+        """Log an image at a given step. image_data should be a numpy array of shape (H, W, C) or (H, W)"""
+        if self.current_run_id is None:
+            raise RuntimeError("No active run. Call start_run() first.")
+        
+        arr = np.asarray(image_data)
+        if arr.ndim == 2:
+            h, w = arr.shape
+            c = 1
+        elif arr.ndim == 3:
+            h, w, c = arr.shape
+        else:
+            raise ValueError(f"Image must be 2D or 3D array, got shape {arr.shape}")
+            
+        # Ensure it's uint8
+        if arr.dtype != np.uint8:
+            if arr.dtype in [np.float32, np.float64]:
+                arr = (np.clip(arr, 0, 1) * 255).astype(np.uint8)
+            else:
+                arr = arr.astype(np.uint8)
+                
+        self.db_manager.save_image(
+            self.current_run_id,
+            name,
+            step,
+            int(w),
+            int(h),
+            int(c),
+            arr.tobytes()
+        )
 
     def end_run(self, status: str = "completed"):
         """End the current run with a given status"""

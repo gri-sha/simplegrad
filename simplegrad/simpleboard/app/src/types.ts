@@ -12,6 +12,13 @@ export interface RunInfo {
   metrics?: string[];
 }
 
+export interface RunMeta {
+  rename?: string;
+  pinned?: boolean;
+  hidden?: boolean;
+  starred?: boolean;
+}
+
 export interface RecordInfo {
   step: number;
   value: number;
@@ -59,4 +66,40 @@ export interface CompGraphsResponse {
     graph: CompGraphData;
     created_at: number;
   }>;
+}
+
+export interface HistogramInfo {
+  step: number;
+  bucket_edges: number[];
+  bucket_counts: number[];
+  log_time: number;
+}
+
+export interface HistogramsResponse {
+  run_id: number;
+  histograms: Record<string, HistogramInfo[]>;
+}
+
+export interface ImageInfo {
+  step: number;
+  width: number;
+  height: number;
+  channels: number;
+  data_b64: string;
+  log_time: number;
+}
+
+export interface ImagesResponse {
+  run_id: number;
+  images: Record<string, ImageInfo[]>;
+}
+
+export type XAxisMode = 'step' | 'relative' | 'wall';
+export type YScaleMode = 'linear' | 'log';
+
+export interface MetricSeries {
+  runId: number;
+  runName: string;
+  color: string;
+  data: RecordInfo[];
 }

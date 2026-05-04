@@ -110,6 +110,33 @@ class ExperimentDBManager:
                     created_at REAL NOT NULL,
                     FOREIGN KEY (run_id) REFERENCES runs(id)
                 );
+                CREATE TABLE IF NOT EXISTS histograms (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    step INTEGER NOT NULL,
+                    bucket_edges TEXT NOT NULL,
+                    bucket_counts TEXT NOT NULL,
+                    wall_time REAL NOT NULL,
+                    FOREIGN KEY (run_id) REFERENCES runs(id)
+                );
+                
+                CREATE INDEX IF NOT EXISTS idx_histograms_run_name ON histograms(run_id, name);
+
+                CREATE TABLE IF NOT EXISTS images (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    step INTEGER NOT NULL,
+                    width INTEGER NOT NULL,
+                    height INTEGER NOT NULL,
+                    channels INTEGER NOT NULL,
+                    image_data BLOB NOT NULL,
+                    wall_time REAL NOT NULL,
+                    FOREIGN KEY (run_id) REFERENCES runs(id)
+                );
+                
+                CREATE INDEX IF NOT EXISTS idx_images_run_name ON images(run_id, name);
             """)
 
     def create_run(self, name: str | None = None, config: dict | None = None) -> int:
@@ -222,6 +249,8 @@ class ExperimentDBManager:
         with self._get_connection() as conn:
             conn.execute("DELETE FROM records WHERE run_id = ?", (run_id,))
             conn.execute("DELETE FROM graphs WHERE run_id = ?", (run_id,))
+            conn.execute("DELETE FROM histograms WHERE run_id = ?", (run_id,))
+            conn.execute("DELETE FROM images WHERE run_id = ?", (run_id,))
             conn.execute("DELETE FROM runs WHERE id = ?", (run_id,))
 
     def record(self, run_id: int, metric_name: str, step: int, value: float):
@@ -299,3 +328,58 @@ class ExperimentDBManager:
                 }
                 for row in rows
             ]
+
+    def save_histogram(self, run_id: int, name: str, step: int, bucket_edges: list[float], bucket_counts: list[int]):
+        """Save a histogram."""
+        log_time = time.time()
+        with self._get_connection() as conn:
+            conn.execute(
+                "INSERT INTO histograms (run_id, name, step, bucket_edges, bucket_counts, wall_time) VALUES (?, ?, ?, ?, ?, ?)",
+                (run_id, name, step, json.dumps(bucket_edges), json.dumps(bucket_counts), log_time)
+            )
+
+    def get_histograms(self, run_id: int) -> dict[str, list[dict]]:
+        """Get all histograms for a run."""
+        with self._get_connection(readonly=True) as conn:
+            rows = conn.execute("SELECT name, step, bucket_edges, bucket_counts, wall_time FROM histograms WHERE run_id = ? ORDER BY step", (run_id,)).fetchall()
+            result = {}
+            for row in rows:
+                name = row["name"]
+                if name not in result:
+                    result[name] = []
+                result[name].append({
+                    "step": row["step"],
+                    "bucket_edges": json.loads(row["bucket_edges"]),
+                    "bucket_counts": json.loads(row["bucket_counts"]),
+                    "log_time": row["wall_time"]
+                })
+            return result
+
+    def save_image(self, run_id: int, name: str, step: int, width: int, height: int, channels: int, image_data: bytes):
+        """Save raw image data."""
+        log_time = time.time()
+        with self._get_connection() as conn:
+            conn.execute(
+                "INSERT INTO images (run_id, name, step, width, height, channels, image_data, wall_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (run_id, name, step, width, height, channels, image_data, log_time)
+            )
+
+    def get_images(self, run_id: int) -> dict[str, list[dict]]:
+        """Get all images for a run."""
+        with self._get_connection(readonly=True) as conn:
+            rows = conn.execute("SELECT name, step, width, height, channels, image_data, wall_time FROM images WHERE run_id = ? ORDER BY step", (run_id,)).fetchall()
+            result = {}
+            import base64
+            for row in rows:
+                name = row["name"]
+                if name not in result:
+                    result[name] = []
+                result[name].append({
+                    "step": row["step"],
+                    "width": row["width"],
+                    "height": row["height"],
+                    "channels": row["channels"],
+                    "data_b64": base64.b64encode(row["image_data"]).decode('ascii'),
+                    "log_time": row["wall_time"]
+                })
+            return result
