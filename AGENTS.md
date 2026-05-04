@@ -34,7 +34,11 @@ docs/                     # MkDocs documentation source
 examples/                 # Usage examples
 experiments/              # Default output directory for tracked runs
 assets/                   # Static assets
-build_web.py              # Builds the SimpleBoard frontend
+benchmarks/               # Performance benchmarks vs PyTorch (CPU and GPU)
+    logs/                 # Saved benchmark output logs
+scripts/                  # Developer utility scripts
+    build_web.py          # Builds the SimpleBoard frontend
+    check_cupy.py         # Prints CuPy/CUDA device info
 pyproject.toml            # Project metadata, dependencies, tool config
 mkdocs.yml                # Documentation site configuration
 ```
@@ -175,8 +179,63 @@ mkdocs gh-deploy --force
 The SimpleBoard web app has a compiled frontend. After making changes to `simplegrad/simpleboard/app/`, rebuild it before committing:
 
 ```bash
-python build_web.py
+python scripts/build_web.py
 ```
+
+### Benchmarks
+
+Performance benchmarks live in `benchmarks/`. They compare simplegrad against PyTorch on CPU and optionally GPU (CUDA or Apple Metal). Logs are saved to `benchmarks/logs/`.
+
+Install benchmark dependencies:
+
+```bash
+pip install -e ".[bench]"
+```
+
+Run a benchmark:
+
+```bash
+python benchmarks/conv_benchmark.py --sg-cpu --torch-cpu
+python benchmarks/conv_benchmark.py --sg-cpu --torch-cpu --torch-metal
+python benchmarks/conv_benchmark.py --sg-cpu --sg-gpu
+python benchmarks/conv_benchmark.py --sg-cpu --torch-cpu --log-file benchmarks/logs/conv.log
+```
+
+Backends are always opt-in — at least one flag must be passed or the script exits with an error. Each run writes both a text log (`conv_<datetime>.log`) and a structured JSON file (`conv_<datetime>.json`) to `benchmarks/logs/`.
+
+#### Benchmark dashboard
+
+```bash
+python benchmarks/dashboard.py
+python benchmarks/dashboard.py --port 8080
+```
+
+A standalone web dashboard (`benchmarks/dashboard.py` + `benchmarks/dashboard.html`) served by a stdlib `ThreadingHTTPServer`. Opens the browser automatically. Shows a grouped bar chart of fwd/bwd/total times per backend, with ±std error bars. Loads Chart.js from CDN. Select a run from the sidebar, choose a metric and input config from the dropdowns. System info for each run is shown in a collapsible panel.
+
+Add new benchmark files to `benchmarks/` — one file per operation or module being benchmarked. New benchmarks should import from `benchmarks.utils` to get the shared framework.
+
+#### benchmarks/utils
+
+Shared utilities for all benchmarks:
+
+- `sysinfo.log_system_info(log)` — logs OS, Python, NumPy, PyTorch, CuPy versions and full CUDA/MPS device info.
+- `TimingResult` — dataclass holding fwd/bwd mean±std; `.fmt()` returns a single readable line.
+- `Backend(name, fn, device_label)` — wraps a benchmark function with its display name and device description. `fn` is called as `fn(**config.params, n_runs=N, warmup=N) -> TimingResult`.
+- `Config(label, params, group)` — one benchmark case. Configs with the same `group` string are printed under a shared group header.
+- `run_suite(name, backends, configs, n_runs, warmup, log)` — runs all backends against all configs and logs results.
+- `add_backend_args(parser)` — adds `--sg-cpu`, `--sg-gpu`, `--torch-cpu`, `--torch-gpu`, `--torch-metal` flags to an argparse parser.
+- `setup_logging(logger_name, log_file)` — creates a plain-format logger writing to stdout and a file.
+- `default_log_path(benchmark_name)` — returns `benchmarks/logs/<name>_<datetime>.log`.
+
+#### Benchmark logging style
+
+All benchmarks use Python's `logging` module with a plain `%(message)s` formatter (no timestamps, no level prefixes in output). Logging rules:
+
+- Never log separator lines (`===`, `---`, or any repeated character sequences).
+- Use indentation to show hierarchy: top-level config at 2 spaces, kernel config at 4 spaces, per-backend result at 6 spaces.
+- Separate logical groups with a single `log.info("")` blank line — not a separator string.
+- Log to a named logger (`logging.getLogger("benchmark_name")`), not the root logger.
+- Optionally write to a file via `--log-file`; use `logging.FileHandler` alongside `StreamHandler`.
 
 ## Internals
 

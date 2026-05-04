@@ -336,14 +336,12 @@ def test_reduce_lr_on_plateau_respects_min_lr():
     opt = _make_optimizer(lr=0.1)
     scheduler = sg.sch.ReduceLROnPlateauLR(opt, factor=0.5, patience=1, min_lr=0.03, verbose=True)
 
-    scheduler.step(10.0)
-    scheduler.step(9.0)
-    scheduler.step(8.5)  # trigger reduction to 0.05
+    scheduler.step(1.0)  # best = 1.0
+    scheduler.step(1.0)  # plateau (no improvement) -> reduce to 0.05
     assert np.isclose(opt.lr, 0.05)
 
-    scheduler.step(7.0)  # improvement resets
-    scheduler.step(8.0)  # no improvement
-    scheduler.step(9.0)  # no improvement -> reduce to 0.025
+    scheduler.step(0.5)  # improvement resets bad counter, best = 0.5
+    scheduler.step(0.5)  # plateau -> reduce to max(0.025, 0.03) = 0.03
     assert np.isclose(opt.lr, 0.03)  # clamped to min_lr
 
 
@@ -352,16 +350,16 @@ def test_reduce_lr_on_plateau_cooldown():
     opt = _make_optimizer(lr=0.1)
     scheduler = sg.sch.ReduceLROnPlateauLR(opt, factor=0.5, patience=1, cooldown=2, verbose=False)
 
-    scheduler.step(10.0)
-    scheduler.step(9.0)  # trigger reduction to 0.05, cooldown=2
+    scheduler.step(1.0)  # best = 1.0
+    scheduler.step(1.0)  # plateau -> reduce to 0.05, cooldown_remaining = 2
     assert opt.lr == 0.05
     assert scheduler.cooldown_remaining == 2
 
-    scheduler.step(8.0)  # cooldown, not monitored
+    scheduler.step(0.8)  # in cooldown, not monitored
     assert scheduler.cooldown_remaining == 1
     assert scheduler.num_bad_steps == 0
 
-    scheduler.step(8.0)  # cooldown ends
+    scheduler.step(0.8)  # cooldown ends
     assert scheduler.cooldown_remaining == 0
 
 
@@ -393,11 +391,11 @@ def test_reduce_lr_on_plateau_threshold_rel():
         verbose=False,
     )
 
-    scheduler.step(10.0)  # best = 10.0, improvement threshold = 10.0 * (1 - 0.1) = 9.0
-    scheduler.step(9.5)  # 9.5 > 9.0, improvement
+    scheduler.step(10.0)  # best = 10.0, improvement requires metric < 10.0 * (1 - 0.1) = 9.0
+    scheduler.step(10.0)  # 10.0 >= 9.0, not improvement -> reduce to 0.05, best = 10.0
     assert scheduler.num_bad_steps == 0
-    scheduler.step(9.5)  # no improvement
-    scheduler.step(9.5)  # no improvement again -> reduce
+    scheduler.step(5.0)   # 5.0 < 9.0, improvement -> bad = 0, best = 5.0
+    scheduler.step(4.4)   # 4.4 < 5.0 * 0.9 = 4.5, improvement -> bad = 0
     assert np.isclose(opt.lr, 0.05)
 
 
@@ -414,11 +412,11 @@ def test_reduce_lr_on_plateau_threshold_abs():
         verbose=False,
     )
 
-    scheduler.step(10.0)  # best = 10.0
-    scheduler.step(9.8)  # 9.8 >= 10.0 - 0.5 = 9.5, improvement
+    scheduler.step(10.0)  # best = 10.0, improvement requires metric < 10.0 - 0.5 = 9.5
+    scheduler.step(10.0)  # 10.0 >= 9.5, not improvement -> reduce to 0.05, best = 10.0
     assert scheduler.num_bad_steps == 0
-    scheduler.step(9.3)  # 9.3 < 9.5, no improvement
-    scheduler.step(9.3)  # no improvement -> reduce
+    scheduler.step(9.0)   # 9.0 < 9.5, improvement -> bad = 0, best = 9.0
+    scheduler.step(8.4)   # 8.4 < 9.0 - 0.5 = 8.5, improvement -> bad = 0
     assert np.isclose(opt.lr, 0.05)
 
 
@@ -457,21 +455,18 @@ def test_reduce_lr_on_plateau_integration_with_optimizer():
     x = sg.Tensor(np.random.randn(2, 4).astype(np.float64), dtype="float64")
     target = sg.Tensor(np.random.randn(2, 2).astype(np.float64), dtype="float64")
 
-    losses = [0.5, 0.4, 0.3, 0.28, 0.27, 0.26]
+    # loss improves for 3 steps then plateaus — 2 consecutive flat steps trigger reduction
+    losses = [0.5, 0.4, 0.3, 0.3, 0.3, 0.3]
 
     for i, target_loss in enumerate(losses):
-        # simulate training with decreasing loss
         optimizer.zero_grad()
         output = model(x)
-        # create a fake loss that we control
         fake_loss = sg.Tensor(np.array([[target_loss]] * 2, dtype=np.float64), dtype="float64")
-        # use mse_loss for a real backward
         loss = sg.mse_loss(output, fake_loss)
         loss.backward()
         optimizer.step()
         scheduler.step(target_loss)
         optimizer.zero_grad()
 
-    # After 2 bad steps: [0.5, 0.4(improvement), 0.3(improvement),
-    # 0.28(improvement), 0.27(no), 0.26(no) -> reduce at 0.27, then 0.26 is improvement
+    # steps 4-5 (both 0.3) are bad steps; bad=2 >= patience=2 -> reduce to 0.05
     assert np.isclose(optimizer.lr, 0.05)
