@@ -51,11 +51,6 @@ def _cpu_description() -> str:
     macOS, /proc/cpuinfo on Linux, registry on Windows) and appends the
     logical core count. Falls back to ``platform.processor()`` or the
     machine architecture when the OS-specific source is unavailable.
-
-    Returns:
-        Description string, e.g.
-        ``"Apple M4 Pro | 14 logical cores"`` or
-        ``"Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz | 16 logical cores"``.
     """
     name: str | None = None
     system = platform.system()
@@ -107,12 +102,6 @@ def _cuda_device_description(index: int) -> str:
     Reads device properties via the CuPy runtime API and formats them as
     ``"<name> | <total VRAM> MB"``. Falls back to a generic label if the
     properties cannot be retrieved.
-
-    Args:
-        index: Zero-based CUDA device index.
-
-    Returns:
-        Description string, e.g. ``"NVIDIA GeForce RTX 4090 | 24576 MB"``.
     """
     try:
         props = cp.cuda.runtime.getDeviceProperties(index)
@@ -144,10 +133,6 @@ def available_devices() -> dict[str, str]:
                 "cuda:0": "NVIDIA GeForce RTX 4090 | 24576 MB",
                 "cuda:1": "NVIDIA A100-SXM4-40GB | 40960 MB",
             }
-
-    Example:
-        >>> available_devices()
-        {'cpu': 'CPU'}
     """
     devices: dict[str, str] = {"cpu": _cpu_description()}
     if _CUPY_AVAILABLE:
@@ -161,14 +146,7 @@ def available_devices() -> dict[str, str]:
 
 
 def get_default_device() -> str:
-    """Return the current global default device string.
-
-    New tensors created without an explicit ``device`` argument are placed
-    on this device. Defaults to ``"cpu"`` at startup.
-
-    Returns:
-        Default device string, e.g. ``"cpu"`` or ``"cuda:0"``.
-    """
+    """Return the current global default device string."""
     return _DEFAULT_DEVICE
 
 
@@ -184,10 +162,6 @@ def default_device(device: str) -> None:
 
     Raises:
         ValueError: If the device string is not a valid identifier.
-
-    Example:
-        >>> set_default_device("cuda:0")
-        >>> x = Tensor([1.0, 2.0])  # placed on cuda:0
     """
     global _DEFAULT_DEVICE
     validate_device(device)
@@ -209,11 +183,6 @@ def validate_device(device: str) -> str:
 
     Raises:
         ValueError: If the string is not a valid device identifier.
-
-    Example:
-        >>> validate_device("cuda:0")
-        'cuda:0'
-        >>> validate_device("gpu")  # raises ValueError
     """
     if device == "cpu":
         return device
@@ -240,11 +209,6 @@ def get_backend(device: str):
     Raises:
         RuntimeError: If the device is ``"cuda:N"`` but CuPy is not installed.
         ValueError: If the device string is not recognised.
-
-    Example:
-        >>> xp = get_backend("cpu")
-        >>> xp.zeros((3,))
-        array([0., 0., 0.])
     """
     if device == "cpu":
         return np
@@ -274,11 +238,6 @@ def validate_same_device(*tensors) -> str:
 
     Raises:
         RuntimeError: If tensors are on more than one distinct device.
-
-    Example:
-        >>> a = Tensor([1.0], device="cpu")
-        >>> b = Tensor([2.0], device="cuda:0")
-        >>> validate_same_device(a, b)  # raises RuntimeError
     """
     if not tensors:
         return get_default_device()

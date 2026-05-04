@@ -39,16 +39,7 @@ def _should_compute_grad(*inputs) -> bool:
 
 
 def is_lazy() -> bool:
-    """Return True if lazy execution mode is currently active.
-
-    In lazy mode, tensor operations build a deferred computation graph
-    instead of executing numpy immediately. Actual computation is
-    triggered by calling ``.realize()`` on a tensor or by calling
-    ``.backward()``, which auto-realizes before running backprop.
-
-    Returns:
-        True if lazy mode is active, False for eager mode (the default).
-    """
+    """Return True if lazy execution mode is currently active."""
     return _LAZY_MODE
 
 
@@ -59,11 +50,6 @@ def lazy():
     Inside the block, tensor operations record their computation without
     running numpy. Call ``.realize()`` on the output tensor (or call
     ``.backward()``) to execute the full graph.
-
-    Example:
-        >>> with sg.lazy():
-        ...     out = model(x)
-        ... out.realize()
     """
     global _LAZY_MODE
     prev = _LAZY_MODE
