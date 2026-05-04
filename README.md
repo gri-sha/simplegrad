@@ -1,34 +1,20 @@
 ![header logo](./docs/images/header.png)
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)
-![NumPy](https://img.shields.io/badge/numpy-backed-013243?logo=numpy&logoColor=white)
-![Docs](https://img.shields.io/badge/docs-mkdocs--material-526CFE?logo=materialformkdocs&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-pytest-0A9EDC?logo=pytest&logoColor=white)
-![Code style](https://img.shields.io/badge/code%20style-black-000000)
+![NumPy](https://img.shields.io/badge/numpy-013243?logo=numpy&logoColor=white)
+![CuPy](https://img.shields.io/badge/cupy-76B900?logo=nvidia&logoColor=white)
+![MkDocs](https://img.shields.io/badge/mkdocs-526CFE?logo=materialformkdocs&logoColor=white)
+![pytest](https://img.shields.io/badge/pytest-0A9EDC?logo=pytest&logoColor=white)
+![black](https://img.shields.io/badge/black-000000?logo=python&logoColor=white)
 
-**`simplegrad`** is a deep learning framework designed to be read. Every layer, every gradient, every optimizer — written from scratch on top of NumPy so you can trace exactly what happens when a neural network learns.
-
-It's not a toy. It ships a full autograd engine, conv layers, optimizers, schedulers, lazy execution, experiment tracking, and a web dashboard. But the source stays small enough to understand in an afternoon.
+**`simplegrad`** is the simplest deep learning framework.
 
 ## Install
 
-The package is not yet published to PyPI. Clone the repo and install in editable mode:
-
+The package is not yet published to PyPI, so install from source:
 ```bash
-git clone https://github.com/gri-sha/simplegrad.git
-cd simplegrad
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -e .
+pip install simplegrad[gpu,visual] @ git+https://github.com/simplegrad/simplegrad.git
 ```
-For CUDA support:
-
-```bash
-pip install -e ".[cuda]"  # CUDA 12.x
-```
-
-For development:
-pip install -e ".[dev,docs,cuda]"
 
 ## Quick start
 

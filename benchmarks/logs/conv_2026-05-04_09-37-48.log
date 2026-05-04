@@ -1,0 +1,90 @@
+system
+  os      Darwin 25.4.0  arm64
+  python  3.13.7
+  numpy   2.4.4
+  cupy    not installed
+  torch   2.11.0  (cuda build: cpu-only)
+
+  cpu     Apple M4  (10p / 10t)
+  ram     16 GB
+  mps     available
+
+  gpu     Apple M4
+
+conv2d
+  n_runs  30    warmup  5
+
+  backends
+    sg-cpu          numpy  cpu  arm
+    torch-cpu       torch  cpu  arm
+    torch-metal     torch  mps  Apple Metal
+
+  input (1, 1, 28, 28)  out_channels=32
+
+    kernel 3x3  stride=1  padding=1
+      sg-cpu          fwd 0.04±0.00 ms  bwd 0.07±0.03 ms  total 0.11±0.03 ms
+      torch-cpu       fwd 0.02±0.00 ms  bwd 0.05±0.00 ms  total 0.07±0.00 ms
+      torch-metal     fwd 0.29±0.09 ms  bwd 0.72±0.25 ms  total 1.02±0.26 ms
+
+    kernel 5x5  stride=1  padding=2
+      sg-cpu          fwd 0.04±0.00 ms  bwd 0.12±0.01 ms  total 0.16±0.01 ms
+      torch-cpu       fwd 0.03±0.01 ms  bwd 0.06±0.01 ms  total 0.09±0.02 ms
+      torch-metal     fwd 0.23±0.03 ms  bwd 0.46±0.05 ms  total 0.69±0.06 ms
+
+    kernel 7x7  stride=1  padding=3
+      sg-cpu          fwd 0.05±0.04 ms  bwd 0.14±0.02 ms  total 0.20±0.04 ms
+      torch-cpu       fwd 0.03±0.00 ms  bwd 0.07±0.00 ms  total 0.09±0.00 ms
+      torch-metal     fwd 0.26±0.03 ms  bwd 0.55±0.02 ms  total 0.80±0.04 ms
+
+  input (8, 3, 64, 64)  out_channels=32
+
+    kernel 3x3  stride=1  padding=1
+      sg-cpu          fwd 1.35±0.10 ms  bwd 4.04±0.58 ms  total 5.40±0.59 ms
+      torch-cpu       fwd 0.17±0.08 ms  bwd 0.53±0.09 ms  total 0.69±0.12 ms
+      torch-metal     fwd 0.35±0.09 ms  bwd 3.49±0.06 ms  total 3.84±0.11 ms
+
+    kernel 5x5  stride=1  padding=2
+      sg-cpu          fwd 3.64±0.17 ms  bwd 9.02±0.25 ms  total 12.66±0.30 ms
+      torch-cpu       fwd 0.30±0.07 ms  bwd 1.15±0.09 ms  total 1.45±0.12 ms
+      torch-metal     fwd 0.42±0.05 ms  bwd 4.72±0.11 ms  total 5.14±0.12 ms
+
+    kernel 7x7  stride=1  padding=3
+      sg-cpu          fwd 6.89±1.70 ms  bwd 17.85±0.71 ms  total 24.74±1.85 ms
+      torch-cpu       fwd 0.82±0.07 ms  bwd 2.34±0.07 ms  total 3.16±0.10 ms
+      torch-metal     fwd 0.49±0.03 ms  bwd 7.67±0.04 ms  total 8.17±0.05 ms
+
+  input (32, 3, 28, 28)  out_channels=64
+
+    kernel 3x3  stride=1  padding=1
+      sg-cpu          fwd 1.13±0.12 ms  bwd 4.74±0.94 ms  total 5.87±0.95 ms
+      torch-cpu       fwd 1.47±1.08 ms  bwd 3.65±2.81 ms  total 5.12±3.01 ms
+      torch-metal     fwd 0.58±0.20 ms  bwd 6.15±0.48 ms  total 6.72±0.52 ms
+
+    kernel 5x5  stride=1  padding=2
+      sg-cpu          fwd 1.87±0.13 ms  bwd 9.22±0.91 ms  total 11.10±0.92 ms
+      torch-cpu       fwd 1.66±0.24 ms  bwd 3.06±0.15 ms  total 4.72±0.28 ms
+      torch-metal     fwd 0.53±0.08 ms  bwd 6.62±0.16 ms  total 7.15±0.17 ms
+
+    kernel 7x7  stride=1  padding=3
+      sg-cpu          fwd 4.42±2.80 ms  bwd 16.30±2.68 ms  total 20.73±3.88 ms
+      torch-cpu       fwd 1.50±0.18 ms  bwd 4.24±0.14 ms  total 5.74±0.23 ms
+      torch-metal     fwd 0.72±0.04 ms  bwd 11.75±0.05 ms  total 12.47±0.07 ms
+
+  input (32, 3, 64, 64)  out_channels=64
+
+    kernel 3x3  stride=1  padding=1
+      sg-cpu          fwd 8.16±1.63 ms  bwd 44.97±7.07 ms  total 53.14±7.25 ms
+      torch-cpu       fwd 5.80±0.53 ms  bwd 6.96±0.09 ms  total 12.75±0.54 ms
+      torch-metal     fwd 0.71±0.05 ms  bwd 15.40±0.04 ms  total 16.11±0.06 ms
+
+    kernel 5x5  stride=1  padding=2
+      sg-cpu          fwd 18.29±1.89 ms  bwd 76.56±11.70 ms  total 94.85±11.85 ms
+      torch-cpu       fwd 7.38±0.43 ms  bwd 11.93±0.07 ms  total 19.31±0.44 ms
+      torch-metal     fwd 1.19±0.04 ms  bwd 29.83±0.04 ms  total 31.02±0.05 ms
+
+    kernel 7x7  stride=1  padding=3
+      sg-cpu          fwd 44.36±15.45 ms  bwd 143.44±26.10 ms  total 187.79±30.34 ms
+      torch-cpu       fwd 9.51±0.47 ms  bwd 20.84±0.66 ms  total 30.35±0.81 ms
+      torch-metal     fwd 1.95±0.05 ms  bwd 55.81±0.23 ms  total 57.76±0.24 ms
+
+done

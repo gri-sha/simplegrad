@@ -1,0 +1,335 @@
+{
+  "suite": "conv2d",
+  "timestamp": "2026-05-04T09:38:12",
+  "n_runs": 30,
+  "warmup": 5,
+  "sysinfo": {
+    "os": "Darwin 25.4.0 arm64",
+    "cpu": {
+      "model": "Apple M4",
+      "physical_cores": 10,
+      "logical_cores": 10
+    },
+    "ram": "16 GB",
+    "python": "3.13.7",
+    "numpy": "2.4.4",
+    "torch": "2.11.0",
+    "torch_cuda_build": "cpu-only",
+    "cupy": "not installed",
+    "cuda_devices": [],
+    "mps": true,
+    "metal_gpu": "Apple M4"
+  },
+  "backends": [
+    {
+      "name": "sg-cpu",
+      "device_label": "numpy  cpu  arm"
+    },
+    {
+      "name": "torch-cpu",
+      "device_label": "torch  cpu  arm"
+    },
+    {
+      "name": "torch-metal",
+      "device_label": "torch  mps  Apple Metal"
+    }
+  ],
+  "groups": [
+    {
+      "label": "input (1, 1, 28, 28)  out_channels=32",
+      "configs": [
+        {
+          "label": "kernel 3x3  stride=1  padding=1",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 0.0393,
+              "fwd_std": 0.0035,
+              "bwd_mean": 0.0707,
+              "bwd_std": 0.0262
+            },
+            "torch-cpu": {
+              "fwd_mean": 0.0207,
+              "fwd_std": 0.0019,
+              "bwd_mean": 0.0499,
+              "bwd_std": 0.003
+            },
+            "torch-metal": {
+              "fwd_mean": 0.2927,
+              "fwd_std": 0.0933,
+              "bwd_mean": 0.7239,
+              "bwd_std": 0.2468
+            }
+          }
+        },
+        {
+          "label": "kernel 5x5  stride=1  padding=2",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 0.0392,
+              "fwd_std": 0.0018,
+              "bwd_mean": 0.1162,
+              "bwd_std": 0.0062
+            },
+            "torch-cpu": {
+              "fwd_mean": 0.0276,
+              "fwd_std": 0.0078,
+              "bwd_mean": 0.063,
+              "bwd_std": 0.013
+            },
+            "torch-metal": {
+              "fwd_mean": 0.2288,
+              "fwd_std": 0.0261,
+              "bwd_mean": 0.4609,
+              "bwd_std": 0.0531
+            }
+          }
+        },
+        {
+          "label": "kernel 7x7  stride=1  padding=3",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 0.0516,
+              "fwd_std": 0.0383,
+              "bwd_mean": 0.145,
+              "bwd_std": 0.0235
+            },
+            "torch-cpu": {
+              "fwd_mean": 0.025,
+              "fwd_std": 0.0018,
+              "bwd_mean": 0.0656,
+              "bwd_std": 0.0042
+            },
+            "torch-metal": {
+              "fwd_mean": 0.2566,
+              "fwd_std": 0.0294,
+              "bwd_mean": 0.5463,
+              "bwd_std": 0.0233
+            }
+          }
+        }
+      ]
+    },
+    {
+      "label": "input (8, 3, 64, 64)  out_channels=32",
+      "configs": [
+        {
+          "label": "kernel 3x3  stride=1  padding=1",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 1.354,
+              "fwd_std": 0.1047,
+              "bwd_mean": 4.0445,
+              "bwd_std": 0.5834
+            },
+            "torch-cpu": {
+              "fwd_mean": 0.1685,
+              "fwd_std": 0.0829,
+              "bwd_mean": 0.5258,
+              "bwd_std": 0.0869
+            },
+            "torch-metal": {
+              "fwd_mean": 0.3461,
+              "fwd_std": 0.089,
+              "bwd_mean": 3.4922,
+              "bwd_std": 0.0631
+            }
+          }
+        },
+        {
+          "label": "kernel 5x5  stride=1  padding=2",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 3.6433,
+              "fwd_std": 0.1712,
+              "bwd_mean": 9.0178,
+              "bwd_std": 0.2514
+            },
+            "torch-cpu": {
+              "fwd_mean": 0.3007,
+              "fwd_std": 0.0737,
+              "bwd_mean": 1.1512,
+              "bwd_std": 0.0937
+            },
+            "torch-metal": {
+              "fwd_mean": 0.4243,
+              "fwd_std": 0.0543,
+              "bwd_mean": 4.72,
+              "bwd_std": 0.1089
+            }
+          }
+        },
+        {
+          "label": "kernel 7x7  stride=1  padding=3",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 6.8901,
+              "fwd_std": 1.703,
+              "bwd_mean": 17.8526,
+              "bwd_std": 0.7119
+            },
+            "torch-cpu": {
+              "fwd_mean": 0.8211,
+              "fwd_std": 0.0698,
+              "bwd_mean": 2.34,
+              "bwd_std": 0.0723
+            },
+            "torch-metal": {
+              "fwd_mean": 0.4927,
+              "fwd_std": 0.0265,
+              "bwd_mean": 7.6736,
+              "bwd_std": 0.0395
+            }
+          }
+        }
+      ]
+    },
+    {
+      "label": "input (32, 3, 28, 28)  out_channels=64",
+      "configs": [
+        {
+          "label": "kernel 3x3  stride=1  padding=1",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 1.1275,
+              "fwd_std": 0.1219,
+              "bwd_mean": 4.7413,
+              "bwd_std": 0.9422
+            },
+            "torch-cpu": {
+              "fwd_mean": 1.4743,
+              "fwd_std": 1.0796,
+              "bwd_mean": 3.6489,
+              "bwd_std": 2.8139
+            },
+            "torch-metal": {
+              "fwd_mean": 0.5758,
+              "fwd_std": 0.2008,
+              "bwd_mean": 6.1465,
+              "bwd_std": 0.4849
+            }
+          }
+        },
+        {
+          "label": "kernel 5x5  stride=1  padding=2",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 1.8729,
+              "fwd_std": 0.1286,
+              "bwd_mean": 9.2245,
+              "bwd_std": 0.9063
+            },
+            "torch-cpu": {
+              "fwd_mean": 1.6617,
+              "fwd_std": 0.2408,
+              "bwd_mean": 3.0584,
+              "bwd_std": 0.1496
+            },
+            "torch-metal": {
+              "fwd_mean": 0.5305,
+              "fwd_std": 0.0751,
+              "bwd_mean": 6.6209,
+              "bwd_std": 0.1575
+            }
+          }
+        },
+        {
+          "label": "kernel 7x7  stride=1  padding=3",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 4.4239,
+              "fwd_std": 2.8028,
+              "bwd_mean": 16.3026,
+              "bwd_std": 2.6772
+            },
+            "torch-cpu": {
+              "fwd_mean": 1.5006,
+              "fwd_std": 0.1827,
+              "bwd_mean": 4.2364,
+              "bwd_std": 0.1359
+            },
+            "torch-metal": {
+              "fwd_mean": 0.7187,
+              "fwd_std": 0.0435,
+              "bwd_mean": 11.749,
+              "bwd_std": 0.0524
+            }
+          }
+        }
+      ]
+    },
+    {
+      "label": "input (32, 3, 64, 64)  out_channels=64",
+      "configs": [
+        {
+          "label": "kernel 3x3  stride=1  padding=1",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 8.1612,
+              "fwd_std": 1.6258,
+              "bwd_mean": 44.9746,
+              "bwd_std": 7.0687
+            },
+            "torch-cpu": {
+              "fwd_mean": 5.7951,
+              "fwd_std": 0.5324,
+              "bwd_mean": 6.9554,
+              "bwd_std": 0.0924
+            },
+            "torch-metal": {
+              "fwd_mean": 0.7074,
+              "fwd_std": 0.0477,
+              "bwd_mean": 15.3979,
+              "bwd_std": 0.0417
+            }
+          }
+        },
+        {
+          "label": "kernel 5x5  stride=1  padding=2",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 18.2902,
+              "fwd_std": 1.8931,
+              "bwd_mean": 76.5619,
+              "bwd_std": 11.6973
+            },
+            "torch-cpu": {
+              "fwd_mean": 7.3775,
+              "fwd_std": 0.4321,
+              "bwd_mean": 11.933,
+              "bwd_std": 0.0655
+            },
+            "torch-metal": {
+              "fwd_mean": 1.1926,
+              "fwd_std": 0.0376,
+              "bwd_mean": 29.8303,
+              "bwd_std": 0.036
+            }
+          }
+        },
+        {
+          "label": "kernel 7x7  stride=1  padding=3",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 44.358,
+              "fwd_std": 15.4544,
+              "bwd_mean": 143.4363,
+              "bwd_std": 26.1049
+            },
+            "torch-cpu": {
+              "fwd_mean": 9.511,
+              "fwd_std": 0.4733,
+              "bwd_mean": 20.8426,
+              "bwd_std": 0.6563
+            },
+            "torch-metal": {
+              "fwd_mean": 1.9529,
+              "fwd_std": 0.0521,
+              "bwd_mean": 55.8102,
+              "bwd_std": 0.2335
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

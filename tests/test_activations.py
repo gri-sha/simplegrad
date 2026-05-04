@@ -6,7 +6,7 @@ import pytest
 pytestmark = pytest.mark.usefixtures("device")
 import pytest
 import simplegrad as sg
-from .utils import gradcheck
+from .utils import gradcheck, fwdcheck
 
 # input that exercises both positive and negative regions without hitting
 # discontinuities (relu boundary, elu boundary) exactly at any element
@@ -30,6 +30,30 @@ def test_elementwise_activations():
     for name, fn in cases:
         x = sg.Tensor(_DATA.copy(), dtype="float64")
         gradcheck(lambda fn=fn, x=x: fn(x), [x])
+
+
+def test_elu_negative_branch():
+    # exp(x)-1 is the correct formula; exp(x) alone is a common off-by-one
+    x = sg.Tensor(np.array([[-1.0, 1.0]], dtype=np.float64), dtype="float64")
+    neg_branch = np.exp(-1.0) - 1.0
+    fwdcheck(sg.elu(x, alpha=1.0), [[neg_branch, 1.0]])
+    fwdcheck(sg.elu(x, alpha=0.5), [[0.5 * neg_branch, 1.0]])
+
+
+def test_sigmoid_symmetry():
+    # sigmoid(x) + sigmoid(-x) must equal 1 — catches sign errors in the exponent
+    x_data = np.array([[-3.0, -1.0, 0.0, 1.0, 3.0]], dtype=np.float64)
+    s_pos = sg.sigmoid(sg.Tensor(x_data.copy(), dtype="float64")).values
+    s_neg = sg.sigmoid(sg.Tensor(-x_data.copy(), dtype="float64")).values
+    assert np.allclose(s_pos + s_neg, 1.0, atol=1e-10)
+
+
+def test_gelu_modes_agree():
+    # erf and tanh approximations should be within 1e-3 on typical inputs
+    x_data = np.linspace(-3, 3, 30).reshape(5, 6).astype(np.float64)
+    out_erf = sg.gelu(sg.Tensor(x_data.copy(), dtype="float64"), mode="erf").values
+    out_tanh = sg.gelu(sg.Tensor(x_data.copy(), dtype="float64"), mode="tanh").values
+    assert np.max(np.abs(out_erf - out_tanh)) < 1e-3
 
 
 def test_elu_invalid_mode_raises():

@@ -4,6 +4,25 @@ from typing import Callable
 import numpy as np
 
 
+def fwdcheck(out, expected, atol: float = 1e-6) -> None:
+    """Assert that a tensor's forward values match an expected numpy array.
+
+    Args:
+        out: Simplegrad tensor whose .values to check.
+        expected: Expected values as any array-like (converted via np.asarray).
+        atol: Absolute tolerance passed to np.allclose.
+
+    Raises:
+        AssertionError: If values differ by more than atol.
+    """
+    expected = np.asarray(expected)
+    assert np.allclose(out.values, expected, atol=atol), (
+        f"Forward mismatch: max diff = {np.max(np.abs(out.values - expected)):.2e}\n"
+        f"  got      = {out.values}\n"
+        f"  expected = {expected}"
+    )
+
+
 def gradcheck(
     fn: Callable,
     inputs: list,

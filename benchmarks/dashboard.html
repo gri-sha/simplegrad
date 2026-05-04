@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simplegrad Benchmarks</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      background: #1a1a1a;
+      color: #f0f0f0;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+    }
+
+    aside {
+      width: 230px;
+      flex-shrink: 0;
+      border-right: 1px solid #2e2e2e;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    aside h2 {
+      padding: 16px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #888;
+      border-bottom: 1px solid #2e2e2e;
+    }
+
+    #run-list {
+      list-style: none;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    #run-list li {
+      padding: 10px 16px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      line-height: 1.4;
+      color: #bbb;
+      transition: background 0.1s;
+    }
+
+    #run-list li:hover { background: #242424; }
+
+    #run-list li.active {
+      border-left-color: #34b87e;
+      background: #222;
+      color: #f0f0f0;
+    }
+
+    #run-list .run-suite { font-weight: 600; font-size: 13px; }
+    #run-list .run-ts    { font-size: 11px; color: #666; margin-top: 2px; }
+    #run-list li.active .run-ts { color: #999; }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #topbar {
+      padding: 14px 24px;
+      border-bottom: 1px solid #2e2e2e;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    #topbar label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #aaa;
+    }
+
+    #topbar select {
+      background: #252525;
+      border: 1px solid #3a3a3a;
+      color: #f0f0f0;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    #topbar select:focus { border-color: #34b87e; }
+
+    #scroll-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 36px;
+    }
+
+    #empty-state {
+      color: #555;
+      font-size: 15px;
+      text-align: center;
+      margin-top: 80px;
+    }
+
+    .group-section {}
+
+    .group-label {
+      font-size: 12px;
+      color: #777;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+
+    .chart-box {
+      background: #202020;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .chart-box canvas {
+      height: 260px !important;
+    }
+
+    #sysinfo-panel {
+      border: 1px solid #2e2e2e;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    #sysinfo-panel summary {
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #888;
+      user-select: none;
+      list-style: none;
+    }
+
+    #sysinfo-panel summary::before { content: "▸ "; }
+    #sysinfo-panel[open] summary::before { content: "▾ "; }
+
+    #sysinfo-content {
+      padding: 10px 14px 12px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #999;
+      line-height: 1.6;
+      border-top: 1px solid #2e2e2e;
+      white-space: pre;
+    }
+  </style>
+</head>
+<body>
+
+<aside>
+  <h2>Runs</h2>
+  <ul id="run-list"></ul>
+</aside>
+
+<main>
+  <div id="topbar">
+    <label>
+      Metric
+      <select id="metric-select">
+        <option value="fwd">Forward</option>
+        <option value="bwd">Backward</option>
+        <option value="total" selected>Total</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="scroll-area">
+    <div id="empty-state">No runs found — run a benchmark first.</div>
+    <details id="sysinfo-panel" style="display:none">
+      <summary>System info</summary>
+      <pre id="sysinfo-content"></pre>
+    </details>
+  </div>
+</main>
+
+<script>
+  const PALETTE = ["#34b87e", "#feba14", "#6c8ebf", "#d84f4f", "#9b59b6", "#1abc9c"];
+
+  let currentRun = null;
+  let charts = [];
+
+  const metricSelect = document.getElementById("metric-select");
+  const scrollArea   = document.getElementById("scroll-area");
+  const emptyState   = document.getElementById("empty-state");
+  const sysinfoPanel = document.getElementById("sysinfo-panel");
+
+  function _el(tag, cls, text) {
+    const el = document.createElement(tag);
+    if (cls) el.className = cls;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+
+  function _yMax(group, metric) {
+    let max = 0;
+    for (const cfg of group.configs) {
+      for (const r of Object.values(cfg.results)) {
+        if (!r) continue;
+        let val, std;
+        if (metric === "fwd")      { val = r.fwd_mean; std = r.fwd_std; }
+        else if (metric === "bwd") { val = r.bwd_mean; std = r.bwd_std; }
+        else                       { val = r.fwd_mean + r.bwd_mean;
+                                     std = Math.sqrt(r.fwd_std ** 2 + r.bwd_std ** 2); }
+        max = Math.max(max, val + std);
+      }
+    }
+    return max * 1.18;
+  }
+
+  function makeErrorBarPlugin(group, metric, backends) {
+    return {
+      id: "errorBars",
+      afterDatasetsDraw(ch) {
+        ch.data.datasets.forEach((ds, di) => {
+          ch.getDatasetMeta(di).data.forEach((bar, ci) => {
+            const cfg = group.configs[ci];
+            const r = cfg && cfg.results[backends[di]];
+            if (!r) return;
+
+            let std;
+            if (metric === "fwd")      std = r.fwd_std;
+            else if (metric === "bwd") std = r.bwd_std;
+            else                       std = Math.sqrt(r.fwd_std ** 2 + r.bwd_std ** 2);
+
+            const yScale  = ch.scales.y;
+            const yMidVal = yScale.getValueForPixel(bar.y);
+            const yTop    = yScale.getPixelForValue(yMidVal + std);
+            const yBot    = yScale.getPixelForValue(yMidVal - std);
+            const halfW   = 4;
+            const ctx     = ch.ctx;
+
+            ctx.save();
+            ctx.strokeStyle = ds.borderColor;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(bar.x, yTop);  ctx.lineTo(bar.x, yBot);
+            ctx.moveTo(bar.x - halfW, yTop); ctx.lineTo(bar.x + halfW, yTop);
+            ctx.moveTo(bar.x - halfW, yBot); ctx.lineTo(bar.x + halfW, yBot);
+            ctx.stroke();
+            ctx.restore();
+          });
+        });
+      }
+    };
+  }
+
+  function renderGroupChart(group, metric, backends, canvas) {
+    const datasets = backends.map((bName, bi) => {
+      const color = PALETTE[bi % PALETTE.length];
+      return {
+        label: bName,
+        data: group.configs.map(cfg => {
+          const r = cfg.results[bName];
+          if (!r) return null;
+          if (metric === "fwd") return r.fwd_mean;
+          if (metric === "bwd") return r.bwd_mean;
+          return r.fwd_mean + r.bwd_mean;
+        }),
+        backgroundColor: color + "bb",
+        borderColor: color,
+        borderWidth: 1,
+        borderRadius: 3,
+      };
+    });
+
+    return new Chart(canvas, {
+      type: "bar",
+      plugins: [makeErrorBarPlugin(group, metric, backends)],
+      data: {
+        labels: group.configs.map(c => c.label),
+        datasets,
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "top",
+            labels: { color: "#ccc", boxWidth: 14, padding: 16 },
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const v = ctx.parsed.y;
+                return `${ctx.dataset.label}: ${v != null ? v.toFixed(3) + " ms" : "skipped"}`;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: _yMax(group, metric),
+            title: { display: true, text: "time (ms)", color: "#888" },
+            ticks: { color: "#888" },
+            grid:  { color: "#2a2a2a" },
+          },
+          x: {
+            ticks: { color: "#aaa", maxRotation: 20 },
+            grid:  { color: "#2a2a2a" },
+          }
+        }
+      }
+    });
+  }
+
+  function renderAllCharts() {
+    if (!currentRun) return;
+
+    charts.forEach(c => c.destroy());
+    charts = [];
+
+    document.querySelectorAll(".group-section").forEach(el => el.remove());
+
+    const metric   = metricSelect.value;
+    const backends = currentRun.backends.map(b => b.name);
+
+    for (const group of currentRun.groups) {
+      const section = _el("div", "group-section");
+      section.appendChild(_el("div", "group-label", group.label));
+
+      const box    = _el("div", "chart-box");
+      const canvas = document.createElement("canvas");
+      box.appendChild(canvas);
+      section.appendChild(box);
+
+      sysinfoPanel.before(section);
+      charts.push(renderGroupChart(group, metric, backends, canvas));
+    }
+  }
+
+  async function loadRuns() {
+    const runs = await fetch("/api/runs").then(r => r.json());
+    const list = document.getElementById("run-list");
+    list.textContent = "";
+
+    if (runs.length === 0) return;
+
+    emptyState.style.display = "none";
+
+    for (const run of runs) {
+      const li = document.createElement("li");
+      li.appendChild(_el("div", "run-suite", run.suite));
+      li.appendChild(_el("div", "run-ts", run.timestamp.replace("T", "  ")));
+      li.dataset.file = run.file;
+      li.addEventListener("click", () => selectRun(run.file, li));
+      list.appendChild(li);
+    }
+
+    selectRun(runs[0].file, list.firstChild);
+  }
+
+  async function selectRun(file, liElement) {
+    document.querySelectorAll("#run-list li").forEach(el => el.classList.remove("active"));
+    liElement.classList.add("active");
+    currentRun = await fetch(`/api/runs/${encodeURIComponent(file)}`).then(r => r.json());
+    renderSysinfo();
+    renderAllCharts();
+  }
+
+  function renderSysinfo() {
+    if (!currentRun) return;
+    const si = currentRun.sysinfo;
+    const lines = [];
+
+    lines.push(`os      ${si.os}`);
+    lines.push(`python  ${si.python}`);
+    lines.push(`numpy   ${si.numpy}`);
+    lines.push(`cupy    ${si.cupy && si.cupy !== "not installed" ? si.cupy : "not installed"}`);
+    if (si.torch && si.torch !== "not installed") {
+      lines.push(`torch   ${si.torch}  (cuda build: ${si.torch_cuda_build || "n/a"})`);
+    } else {
+      lines.push(`torch   not installed`);
+    }
+
+    lines.push(``);
+
+    if (si.cpu) {
+      const cores = si.cpu.physical_cores != null
+        ? `${si.cpu.physical_cores}p / ${si.cpu.logical_cores}t`
+        : `${si.cpu.logical_cores} logical`;
+      lines.push(`cpu     ${si.cpu.model}  (${cores})`);
+    }
+    lines.push(`ram     ${si.ram || "unknown"}`);
+    lines.push(`mps     ${si.mps ? "available" : "not available"}`);
+
+    lines.push(``);
+
+    if (si.cuda_devices && si.cuda_devices.length > 0) {
+      for (const d of si.cuda_devices) {
+        lines.push(`gpu     ${d.name}`);
+        lines.push(`vram    ${d.memory}`);
+        lines.push(`cuda    ${d.runtime}`);
+        lines.push(`driver  ${d.driver}`);
+      }
+    } else if (si.mps) {
+      lines.push(`gpu     ${si.metal_gpu || "Apple Metal"}`);
+    } else {
+      lines.push(`gpu     none`);
+    }
+
+    document.getElementById("sysinfo-content").textContent = lines.join("\n");
+    sysinfoPanel.style.display = "";
+  }
+
+  metricSelect.addEventListener("change", renderAllCharts);
+
+  loadRuns();
+</script>
+</body>
+</html>

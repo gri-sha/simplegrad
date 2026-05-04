@@ -5,7 +5,7 @@ import pytest
 
 pytestmark = pytest.mark.usefixtures("device")
 import simplegrad as sg
-from .utils import gradcheck
+from .utils import gradcheck, fwdcheck
 
 
 def _test_conv2d_helper(
@@ -142,6 +142,58 @@ def test_conv2d_batch():
         pad_width=1,
         use_bias=True,
     )
+
+
+def test_conv2d_channel_mixing():
+    # each output channel must sum over input channels through its own kernel row
+    # a bug in im2col reshape would mix channels across the wrong axis
+    x_data = np.ones((1, 2, 3, 3), dtype=np.float64)
+    x_data[:, 1] = 2.0
+    x = sg.Tensor(x_data, dtype="float64")
+
+    # weight (out_ch=2, in_ch=2, 1, 1): channel selector kernels
+    w_data = np.array([[[[1.0]], [[0.0]]], [[[0.0]], [[1.0]]]], dtype=np.float64)
+    w = sg.Tensor(w_data, dtype="float64")
+
+    out = sg.conv2d(x, w, bias=None, pad_width=0)
+    assert out.shape == (1, 2, 3, 3)
+    expected = np.ones((1, 2, 3, 3), dtype=np.float64)
+    expected[:, 1] = 2.0
+    fwdcheck(out, expected)
+
+
+def test_conv2d_asymmetric_padding_output_shape():
+    # pad_width=(top,bottom,left,right) mapping must produce the correct spatial dims
+    x = sg.Tensor(np.ones((1, 1, 3, 3), dtype=np.float64), dtype="float64")
+    w = sg.Tensor(np.ones((1, 1, 1, 1), dtype=np.float64), dtype="float64")
+    # padded H = 3+1+2=6, W = 3+1+2=6; with 1×1 kernel and stride=1: H_out=6, W_out=6
+    out = sg.conv2d(x, w, bias=None, pad_width=(1, 2, 1, 2))
+    assert out.shape == (1, 1, 6, 6), f"expected (1,1,6,6) got {out.shape}"
+
+
+def test_conv2d_identity_kernel():
+    # 3×3 kernel with 1 in center and 0 elsewhere, pad=1 → output == input
+    rng = np.random.default_rng(42)
+    x_data = rng.standard_normal((1, 1, 5, 5)).astype(np.float64)
+    x = sg.Tensor(x_data.copy(), dtype="float64")
+
+    k_data = np.zeros((1, 1, 3, 3), dtype=np.float64)
+    k_data[0, 0, 1, 1] = 1.0
+    k = sg.Tensor(k_data, dtype="float64")
+
+    out = sg.conv2d(x, k, bias=None, pad_width=1)
+    assert out.shape == (1, 1, 5, 5)
+    fwdcheck(out, x_data)
+
+
+def test_norm_output_statistics():
+    # core mathematical guarantee: after normalization mean≈0 and std≈1 along normalized dims
+    rng = np.random.default_rng(7)
+    x_data = rng.standard_normal((4, 8)).astype(np.float64)
+    x = sg.Tensor(x_data.copy(), dtype="float64")
+    out = sg.norm(x, dims=[-1])
+    assert np.allclose(out.values.mean(axis=-1), 0.0, atol=1e-5), "mean should be ≈ 0"
+    assert np.allclose(out.values.std(axis=-1, ddof=0), 1.0, atol=1e-4), "std should be ≈ 1"
 
 
 def test_max_pool2d():
