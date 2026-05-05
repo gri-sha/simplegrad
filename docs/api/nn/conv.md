@@ -4,8 +4,9 @@
 
 ```python
 import simplegrad as sg
+import simplegrad.nn as nn
 
-conv = sg.nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, padding=1)
+conv = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, padding=1)
 x = sg.normal((1, 3, 32, 32))
 out = conv(x)  # shape: (1, 16, 32, 32)
 ```

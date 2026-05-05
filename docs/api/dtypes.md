@@ -4,12 +4,11 @@ Simplegrad uses `float32` as its global default dtype, matching PyTorch conventi
 
 ```python
 import simplegrad as sg
-from simplegrad.core.dtypes import default_dtype, get_default_dtype
 
-default_dtype("float64")
-print(get_default_dtype())  # "float64"
+sg.default_dtype("float64")
+print(sg.get_default_dtype())  # "float64"
 
-x = sg.ones((3, 3))       # now created as float64
+x = sg.ones((3, 3))            # now created as float64
 ```
 
 ::: simplegrad.core.dtypes.default_dtype

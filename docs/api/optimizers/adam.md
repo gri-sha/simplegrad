@@ -4,10 +4,11 @@
 
 ```python
 import simplegrad as sg
-from simplegrad.optimizers import Adam
+import simplegrad.nn as nn
+import simplegrad.optimizers as optim
 
-model = sg.nn.Linear(128, 10)
-opt = Adam(lr=1e-3, model=model)
+model = nn.Linear(128, 10)
+opt = optim.Adam(lr=1e-3, model=model)
 
 loss = model(sg.ones((4, 128))).sum()
 loss.backward()

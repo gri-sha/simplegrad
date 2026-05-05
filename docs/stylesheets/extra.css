@@ -30,7 +30,9 @@
 .md-typeset h1,
 .md-typeset h2,
 .md-typeset h3,
-.md-typeset h4 {
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
   font-family: "JetBrains Mono", monospace;
   font-weight: 700;
   color: #f5f5f5;
@@ -47,7 +49,7 @@
 .highlight,
 .highlight code {
   font-family: "JetBrains Mono", monospace !important;
-  font-size: 0.85em;
+  font-size: 0.95rem;
   background-color: var(--md-code-bg-color);
 }
 
@@ -125,6 +127,52 @@
 .md-search__input {
   background-color: #1e2021;
   color: #f5f5f5;
+}
+
+.md-search__input::placeholder {
+  color: rgba(245, 245, 245, 0.6);
+}
+
+.md-search__icon,
+.md-search__icon.md-icon {
+  color: #f5f5f5;
+}
+
+/* GitHub source link */
+.md-header__source,
+.md-source,
+.md-source__icon,
+.md-source__repository {
+  color: #f5f5f5 !important;
+}
+
+.md-source__icon svg,
+.md-source .md-icon svg {
+  fill: #f5f5f5;
+}
+
+/* Push source link to the right of the header */
+.md-header__inner {
+  display: flex;
+  align-items: center;
+}
+
+.md-header__source {
+  margin-left: auto;
+  order: 99;
+}
+
+/* Section spacing and visual separation */
+.md-typeset h2 {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(245,245,245,0.1);
+}
+.md-typeset h3 {
+  margin-top: 2rem;
+}
+.md-typeset p {
+  margin-bottom: 1.35em;
 }
 
 /* Scrollbar */

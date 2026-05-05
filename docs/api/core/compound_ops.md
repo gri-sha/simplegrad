@@ -4,7 +4,7 @@ Compound ops are higher-level operations that are built by composing other simpl
 
 ```python
 import simplegrad as sg
-from simplegrad.core.compound_ops import compound_op
+from simplegrad.core import compound_op
 
 @compound_op
 def my_op(x):
