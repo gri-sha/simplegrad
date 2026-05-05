@@ -162,6 +162,19 @@
   order: 99;
 }
 
+/* Section spacing and visual separation */
+.md-typeset h2 {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(245,245,245,0.1);
+}
+.md-typeset h3 {
+  margin-top: 2rem;
+}
+.md-typeset p {
+  margin-bottom: 1.35em;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
