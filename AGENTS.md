@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-Simplegrad is a deep learning framework built around a clean, Pythonic API. It provides numpy-backed tensors with automatic differentiation, a full set of neural network primitives, and tight numpy interoperability. The project also includes **SimpleBoard** — a web application for experiment tracking and visualization.
+Simplegrad is the simplest complete deep learning framework you can actually use. It provides tensors with automatic differentiation backed by NumPy (CPU) or CuPy (GPU/NVIDIA CUDA), a full set of neural network primitives, and a clean Pythonic API. The project also includes **SimpleBoard** — a web application for experiment tracking and visualization.
 
-The framework has an educational objective: users should be able to read the source code and understand how deep learning works from the ground up.
+The goal is to be the simplest possible complete DL framework: minimal dependencies, readable source, and a straightforward API that mirrors PyTorch conventions without the complexity.
 
 ## Repository Structure
 
@@ -43,22 +43,9 @@ pyproject.toml            # Project metadata, dependencies, tool config
 mkdocs.yml                # Documentation site configuration
 ```
 
-### Dependency layers
+### Dependency rules
 
-The package follows a strict one-way import hierarchy:
-
-```
-core/          (no intra-simplegrad imports except core/module.py → core/autograd.py)
-  ↑
-functions/     (import from ..core only)
-  ↑
-nn/            (import from ..core and ..functions)
-  ↑
-optimizers/    (import from ..core)
-schedulers/    (import from ..core)
-```
-
-Never import from a higher layer into a lower one — this causes circular imports.
+`.core` is the foundation. Every other module (`functions`, `nn`, `optimizers`, `schedulers`, `track`, `visual`) imports from `.core`. `simpleboard` is fully standalone and does not import from any other package module. Never create circular imports between modules.
 
 ## Code Style
 
@@ -92,7 +79,7 @@ Only import from `typing` when there is no built-in alternative: `Callable`, `Ty
 
 Every function and method that is part of the public API (callable by a user of the framework) must have a docstring in **Google style**.
 
-Docstrings should be thorough. Since simplegrad has educational goals, explain not just what a function does but also the mathematical or conceptual meaning where relevant. Users reading the source should come away understanding the underlying principles.
+Docstrings should be clear and precise. Explain what the function does, the math behind it where relevant, and any non-obvious constraints. Do not include `Example:` sections in docstrings — examples belong in the markdown documentation pages.
 
 Example of the expected style:
 
@@ -100,10 +87,9 @@ Example of the expected style:
 def relu(x: Tensor) -> Tensor:
     """Applies the Rectified Linear Unit activation function element-wise.
 
-    Computes max(0, x) for each element. ReLU is the most commonly used
-    activation function in deep learning because it avoids the vanishing
-    gradient problem present in sigmoid and tanh for large inputs, while
-    remaining computationally cheap.
+    Computes max(0, x) for each element. ReLU avoids the vanishing gradient
+    problem present in sigmoid and tanh for large inputs while remaining
+    computationally cheap.
 
     Args:
         x: Input tensor of any shape.
@@ -111,11 +97,6 @@ def relu(x: Tensor) -> Tensor:
     Returns:
         A tensor of the same shape as x, with all negative values set to zero.
         Gradients flow through only the positive elements during backpropagation.
-
-    Example:
-        >>> x = Tensor([-1.0, 0.0, 2.0])
-        >>> relu(x)
-        Tensor([0.0, 0.0, 2.0])
     """
 ```
 

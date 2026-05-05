@@ -49,7 +49,7 @@
 .highlight,
 .highlight code {
   font-family: "JetBrains Mono", monospace !important;
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   background-color: var(--md-code-bg-color);
 }
 
@@ -221,6 +221,19 @@
 .md-typeset .doc.doc-object {
   border-left: 2px solid rgba(52, 184, 126, 0.35);
   padding-left: 1.25rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
   margin: 1.75rem 0;
+}
+
+/* Reset h2/h3 separator rules inside doc blocks so the green border has
+   equal visual space at the top and bottom — the general h2 rule adds
+   3rem margin-top + 1.5rem padding-top which pushes the separator far
+   below the border start, making the top gap much larger than the bottom. */
+.md-typeset .doc.doc-object > h2,
+.md-typeset .doc.doc-object > h3 {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 

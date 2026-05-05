@@ -1,23 +1,25 @@
 # Introduction
 
-Simplegrad is an educational deep learning framework built on top of NumPy. Every part of the stack — from autograd to optimizers — is written in plain Python so that you can read the source, follow the math, and understand how modern deep learning works from the ground up.
+Simplegrad is the simplest complete deep learning framework you can actually use. Every part of the stack — from autograd to optimizers — is written in plain Python so that you can read the source and follow exactly what happens during training.
 
 ## Architecture
 
-The package is organized in strict layers. Each layer may only import from layers below it:
+### Backends
 
-```
-core/          Tensor, autograd engine, base classes (Module, Optimizer, Scheduler)
-  ↑
-functions/     Differentiable math, activations, losses, pooling, conv
-  ↑
-nn/            High-level neural network layers (Linear, Conv2d, Dropout, ...)
-  ↑
-optimizers/    SGD, Adam
-schedulers/    LinearLR, ExponentialLR, CosineAnnealingLR, ReduceLROnPlateauLR
-```
+Simplegrad runs on two compute backends depending on the device:
 
-Supporting modules (`track/`, `visual/`, `simpleboard/`) sit alongside this hierarchy and import from it but are not imported by it.
+![Backends](images/architecture.png)
+
+- **NumPy** — CPU compute. The default. No extra dependencies.
+- **CuPy** — GPU compute on NVIDIA CUDA. Install CuPy and tensors created with `device="cuda:0"` use the GPU automatically.
+
+The backend is selected per-tensor at creation time. The rest of the framework is backend-agnostic: every operation dispatches to `ctx.backend` (either `numpy` or `cupy`) at runtime.
+
+### Package organization
+
+`.core` is the foundation. Every other module — `functions`, `nn`, `optimizers`, `schedulers`, `track`, `visual` — imports from `.core`. `simpleboard` is the only exception: it is fully standalone and does not import from any other part of the package.
+
+![Package organization](images/imports.png)
 
 ## Module overview
 
@@ -29,11 +31,13 @@ Supporting modules (`track/`, `visual/`, `simpleboard/`) sit alongside this hier
 
 **`optimizers/`** — Parameter update rules. `SGD` supports momentum and dampening. `Adam` maintains bias-corrected first and second moment estimates. Both accept any `Module` and call `.parameters()` to find what to update.
 
-**`schedulers/`** — Learning rate schedules that wrap an `Optimizer` and call `.set_lr()` on each `.step()`. `LinearLR` interpolates linearly between a start and end rate; `ExponentialLR` decays exponentially by a multiplicative factor. `CosineAnnealingLR` is planned.
+**`schedulers/`** — Learning rate schedules that wrap an `Optimizer` and call `.set_lr()` on each `.step()`. `LinearLR` interpolates linearly between a start and end rate; `ExponentialLR` decays by a fixed multiplicative factor; `CosineAnnealingLR` follows a cosine curve; `ReduceLROnPlateauLR` reduces when a monitored metric stalls.
 
 **`track/`** — Experiment tracking backed by SQLite. `Tracker` lets you log scalar metrics at each training step, attach computation graphs to runs, and query historical results. Experiments are stored as `.db` files under a configurable directory.
 
-**`visual/`** — Inline visualizations for notebooks. `graph()` renders the computation graph of any tensor as a Graphviz SVG. `plot()` and `scatter()` draw training metric line and scatter charts with matplotlib.
+**`visual/`** — Inline visualizations for notebooks. `graph()` renders the computation graph of any tensor as a Graphviz SVG. `plot()` and `scatter()` draw training metric line and scatter charts.
+
+**`simpleboard/`** — A standalone web dashboard for exploring experiment runs. Launch it with `simpleboard` from the terminal. It does not import from the rest of the package.
 
 ## Full training example
 

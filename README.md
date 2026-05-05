@@ -15,6 +15,10 @@ The package is not yet published to PyPI, so install from source:
 ```bash
 pip install simplegrad[gpu] @ git+https://github.com/simplegrad/simplegrad.git
 ```
+If cpu-only:
+```bash
+pip install simplegrad @ git+https://github.com/simplegrad/simplegrad.git
+```
 
 The SimpleBoard frontend is built automatically from npm sources during installation. If you do not have Node.js installed or want to skip the build, set `SIMPLEGRAD_NO_BUILD_WEB=1`:
 ```bash

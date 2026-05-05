@@ -8,9 +8,9 @@ Backends are opt-in — specify at least one:
     --torch-metal   PyTorch on Apple Metal (MPS)
 
 Examples:
-    python benchmarks/conv.py --sg-cpu --sg-gpu
-    python benchmarks/conv.py --sg-cpu --torch-cpu --torch-metal
-    python benchmarks/conv.py --sg-cpu --torch-cpu --torch-gpu --n-runs 50
+    python benchmarks/conv2d.py --sg-cpu --sg-gpu
+    python benchmarks/conv2d.py --sg-cpu --torch-cpu --torch-metal
+    python benchmarks/conv2d.py --sg-cpu --torch-cpu --torch-gpu --n-runs 50
 
 Log file is auto-named with datetime and saved to benchmarks/logs/.
 Override with --log-file to use a custom path.

@@ -348,12 +348,6 @@ class Tensor:
         Raises:
             ValueError: If the device string is invalid.
             RuntimeError: If this tensor is unrealized. Call ``.realize()`` first.
-
-        Example:
-            >>> x = Tensor([1.0, 2.0], device="cpu")
-            >>> x_gpu = x.to_device("cuda:0")
-            >>> x_gpu.device
-            'cuda:0'
         """
         if self.values is None:
             raise RuntimeError("Cannot move an unrealized tensor. Call .realize() first.")

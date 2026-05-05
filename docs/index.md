@@ -1,16 +1,16 @@
 ![simplegrad](images/header.png)
 
-A lightweight deep learning framework built on NumPy with automatic differentiation.
+A lightweight deep learning framework with automatic differentiation. Runs on NumPy (CPU) or CuPy (GPU/NVIDIA CUDA).
 
 ## Installation
 
 ```bash
-pip install simplegrad
+pip install simplegrad[gpu] @ git+https://github.com/simplegrad/simplegrad.git
 ```
 
 The SimpleBoard frontend is built automatically from npm sources during installation. If you do not have Node.js installed or want to skip the build, set `SIMPLEGRAD_NO_BUILD_WEB=1`:
 ```bash
-SIMPLEGRAD_NO_BUILD_WEB=1 pip install simplegrad
+SIMPLEGRAD_NO_BUILD_WEB=1 pip install simplegrad[gpu] @ git+https://github.com/simplegrad/simplegrad.git
 ```
 
 ## Quick start
