@@ -128,7 +128,9 @@ def main():
 
     # Pick a friendly URL: if bound to 0.0.0.0, use the loopback for the local link
     # and additionally print LAN URLs so the user can connect from other devices.
-    local_url = f"http://127.0.0.1:{bound_port}" if host == "0.0.0.0" else f"http://{host}:{bound_port}"
+    local_url = (
+        f"http://127.0.0.1:{bound_port}" if host == "0.0.0.0" else f"http://{host}:{bound_port}"
+    )
     print(f"  Local:   {local_url}")
     if host == "0.0.0.0":
         for ip in _local_ips():

@@ -36,10 +36,22 @@ np.random.seed(42)
 
 
 def parse_mnist(folder_path):
-    parse = lambda file_path, offset, dtype: np.frombuffer(open(file_path, "rb").read(), dtype=dtype, offset=offset)
-    x = parse(f"{folder_path}/train-images.idx3-ubyte", 16, np.uint8).reshape(-1, 28, 28).astype("float32") / 255.0
+    parse = lambda file_path, offset, dtype: np.frombuffer(
+        open(file_path, "rb").read(), dtype=dtype, offset=offset
+    )
+    x = (
+        parse(f"{folder_path}/train-images.idx3-ubyte", 16, np.uint8)
+        .reshape(-1, 28, 28)
+        .astype("float32")
+        / 255.0
+    )
     labels = parse(f"{folder_path}/train-labels.idx1-ubyte", 8, np.uint8)
-    x_test = parse(f"{folder_path}/t10k-images.idx3-ubyte", 16, np.uint8).reshape(-1, 28, 28).astype("float32") / 255.0
+    x_test = (
+        parse(f"{folder_path}/t10k-images.idx3-ubyte", 16, np.uint8)
+        .reshape(-1, 28, 28)
+        .astype("float32")
+        / 255.0
+    )
     labels_test = parse(f"{folder_path}/t10k-labels.idx1-ubyte", 8, np.uint8)
     return (x, labels), (x_test, labels_test)
 
@@ -77,7 +89,7 @@ import matplotlib.pyplot as plt
 idx = 2211
 print("One-hot:", y_train[idx])
 print("Label:", np.argmax(y_train[idx]))
-plt.imshow(x_train[idx], cmap="gray");
+plt.imshow(x_train[idx], cmap="gray")
 
 # In[8]:
 
@@ -98,7 +110,7 @@ model.summary()
 
 
 optim = sg.opt.Adam(model, lr=LEARNING_RATE)
-loss_fn = sg.nn.CELoss(dim=1, reduction='mean')  # dim=1 for class dimension
+loss_fn = sg.nn.CELoss(dim=1, reduction="mean")  # dim=1 for class dimension
 
 # In[10]:
 
@@ -114,21 +126,21 @@ model.set_train_mode()
 step = 0
 for epoch in tqdm(range(EPOCHS)):
     for i in range(0, len(x_train), BATCH_SIZE):
-        x_batch = sg.Tensor(x_train[i : i + BATCH_SIZE].reshape(-1, 28 * 28), dtype='float32')
-        y_batch = sg.Tensor(y_train[i : i + BATCH_SIZE], dtype='float32')
+        x_batch = sg.Tensor(x_train[i : i + BATCH_SIZE].reshape(-1, 28 * 28), dtype="float32")
+        y_batch = sg.Tensor(y_train[i : i + BATCH_SIZE], dtype="float32")
         logits = model(x_batch)
         loss = loss_fn(logits, y_batch)
-        tracker.record('train_loss', loss.values.item(), optim.step_count)
+        tracker.record("train_loss", loss.values.item(), optim.step_count)
         optim.zero_grad()
         loss.backward()
         optim.step()
 
     # Validation
-    x_val_tensor = sg.Tensor(x_val.reshape(-1, 28 * 28), dtype='float32', comp_grad=False)
-    y_val_tensor = sg.Tensor(y_val, dtype='float32', comp_grad=False)
+    x_val_tensor = sg.Tensor(x_val.reshape(-1, 28 * 28), dtype="float32", comp_grad=False)
+    y_val_tensor = sg.Tensor(y_val, dtype="float32", comp_grad=False)
     val_logits = model(x_val_tensor)
     val_loss = loss_fn(val_logits, y_val_tensor)
-    tracker.record('val_loss', val_loss.values.item(), optim.step_count)
+    tracker.record("val_loss", val_loss.values.item(), optim.step_count)
 id = tracker.end_run()
 
 # In[12]:

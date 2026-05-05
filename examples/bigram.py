@@ -69,7 +69,14 @@ class BigramModel(sg.Module):
         res = [context.values.item()]
         current = context
         for _ in range(max_new_tokens):
-            next = sg.Tensor(np.random.choice(range(self.vocab_size), size=1, p=sg.softmax(self.forward(current), dim=-1).values)[0], dtype="int8")
+            next = sg.Tensor(
+                np.random.choice(
+                    range(self.vocab_size),
+                    size=1,
+                    p=sg.softmax(self.forward(current), dim=-1).values,
+                )[0],
+                dtype="int8",
+            )
             res.append(int(next.values.item()))
             current = next
         return res
@@ -109,10 +116,13 @@ def estimate_loss():
         out[split] = losses.mean()
     return out
 
+
 # In[10]:
 
 
-print("".join(decode(model.generate(context=sg.Tensor(s2i["T"], dtype="int8"), max_new_tokens=500))))
+print(
+    "".join(decode(model.generate(context=sg.Tensor(s2i["T"], dtype="int8"), max_new_tokens=500)))
+)
 
 # In[11]:
 
@@ -145,4 +155,6 @@ tracker.save_comp_graph(tensor=final_loss, run_id=run_id)
 # In[12]:
 
 
-print(''.join(decode(model.generate(context=sg.Tensor(s2i["T"], dtype="int8"), max_new_tokens=500))))
+print(
+    "".join(decode(model.generate(context=sg.Tensor(s2i["T"], dtype="int8"), max_new_tokens=500)))
+)

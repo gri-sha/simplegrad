@@ -155,9 +155,7 @@ class Handler(BaseHTTPRequestHandler):
             elif state.exp_db.get_run(run_id) is None:
                 self._error(404, f"Run {run_id} not found")
             else:
-                self._json(
-                    {"run_id": run_id, "metrics": state.exp_db.get_metric_summary(run_id)}
-                )
+                self._json({"run_id": run_id, "metrics": state.exp_db.get_metric_summary(run_id)})
 
         elif path == "/api/runs/compare":
             if state.exp_db is None:
@@ -181,9 +179,7 @@ class Handler(BaseHTTPRequestHandler):
                             for it, sv in zip(items, smoothed):
                                 it["smoothed"] = sv
                         runs_out[str(rid)] = {"name": run.name, "records": items}
-                    self._json(
-                        {"metric": metric, "smoothing": smoothing, "runs": runs_out}
-                    )
+                    self._json({"metric": metric, "smoothing": smoothing, "runs": runs_out})
 
         elif path == "/api/hparams":
             if state.exp_db is None:
@@ -224,9 +220,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._error(404, f"Run {run_id} not found")
             else:
                 metric_name = qs.get("metric", [None])[0]
-                names = (
-                    [metric_name] if metric_name else state.exp_db.get_metrics(run_id)
-                )
+                names = [metric_name] if metric_name else state.exp_db.get_metrics(run_id)
                 buf = io.StringIO()
                 writer = csv.writer(buf)
                 writer.writerow(["metric", "step", "value", "wall_time"])
@@ -250,8 +244,7 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     metrics = {
                         name: [
-                            dataclasses.asdict(r)
-                            for r in state.exp_db.get_records(run_id, name)
+                            dataclasses.asdict(r) for r in state.exp_db.get_records(run_id, name)
                         ]
                         for name in state.exp_db.get_metrics(run_id)
                     }
@@ -352,9 +345,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", len(body))
         self.send_header("Access-Control-Allow-Origin", "*")
         if filename:
-            self.send_header(
-                "Content-Disposition", f'attachment; filename="{filename}"'
-            )
+            self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
         self.end_headers()
         self.wfile.write(body)
 
