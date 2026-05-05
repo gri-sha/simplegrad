@@ -61,37 +61,18 @@
   --sidebar-width: 280px;
   --sidebar-collapsed-width: 48px;
 
-  /* Computation-graph palette (matches inline_comp_graph.py defaults) */
-  --graph-node-leaf: #ffa07a;
-  --graph-node-tensor: #b0c4de;
-  --graph-node-op: #fafad2;
+  /* Computation-graph palette — matches inline_comp_graph.py colors */
+  --graph-node-leaf: #34b87e;
+  --graph-node-tensor: #feba14;
+  --graph-node-op: #e8e8e8;
   --graph-edge: #333333;
-  --graph-arrow: #666666;
-  --graph-node-stroke: #666666;
-  --graph-node-text: #333333;
-}
-[data-theme='dark'] {
-  --color-bg: #121212;
-  --color-fg: #e0e0e0;
-  --color-white: #1e1e1e;
-  --border: rgba(255, 255, 255, 0.11);
-  --border-strong: rgba(255, 255, 255, 0.35);
-  --muted: rgba(255, 255, 255, 0.48);
-  --surface-hover: rgba(255, 255, 255, 0.04);
-  --bg-glass: rgba(18, 18, 18, 0.88);
-  --dot-pattern: rgba(255, 255, 255, 0.15);
-  --btn-border: rgba(255, 255, 255, 0.2);
-  --btn-border-hover: rgba(255, 255, 255, 0.45);
-  --btn-bg-hover: rgba(255, 255, 255, 0.03);
+  --graph-arrow: #333333;
+  --graph-node-stroke: #151718;
+  --graph-node-text: #151718;
 
-  /* Dimmed comp-graph palette so node fills don't blow out on dark bg */
-  --graph-node-leaf: #b56a4a;
-  --graph-node-tensor: #5a7aa3;
-  --graph-node-op: #8a8a4d;
-  --graph-edge: #cccccc;
-  --graph-arrow: #aaaaaa;
-  --graph-node-stroke: #999999;
-  --graph-node-text: #1a1a1a;
+  /* Selection / active state — neutral grey, not brand green */
+  --selected-bg: rgba(21, 23, 24, 0.07);
+  --selected-border: rgba(21, 23, 24, 0.3);
 }
 
 /* Reset */
@@ -255,12 +236,10 @@ select {
 .form-group label {
   display: block;
   margin-bottom: 0.375rem;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--color-fg);
 }
 
 .form-input {

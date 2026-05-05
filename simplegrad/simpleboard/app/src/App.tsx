@@ -5,7 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { MainContent } from './components/MainContent';
 import { SettingsModal } from './components/SettingsModal';
 import { api } from './api';
-import type { RunInfo, RecordInfo, CompGraphData, RunMeta, HistogramInfo, ImageInfo } from './types';
+import type { RunInfo, RecordInfo, CompGraphData, RunMeta } from './types';
 
 interface GraphInfo {
   id: number;
@@ -16,14 +16,7 @@ interface GraphInfo {
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'metrics' | 'graphs' | 'hparams' | 'diff' | 'histograms' | 'images'>('metrics');
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('sb_theme');
-    if (saved === 'dark' || saved === 'light') return saved;
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
-    return 'light';
-  });
-
+  const [activeTab, setActiveTab] = useState<'metrics' | 'graphs' | 'hparams'>('metrics');
   const [runMeta, setRunMeta] = useState<Record<number, RunMeta>>(() => {
     const saved = localStorage.getItem('sb_run_meta');
     return saved ? JSON.parse(saved) : {};
@@ -37,11 +30,6 @@ function App() {
     });
   };
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('sb_theme', theme);
-  }, [theme]);
-
   // Data state
   const [databases, setDatabases] = useState<string[]>([]);
   const [selectedDb, setSelectedDb] = useState<string | null>(null);
@@ -50,8 +38,6 @@ function App() {
   const [runNames, setRunNames] = useState<Record<number, string>>({});
   const [metricsByRun, setMetricsByRun] = useState<Record<number, Record<string, RecordInfo[]>>>({});
   const [graphsByRun, setGraphsByRun] = useState<Record<number, GraphInfo[]>>({});
-  const [histogramsByRun, setHistogramsByRun] = useState<Record<number, Record<string, HistogramInfo[]>>>({});
-  const [imagesByRun, setImagesByRun] = useState<Record<number, Record<string, ImageInfo[]>>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,12 +81,10 @@ function App() {
 
     // Use allSettled so a single failed endpoint (e.g. histograms on an old DB)
     // doesn't tank the whole load — scalars and graphs should still display.
-    const [runInfoR, metricsR, graphsR, histsR, imgsR] = await Promise.allSettled([
+    const [runInfoR, metricsR, graphsR] = await Promise.allSettled([
       api.getRun(runId),
       api.getRecords(runId),
       api.getGraphs(runId),
-      api.getHistograms(runId),
-      api.getImages(runId),
     ]);
 
     if (runInfoR.status === 'fulfilled') {
@@ -115,12 +99,6 @@ function App() {
     if (graphsR.status === 'fulfilled') {
       setGraphsByRun((prev) => ({ ...prev, [runId]: graphsR.value.graphs || [] }));
     } else console.error('graphs fetch failed', graphsR.reason);
-    if (histsR.status === 'fulfilled') {
-      setHistogramsByRun((prev) => ({ ...prev, [runId]: histsR.value.histograms || {} }));
-    } else console.error('histograms fetch failed', histsR.reason);
-    if (imgsR.status === 'fulfilled') {
-      setImagesByRun((prev) => ({ ...prev, [runId]: imgsR.value.images || {} }));
-    } else console.error('images fetch failed', imgsR.reason);
 
     if (withSpinner) setLoading(false);
   }, []);
@@ -135,8 +113,6 @@ function App() {
       setRunNames({});
       setMetricsByRun({});
       setGraphsByRun({});
-      setHistogramsByRun({});
-      setImagesByRun({});
       // Close all sockets
       wsMap.current.forEach((ws) => ws.close());
       wsMap.current.clear();
@@ -202,8 +178,6 @@ function App() {
         };
         setMetricsByRun(dropOne);
         setGraphsByRun(dropOne);
-        setHistogramsByRun(dropOne);
-        setImagesByRun(dropOne);
         return prev.filter((id) => id !== runId);
       }
       fetchRunData(runId);
@@ -217,8 +191,6 @@ function App() {
     setSelectedRunIds([]);
     setMetricsByRun({});
     setGraphsByRun({});
-    setHistogramsByRun({});
-    setImagesByRun({});
     setRunNames({});
   };
 
@@ -232,8 +204,6 @@ function App() {
     setRunNames({});
     setMetricsByRun({});
     setGraphsByRun({});
-    setHistogramsByRun({});
-    setImagesByRun({});
     fetchDatabases();
   };
 
@@ -295,20 +265,6 @@ function App() {
             setGraphsByRun((prev) => ({ ...prev, [runId]: graphsData.graphs || [] }));
           })
           .catch((err) => console.error('Polling graphs error:', err));
-
-        api
-          .getHistograms(runId)
-          .then((histsData) => {
-            setHistogramsByRun((prev) => ({ ...prev, [runId]: histsData.histograms || {} }));
-          })
-          .catch((err) => console.error('Polling histograms error:', err));
-
-        api
-          .getImages(runId)
-          .then((imgsData) => {
-            setImagesByRun((prev) => ({ ...prev, [runId]: imgsData.images || {} }));
-          })
-          .catch((err) => console.error('Polling images error:', err));
       });
     }, 2000);
 
@@ -330,8 +286,6 @@ function App() {
         onRefresh={handleRefresh}
         onOpenSettings={() => setSettingsOpen(true)}
         isLoading={loading}
-        theme={theme}
-        onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
       />
 
       <div className="app-body">
@@ -359,13 +313,10 @@ function App() {
           runs={runs}
           metricsByRun={metricsByRun}
           graphsByRun={graphsByRun}
-          histogramsByRun={histogramsByRun}
-          imagesByRun={imagesByRun}
           isLoading={loading}
           error={error}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          theme={theme}
         />
       </div>
 

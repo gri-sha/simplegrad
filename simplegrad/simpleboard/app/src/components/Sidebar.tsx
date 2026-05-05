@@ -5,9 +5,6 @@
 import {
   ChevronLeft,
   ChevronRight,
-  Play,
-  CheckCircle,
-  XCircle,
   Clock,
   Database,
   Pin,
@@ -17,7 +14,7 @@ import {
   Edit2
 } from 'lucide-react';
 import type { RunInfo, RunMeta } from '../types';
-import { colorForRun } from '../colors';
+import { colorForIndex } from '../colors';
 import { useState } from 'react';
 
 interface SidebarProps {
@@ -50,19 +47,6 @@ export function Sidebar({
   const [showHidden, setShowHidden] = useState(false);
   const [editingRunId, setEditingRunId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle size={14} className="status-icon status-completed" />;
-      case 'failed':
-        return <XCircle size={14} className="status-icon status-failed" />;
-      case 'running':
-        return <Play size={14} className="status-icon status-running" />;
-      default:
-        return null;
-    }
-  };
 
   const hasDatabase = currentDatabase !== null;
   
@@ -156,7 +140,8 @@ export function Sidebar({
                 {visibleRuns.map((run) => {
                   const meta = runMeta[run.run_id] || {};
                   const isSelected = selected.has(run.run_id);
-                  const swatchColor = colorForRun(run.run_id);
+                  const runIndex = runs.findIndex((r) => r.run_id === run.run_id);
+                  const swatchColor = colorForIndex(runIndex);
                   return (
                     <li
                       key={run.run_id}
@@ -173,7 +158,6 @@ export function Sidebar({
                               width: '12px', height: '12px', borderRadius: '50%', borderStyle: 'solid', borderWidth: '2px', flexShrink: 0
                             }}
                           />
-                          {getStatusIcon(run.status)}
                           
                           {editingRunId === run.run_id ? (
                             <form onSubmit={(e) => saveEdit(e, run.run_id)} style={{ flex: 1, minWidth: 0 }}>

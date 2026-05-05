@@ -30,3 +30,8 @@ export function colorForRun(runId: number, palette?: string[]): string {
   const p = palette ?? resolvePalette();
   return p[hashInt(runId) % p.length];
 }
+
+export function colorForIndex(index: number, palette?: string[]): string {
+  const p = palette ?? resolvePalette();
+  return p[Math.max(0, index) % p.length];
+}

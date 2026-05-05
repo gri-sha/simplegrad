@@ -2,25 +2,27 @@
  * Top navigation bar component
  */
 
-import { RefreshCw, Settings, Sun, Moon } from 'lucide-react';
+import { RefreshCw, Settings } from 'lucide-react';
 
 interface TopBarProps {
   onRefresh: () => void;
   onOpenSettings: () => void;
   isLoading: boolean;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
 }
 
-export function TopBar({ onRefresh, onOpenSettings, isLoading, theme, onToggleTheme }: TopBarProps) {
+export function TopBar({ onRefresh, onOpenSettings, isLoading }: TopBarProps) {
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <span className="topbar-title topbar-brand">SimpleBoard</span>
+        <img
+          src="/simpleboard_hor.svg"
+          alt="SimpleBoard"
+          className="topbar-logo"
+          style={{ height: '26px', width: 'auto' }}
+        />
       </div>
 
       <div className="topbar-right">
-        {/* Refresh button */}
         <button
           className="topbar-button"
           onClick={onRefresh}
@@ -31,17 +33,6 @@ export function TopBar({ onRefresh, onOpenSettings, isLoading, theme, onToggleTh
           <RefreshCw size={16} className={isLoading ? 'spinning' : ''} />
         </button>
 
-        {/* Theme toggle */}
-        <button
-          className="topbar-button"
-          onClick={onToggleTheme}
-          title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-          aria-label="Toggle theme"
-        >
-          {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
-        </button>
-
-        {/* Settings button */}
         <button
           className="topbar-button"
           onClick={onOpenSettings}

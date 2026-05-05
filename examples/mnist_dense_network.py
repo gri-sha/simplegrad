@@ -63,7 +63,7 @@ def to_one_hot(labels, num_classes=10):
 
 
 # After parsing MNIST data
-(x, labels), (x_test, labels_test) = parse_mnist("../datasets/mnist")
+(x, labels), (x_test, labels_test) = parse_mnist("datasets/mnist")
 x_train = x[: int(len(x) * (1 - VAL_SPLIT))]
 labels_train = labels[: int(len(labels) * (1 - VAL_SPLIT))]
 x_val = x[int(len(x) * (1 - VAL_SPLIT)) :]

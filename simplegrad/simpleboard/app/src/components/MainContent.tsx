@@ -11,12 +11,9 @@ import { MetricGraph } from './MetricGraph';
 import { CompGraph } from './CompGraph';
 import { ScalarToolbar } from './ScalarToolbar';
 import { HParamsView } from './HParamsView';
-import { RunDiffView } from './RunDiffView';
-import { HistogramView } from './HistogramView';
-import { ImageView } from './ImageView';
-import type { RecordInfo, CompGraphData, MetricSeries, XAxisMode, YScaleMode, RunInfo, RunMeta, HistogramInfo, ImageInfo } from '../types';
-import { BarChart3, GitBranch, AlertCircle, Image as ImageIcon, BarChart } from 'lucide-react';
-import { colorForRun } from '../colors';
+import type { RecordInfo, CompGraphData, MetricSeries, XAxisMode, YScaleMode, RunInfo, RunMeta } from '../types';
+import { BarChart3, GitBranch, AlertCircle } from 'lucide-react';
+import { colorForIndex } from '../colors';
 
 interface GraphInfo {
   id: number;
@@ -31,14 +28,11 @@ interface MainContentProps {
   runMeta?: Record<number, RunMeta>;
   metricsByRun: Record<number, Record<string, RecordInfo[]>>;
   graphsByRun: Record<number, GraphInfo[]>;
-  histogramsByRun: Record<number, Record<string, HistogramInfo[]>>;
-  imagesByRun: Record<number, Record<string, ImageInfo[]>>;
   isLoading: boolean;
   error: string | null;
-  activeTab: 'metrics' | 'graphs' | 'hparams' | 'diff' | 'histograms' | 'images';
-  onTabChange: (tab: 'metrics' | 'graphs' | 'hparams' | 'diff' | 'histograms' | 'images') => void;
+  activeTab: 'metrics' | 'graphs' | 'hparams';
+  onTabChange: (tab: 'metrics' | 'graphs' | 'hparams') => void;
   runs: RunInfo[];
-  theme?: 'light' | 'dark';
 }
 
 export function MainContent({
@@ -46,14 +40,11 @@ export function MainContent({
   runNames,
   metricsByRun,
   graphsByRun,
-  histogramsByRun,
-  imagesByRun,
   isLoading,
   error,
   activeTab,
   onTabChange,
   runs,
-  theme,
 }: MainContentProps) {
   const [smoothing, setSmoothing] = useState(() => {
     const saved = localStorage.getItem('sb_smoothing');
@@ -114,7 +105,7 @@ export function MainContent({
         series.push({
           runId,
           runName: runNames[runId] || `Run #${runId}`,
-          color: colorForRun(runId),
+          color: colorForIndex(runs.findIndex((r) => r.run_id === runId)),
           data,
         });
       }
@@ -177,7 +168,7 @@ export function MainContent({
             onClick={() => onTabChange('metrics')}
           >
             <BarChart3 size={16} />
-            Metrics
+            Training graphs
             {allMetricNames.length > 0 && (
               <span className="main-tab-count">{allMetricNames.length}</span>
             )}
@@ -187,34 +178,14 @@ export function MainContent({
             onClick={() => onTabChange('graphs')}
           >
             <GitBranch size={16} />
-            Graphs
+            Comp. graphs
             {totalGraphs > 0 && <span className="main-tab-count">{totalGraphs}</span>}
           </button>
           <button
             className={`main-tab ${activeTab === 'hparams' ? 'main-tab-active' : ''}`}
             onClick={() => onTabChange('hparams')}
           >
-            HParams
-          </button>
-          <button
-            className={`main-tab ${activeTab === 'diff' ? 'main-tab-active' : ''}`}
-            onClick={() => onTabChange('diff')}
-          >
-            Diff
-          </button>
-          <button
-            className={`main-tab ${activeTab === 'histograms' ? 'main-tab-active' : ''}`}
-            onClick={() => onTabChange('histograms')}
-          >
-            <BarChart size={16} />
-            Histograms
-          </button>
-          <button
-            className={`main-tab ${activeTab === 'images' ? 'main-tab-active' : ''}`}
-            onClick={() => onTabChange('images')}
-          >
-            <ImageIcon size={16} />
-            Images
+            Best metrics
           </button>
         </div>
       </div>
@@ -250,7 +221,6 @@ export function MainContent({
                     xAxisMode={xAxisMode}
                     yScale={yScale}
                     ignoreOutliers={ignoreOutliers}
-                    theme={theme}
                   />
                 ))}
               </div>
@@ -275,7 +245,6 @@ export function MainContent({
                     key={`${runId}-${g.id}`}
                     data={g.graph}
                     title={`${runNames[runId] || `Run #${runId}`} — Computation Graph ${index + 1}`}
-                    theme={theme}
                   />
                 ));
               })
@@ -292,24 +261,6 @@ export function MainContent({
             runNames={runNames}
             runs={runs}
             metricsByRun={metricsByRun}
-          />
-        ) : activeTab === 'diff' ? (
-          <RunDiffView
-            selectedRunIds={selectedRunIds}
-            runNames={runNames}
-            runs={runs}
-          />
-        ) : activeTab === 'histograms' ? (
-          <HistogramView
-            selectedRunIds={selectedRunIds}
-            runNames={runNames}
-            histogramsByRun={histogramsByRun}
-          />
-        ) : activeTab === 'images' ? (
-          <ImageView
-            selectedRunIds={selectedRunIds}
-            runNames={runNames}
-            imagesByRun={imagesByRun}
           />
         ) : null}
       </div>

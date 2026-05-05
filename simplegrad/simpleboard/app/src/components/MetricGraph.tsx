@@ -19,7 +19,6 @@ interface MetricGraphProps {
   xAxisMode: XAxisMode;
   yScale: YScaleMode;
   ignoreOutliers?: boolean;
-  theme?: 'light' | 'dark';
 }
 
 interface PreparedPoint {
@@ -104,7 +103,6 @@ export function MetricGraph({
   xAxisMode,
   yScale,
   ignoreOutliers,
-  theme,
 }: MetricGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -263,7 +261,7 @@ export function MetricGraph({
     xAxisGroup
       .selectAll('text')
       .attr('fill', mutedColor)
-      .attr('font-family', 'var(--font-mono)')
+      .attr('font-family', 'var(--font-body)')
       .attr('font-size', '11px');
 
     // Y axis
@@ -279,7 +277,7 @@ export function MetricGraph({
       .call(yAxis as any)
       .selectAll('text')
       .attr('fill', mutedColor)
-      .attr('font-family', 'var(--font-mono)')
+      .attr('font-family', 'var(--font-body)')
       .attr('font-size', '11px');
 
     g.selectAll('.axis .domain').attr('stroke', borderStrong);
@@ -291,7 +289,7 @@ export function MetricGraph({
       .attr('y', height + 30)
       .attr('text-anchor', 'middle')
       .attr('fill', mutedColor)
-      .attr('font-family', 'var(--font-mono)')
+      .attr('font-family', 'var(--font-body)')
       .attr('font-size', '11px')
       .text(
         xAxisMode === 'step' ? 'Step' : xAxisMode === 'relative' ? 'Time (relative)' : 'Wall time',
@@ -472,7 +470,7 @@ export function MetricGraph({
         xAxisGroup
           .selectAll('text')
           .attr('fill', mutedColor)
-          .attr('font-family', 'var(--font-mono)')
+          .attr('font-family', 'var(--font-body)')
           .attr('font-size', '11px');
         xAxisGroup.selectAll('.domain').attr('stroke', borderStrong);
         xAxisGroup.selectAll('.tick line').attr('stroke', borderStrong);
@@ -487,7 +485,7 @@ export function MetricGraph({
     return () => {
       tooltip.remove();
     };
-  }, [prepared, metricName, smoothing, xAxisMode, yScale, sizeTick, ignoreOutliers, theme]);
+  }, [prepared, metricName, smoothing, xAxisMode, yScale, sizeTick, ignoreOutliers]);
 
   // Resize handling — bump a counter so the chart effect re-runs at the new size.
   useEffect(() => {

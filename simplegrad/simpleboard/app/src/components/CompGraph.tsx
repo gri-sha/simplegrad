@@ -11,7 +11,6 @@ import type { CompGraphData, CompGraphNode, CompGraphEdge } from '../types';
 interface CompGraphProps {
   data: CompGraphData;
   title?: string;
-  theme?: 'light' | 'dark';
 }
 
 interface LayoutNode {
@@ -235,11 +234,12 @@ function computeDAGLayout(
   return { nodes: layoutNodes, links: layoutLinks, width: totalWidth, height: totalHeight };
 }
 
-export function CompGraph({ data, title, theme }: CompGraphProps) {
+export function CompGraph({ data, title }: CompGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<any>(null);
   const fitTransformRef = useRef<any>(null);
+  const savedTransformRef = useRef<any>(null);
 
   useEffect(() => {
     if (
@@ -315,12 +315,15 @@ export function CompGraph({ data, title, theme }: CompGraphProps) {
       .wheelDelta((event: WheelEvent) => -event.deltaY * (event.deltaMode ? 0.05 : 0.002))
       .on('zoom', (event: any) => {
         g.attr('transform', event.transform);
+        savedTransformRef.current = event.transform;
       });
 
     svg.call(zoomRef.current as any);
-    // Apply the fit-to-view transform on first render so the graph is centered
-    // and fully visible before any user interaction.
-    svg.call(zoomRef.current.transform as any, fitTransform);
+    // Restore the user's previous zoom state if available; otherwise apply the
+    // fit-to-view transform. This prevents re-renders from snapping the graph
+    // back to the initial position after the user has panned or zoomed.
+    const initialTransform = savedTransformRef.current ?? fitTransform;
+    svg.call(zoomRef.current.transform as any, initialTransform);
     fitTransformRef.current = fitTransform;
     
     // Draw edges with curved paths
@@ -410,10 +413,10 @@ export function CompGraph({ data, title, theme }: CompGraphProps) {
       if (d.shape) tooltip += `\nShape: [${d.shape.join(', ')}]`;
       return tooltip;
     });
-  }, [data, theme]);
+  }, [data]);
 
   return (
-    <div className="comp-graph" ref={containerRef} style={{ position: 'relative', resize: 'both', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div className="comp-graph" ref={containerRef} style={{ position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div className="comp-graph-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexShrink: 0 }}>
         {title && <h3 className="comp-graph-title" style={{ margin: 0 }}>{title}</h3>}
         <button 

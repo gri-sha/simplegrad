@@ -161,11 +161,9 @@
 }
 
 .sidebar-header h2 {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--muted);
 }
 
@@ -228,13 +226,10 @@
   max-width: 200px;
 }
 
-/* Eyebrow above the runs list (mono / uppercase / muted) */
 .sidebar-section-label {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
   color: var(--muted);
   padding: 0.25rem 0.75rem 0.5rem;
 }
@@ -259,11 +254,9 @@
 }
 
 .sidebar-clear-btn {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 700;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
   color: var(--muted);
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
@@ -337,18 +330,19 @@
 }
 
 .run-item-selected {
-  background-color: var(--color-green);
-  color: var(--color-white);
+  background-color: var(--selected-bg);
+  border: 1px solid var(--selected-border);
+  color: var(--color-fg);
 }
 
 .run-item-selected:hover {
-  background-color: var(--color-green);
+  background-color: var(--selected-bg);
 }
 
 .run-item-selected .run-item-name,
 .run-item-selected .run-item-meta,
 .run-item-selected .status-icon {
-  color: var(--color-white);
+  color: inherit;
 }
 
 .run-item-header {
@@ -396,7 +390,7 @@
 }
 
 .run-item-selected .run-item-metric-tag {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--muted);
 }
 
 /* Collapsed sidebar toggle */
@@ -495,9 +489,9 @@
 
 .main-tab-active,
 .main-tab-active:hover {
-  background-color: var(--color-green);
-  border-color: var(--color-green);
-  color: var(--color-white);
+  background-color: var(--selected-bg);
+  border-color: var(--selected-border);
+  color: var(--color-fg);
 }
 
 .main-tab-count {
@@ -510,8 +504,8 @@
 }
 
 .main-tab-active .main-tab-count {
-  background: rgba(255, 255, 255, 0.22);
-  color: var(--color-white);
+  background: rgba(21, 23, 24, 0.08);
+  color: var(--muted);
 }
 
 .main-body {
@@ -547,7 +541,7 @@
   font-size: 1.4rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--color-fg);
+  color: var(--muted);
   margin-bottom: 0.5rem;
 }
 
@@ -593,18 +587,9 @@
 
 /* ─── Metric Graphs ─────────────────────────────────────────── */
 .metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
-  gap: 1.5rem 1.75rem;
-  justify-items: stretch;
-  align-items: start;
-}
-
-.metrics-grid:has(.main-empty) {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .metric-graph {
@@ -613,14 +598,13 @@
   border-radius: 8px;
   padding: 1.1rem 1.25rem;
   width: 100%;
-  height: 380px;
+  height: 340px;
   min-width: 0;
-  min-height: 220px;
   position: relative;
-  resize: vertical;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
 
 .metric-graph svg {
@@ -662,8 +646,8 @@
   flex-wrap: wrap;
   gap: 0.5rem 0.85rem;
   margin-bottom: 0.4rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
   color: var(--muted);
 }
 
@@ -697,8 +681,8 @@
   border: 1px solid var(--border-strong);
   border-radius: 5px;
   padding: 0.45rem 0.6rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
   color: var(--color-fg);
   pointer-events: none;
   box-shadow: 0 4px 12px rgba(21, 23, 24, 0.12);
@@ -765,17 +749,15 @@
 }
 
 .scalar-toolbar-label {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--muted);
 }
 
 .scalar-toolbar-slider {
   width: 140px;
-  accent-color: var(--color-green);
+  accent-color: var(--color-blue);
 }
 
 .scalar-toolbar-readout {
@@ -813,8 +795,9 @@
 }
 
 .scalar-toolbar-segment.active {
-  background: var(--color-green);
-  color: var(--color-white);
+  background: var(--selected-bg);
+  color: var(--color-fg);
+  border-color: var(--selected-border);
 }
 
 .scalar-toolbar-filter {
@@ -834,11 +817,9 @@
 }
 
 .metric-graph-title {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: var(--color-fg);
 }
 
@@ -903,16 +884,14 @@
   padding: 1rem 1.1rem;
   margin-bottom: 1.25rem;
   width: 100%;
-  max-width: 1200px;
-  height: 600px;
+  height: 500px;
+  flex-shrink: 0;
 }
 
 .comp-graph-title {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   margin-bottom: 0.75rem;
   color: var(--color-fg);
 }

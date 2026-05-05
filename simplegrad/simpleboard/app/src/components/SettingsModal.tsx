@@ -4,7 +4,8 @@
 
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { getApiUrl, setApiUrl } from '../api';
+import { getApiUrl, setApiUrl, clearApiUrl } from '../api';
+import { api } from '../api';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -14,15 +15,37 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose, onSave }: SettingsModalProps) {
   const [apiUrlInput, setApiUrlInput] = useState('');
+  const [expDirInput, setExpDirInput] = useState('');
+  const [originalExpDir, setOriginalExpDir] = useState('');
+  const [expDirError, setExpDirError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setApiUrlInput(getApiUrl());
+      setExpDirError(null);
+      api.getConfig()
+        .then((cfg) => {
+          setExpDirInput(cfg.exp_dir);
+          setOriginalExpDir(cfg.exp_dir);
+        })
+        .catch(() => {});
     }
   }, [isOpen]);
 
-  const handleSave = () => {
-    setApiUrl(apiUrlInput);
+  const handleSave = async () => {
+    if (apiUrlInput.trim() === '') {
+      clearApiUrl();
+    } else {
+      setApiUrl(apiUrlInput);
+    }
+    if (expDirInput.trim() && expDirInput.trim() !== originalExpDir) {
+      try {
+        await api.updateExpDir(expDirInput.trim());
+      } catch (err) {
+        setExpDirError('Failed to update experiments directory.');
+        return;
+      }
+    }
     onSave();
     onClose();
   };
@@ -47,16 +70,48 @@ export function SettingsModal({ isOpen, onClose, onSave }: SettingsModalProps) {
 
         <div className="modal-body">
           <div className="form-group">
-            <label htmlFor="api-url">API Base URL</label>
+            <label htmlFor="exp-dir">Experiments directory</label>
             <input
-              id="api-url"
+              id="exp-dir"
               type="text"
               className="form-input"
-              value={apiUrlInput}
-              onChange={(e) => setApiUrlInput(e.target.value)}
-              placeholder="http://localhost:8000"
+              value={expDirInput}
+              onChange={(e) => { setExpDirInput(e.target.value); setExpDirError(null); }}
+              placeholder="/path/to/experiments"
             />
-            <p className="form-help">The URL where the simpleboard server is running.</p>
+            {expDirError && (
+              <p className="form-help" style={{ color: 'var(--color-orange)' }}>{expDirError}</p>
+            )}
+            <p className="form-help">
+              Directory where experiment databases are stored. Takes effect immediately without a restart.
+            </p>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="api-url">API base URL</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                id="api-url"
+                type="text"
+                className="form-input"
+                style={{ flex: 1 }}
+                value={apiUrlInput}
+                onChange={(e) => setApiUrlInput(e.target.value)}
+                placeholder="Leave empty to use same-origin (default)"
+              />
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => setApiUrlInput('')}
+                title="Reset to default (same-origin)"
+              >
+                Reset
+              </button>
+            </div>
+            <p className="form-help">
+              Leave empty to connect to the server that served this page (default).
+              Set an explicit URL only when connecting to a remote simpleboard instance.
+            </p>
           </div>
         </div>
 

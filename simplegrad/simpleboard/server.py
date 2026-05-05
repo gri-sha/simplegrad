@@ -57,8 +57,16 @@ class Handler(BaseHTTPRequestHandler):
         path = parsed.path
         qs = parse_qs(parsed.query)
 
-        if path == "/api/databases":
+        if path == "/api/config":
             state.init_all_exp_dir()
+            self._json({"exp_dir": str(state.all_exp_dir) if state.all_exp_dir else ""})
+
+        elif path == "/api/databases":
+            try:
+                state.init_all_exp_dir()
+            except Exception as exc:
+                self._error(500, str(exc))
+                return
             db_files = list(state.all_exp_dir.glob("*.db"))
             self._json(
                 {
@@ -314,7 +322,20 @@ class Handler(BaseHTTPRequestHandler):
     def do_PATCH(self):
         path = urlparse(self.path).path
 
-        if m := re.fullmatch(r"/api/runs/(\d+)/status", path):
+        if path == "/api/config/exp-dir":
+            body = self._read_body()
+            new_path = body.get("path", "").strip()
+            if not new_path:
+                self._error(400, "'path' field is required")
+                return
+            try:
+                state.update_exp_dir(new_path)
+            except Exception as exc:
+                self._error(500, str(exc))
+                return
+            self._json({"exp_dir": str(state.all_exp_dir)})
+
+        elif m := re.fullmatch(r"/api/runs/(\d+)/status", path):
             run_id = int(m.group(1))
             if state.exp_db is None:
                 self._error(400, "No database selected")

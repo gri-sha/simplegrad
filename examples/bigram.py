@@ -26,7 +26,7 @@ VAL_ITERS = 200
 # In[4]:
 
 
-with open("../datasets/shakespeare.txt", "r", encoding="utf-8") as f:
+with open("datasets/shakespeare.txt", "r", encoding="utf-8") as f:
     text = f.read()
 
 chars = sorted(list(set(text)))
@@ -131,7 +131,7 @@ optimizer = sg.opt.Adam(model, lr=LEARNING_RATE)
 
 tracker = sg.Tracker()
 tracker.set_experiment("bigram_language_model")
-tracker.start_run(name="training_run_1")
+tracker.start_run()
 
 for i in range(MAX_ITERS):
     if i % VAL_INTERVAL == 0:

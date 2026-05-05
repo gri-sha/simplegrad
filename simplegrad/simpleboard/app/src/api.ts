@@ -19,7 +19,15 @@ export const getApiUrl = (): string => {
 };
 
 export const setApiUrl = (url: string): void => {
-  localStorage.setItem('simpleboard_api_url', url);
+  if (url.trim() === '') {
+    localStorage.removeItem('simpleboard_api_url');
+  } else {
+    localStorage.setItem('simpleboard_api_url', url.trim());
+  }
+};
+
+export const clearApiUrl = (): void => {
+  localStorage.removeItem('simpleboard_api_url');
 };
 
 class ApiClient {
@@ -28,10 +36,28 @@ class ApiClient {
   }
 
   async getDatabases(): Promise<DatabaseInfo> {
-    console.log('Fetching databases from', this.getBaseUrl());
-    const res = await fetch(`${this.getBaseUrl()}/api/databases`);
-    if (!res.ok) throw new Error('Failed to fetch databases');
-    return res.json();
+    const storedBase = this.getBaseUrl();
+    // Try the stored/configured base URL first. If it fails (stale port, wrong
+    // host, etc.) and a non-empty URL was stored, automatically fall back to
+    // relative URLs (same origin as the page) and clear the stale value so the
+    // problem doesn't repeat next time.
+    try {
+      const res = await fetch(`${storedBase}/api/databases`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    } catch (err) {
+      if (storedBase !== DEFAULT_API_URL) {
+        console.warn(
+          `simpleboard: could not reach ${storedBase}/api/databases (${err}). ` +
+          `Falling back to same-origin and clearing the stored URL.`
+        );
+        clearApiUrl();
+        const res = await fetch(`/api/databases`);
+        if (!res.ok) throw new Error('Failed to fetch databases');
+        return res.json();
+      }
+      throw err;
+    }
   }
 
   async selectDatabase(dbName: string): Promise<{ message: string }> {
@@ -88,6 +114,22 @@ class ApiClient {
   async getImages(runId: number): Promise<ImagesResponse> {
     const res = await fetch(`${this.getBaseUrl()}/api/runs/${runId}/images`);
     if (!res.ok) throw new Error('Failed to fetch images');
+    return res.json();
+  }
+
+  async getConfig(): Promise<{ exp_dir: string }> {
+    const res = await fetch(`${this.getBaseUrl()}/api/config`);
+    if (!res.ok) throw new Error('Failed to fetch config');
+    return res.json();
+  }
+
+  async updateExpDir(path: string): Promise<{ exp_dir: string }> {
+    const res = await fetch(`${this.getBaseUrl()}/api/config/exp-dir`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    });
+    if (!res.ok) throw new Error('Failed to update experiments directory');
     return res.json();
   }
 

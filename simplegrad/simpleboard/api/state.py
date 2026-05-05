@@ -14,13 +14,29 @@ exp_db_name: str | None = None  # Name of the currently selected experiment data
 
 
 def init_all_exp_dir():
-    """Initialize the experiments directory."""
+    """Initialize the experiments directory from the SG_EXPERIMENTS_DIR env var."""
     global all_exp_dir
-    if all_exp_dir is None:
-        all_exp_dir = Path(os.environ.get("SG_EXPERIMENTS_DIR"))
-        if all_exp_dir is None:
-            raise ValueError("Environment variable SG_EXPERIMENTS_DIR not set")
-        all_exp_dir.mkdir(parents=True, exist_ok=True)
+    if all_exp_dir is not None:
+        return
+    env_val = os.environ.get("SG_EXPERIMENTS_DIR")
+    if not env_val:
+        raise RuntimeError(
+            "SG_EXPERIMENTS_DIR is not set. "
+            "Launch simpleboard through the CLI: simpleboard --all-exp-dir <path>"
+        )
+    all_exp_dir = Path(env_val)
+    all_exp_dir.mkdir(parents=True, exist_ok=True)
+
+
+def update_exp_dir(new_path: str) -> None:
+    """Switch the experiments directory to a new path at runtime."""
+    global all_exp_dir, exp_db, exp_db_name
+    p = Path(new_path).resolve()
+    p.mkdir(parents=True, exist_ok=True)
+    all_exp_dir = p
+    os.environ["SG_EXPERIMENTS_DIR"] = str(p)
+    exp_db = None
+    exp_db_name = None
 
 
 def set_exp_db(db_name: str) -> bool:
