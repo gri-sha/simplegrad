@@ -11,29 +11,6 @@ class SGD(Optimizer):
 
         v_t = momentum * v_{t-1} - lr * (1 - dampening) * grad
         param += v_t
-
-    Supports parameter groups, allowing different ``lr``, ``momentum``, and ``dampening`` per group.
-    Pass a list of dicts to ``param_groups``, each with a ``"params"`` key (a Module or a ``dict[str, Module]``)
-    and optional per-group overrides:
-
-        >>> optimizer = SGD(
-        ...     lr=0.01,
-        ...     momentum=0.9,
-        ...     param_groups=[
-        ...         {"params": model.encoder},
-        ...         {"params": model.decoder, "lr": 0.001},
-        ...     ],
-        ... )
-
-    Args:
-        model: The model whose parameters to optimize (single-group shorthand).
-        lr: Default learning rate. Defaults to 0.01.
-        momentum: Default momentum factor. 0 disables momentum. Defaults to 0.
-        dampening: Default dampening applied to the gradient. Defaults to 0.
-        param_groups: List of parameter group dicts with optional per-group overrides for ``lr``, ``momentum``, and ``dampening``.
-
-    Raises:
-        TypeError: If ``model`` is provided but is not a Module.
     """
 
     def __init__(

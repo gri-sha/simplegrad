@@ -12,3 +12,24 @@ out = embed(token_ids)                   # shape: (4, 64)
 ```
 
 ::: simplegrad.nn.embedding.Embedding
+    options:
+      members: false
+      show_root_heading: true
+      heading_level: 2
+      docstring_section_style: list
+
+## Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `.weight` | `Tensor` | Embedding matrix of shape `(num_embeddings, embedding_dim)`. Learnable. |
+| `.num_embeddings` | `int` | Size of the vocabulary (total number of embeddings). |
+| `.embedding_dim` | `int` | Dimensionality of each embedding vector. |
+
+## Methods
+
+| Method | Description |
+|--------|-------------|
+| [`.forward()`](embedding/forward.md) | Look up embeddings for the given integer token indices. |
+
+Inherits all methods from [Module](../core/module.md): `.parameters()`, `.submodules()`, `.to_device()`, `.summary()`, `.set_train_mode()`, `.set_eval_mode()`.

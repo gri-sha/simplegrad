@@ -1,10 +1,11 @@
-"""Custom setuptools hooks to build the SimpleBoard frontend during installation."""
+"""Build script that hooks into setuptools to compile the SimpleBoard frontend."""
 
 import os
 import subprocess
 import sys
 from pathlib import Path
 
+from setuptools import setup
 from setuptools.command.build_py import build_py as _build_py
 
 
@@ -15,7 +16,7 @@ class BuildPyCommand(_build_py):
         if os.environ.get("SIMPLEGRAD_NO_BUILD_WEB") == "1":
             print("Skipping SimpleBoard web app build (SIMPLEGRAD_NO_BUILD_WEB=1)")
         else:
-            build_script = Path(__file__).parent / "build_simpleboard.py"
+            build_script = Path(__file__).parent / "tools" / "build_simpleboard.py"
             if build_script.exists():
                 print("Building SimpleBoard web app...")
                 result = subprocess.run(
@@ -34,3 +35,6 @@ class BuildPyCommand(_build_py):
             else:
                 print(f"WARNING: Build script not found at {build_script}")
         super().run()
+
+
+setup(cmdclass={"build_py": BuildPyCommand})

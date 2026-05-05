@@ -8,34 +8,6 @@ class ReduceLROnPlateauLR(Scheduler):
     against the best observed value. When the metric has not improved for
     ``patience`` consecutive steps, the learning rate is reduced by ``factor``.
     This allows the optimizer to escape plateaus and continue converging.
-
-    Args:
-        optimizer: The optimizer whose learning rate should be scheduled.
-        factor: Multiplicative factor applied to the learning rate when a plateau
-            is detected. For example, 0.1 reduces the lr by a factor of 10.
-        patience: Number of consecutive steps with no improvement before the
-            learning rate is reduced. Default is 10.
-        min_lr: Lower bound on the learning rate. Can be a scalar or a list of
-            floats for each parameter group. Default is 0.
-        threshold: Minimum change in the monitored quantity to qualify as an
-            improvement. Default is 1e-4.
-        threshold_mode: One of ``'rel'`` or ``'abs'``. In ``'rel'`` mode, an
-            improvement is detected when ``best * (1 + threshold)`` is exceeded
-            (for ``maximize_metric=True``) or when ``best * (1 - threshold)``
-            is exceeded (for ``maximize_metric=False``). In ``'abs'`` mode, the
-            threshold is added/subtracted directly from the best value.
-            Default is ``'rel'``.
-        cooldown: Number of steps to wait after a learning rate reduction before
-            monitoring resumes. During cooldown, the scheduler ignores
-            improvements and only counts steps toward exiting cooldown.
-            Default is 0.
-        maximize_metric: If ``True``, the scheduler treats higher metric values
-            as better (e.g., for accuracy). If ``False``, lower values are better
-            (e.g., for loss). Default is ``False``.
-        verbose: If ``True``, a message is printed each time the learning rate
-            is reduced. Default is ``False``.
-        eps: Minimum decay applied to lr. If the difference between new and old
-            lr is smaller than eps, the update is ignored. Default is 1e-8.
     """
 
     def __init__(

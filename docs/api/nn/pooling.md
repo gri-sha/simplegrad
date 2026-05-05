@@ -12,3 +12,24 @@ out = pool(x)  # shape: (1, 16, 14, 14)
 ```
 
 ::: simplegrad.nn.pooling.MaxPool2d
+    options:
+      members: false
+      show_root_heading: true
+      heading_level: 2
+      docstring_section_style: list
+
+## Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `.kernel_size` | `int \| tuple` | Size of the pooling window. |
+| `.stride` | `int \| tuple` | Step size of the sliding window. |
+| `.padding` | `int \| tuple` | Zero-padding added to both spatial dimensions. |
+
+## Methods
+
+| Method | Description |
+|--------|-------------|
+| [`.forward()`](pooling/forward.md) | Apply max-pooling to the input feature map. |
+
+Inherits all methods from [Module](../core/module.md): `.parameters()`, `.submodules()`, `.to_device()`, `.summary()`, `.set_train_mode()`, `.set_eval_mode()`.

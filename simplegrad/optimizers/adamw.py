@@ -26,29 +26,6 @@ class AdamW(Optimizer):
 
     When ``maximize=True`` the Adam component of the update is negated (the
     weight-decay component always pulls parameters toward zero regardless).
-
-    Supports parameter groups, allowing different hyperparameters per group:
-
-        >>> optimizer = AdamW(
-        ...     lr=1e-3,
-        ...     param_groups=[
-        ...         {"params": model.encoder},
-        ...         {"params": model.decoder, "lr": 1e-4, "weight_decay": 0.0},
-        ...     ],
-        ... )
-
-    Args:
-        model: The model whose parameters to optimize (single-group shorthand).
-        lr: Default learning rate. Defaults to 1e-3.
-        beta_1: Default exponential decay for the first moment. Defaults to 0.9.
-        beta_2: Default exponential decay for the second moment. Defaults to 0.999.
-        eps: Default numerical stability constant. Defaults to 1e-8.
-        weight_decay: Decoupled weight decay coefficient. Defaults to 0.
-        maximize: If True, maximizes the objective instead of minimizing it.
-            Defaults to False.
-        param_groups: List of parameter group dicts with optional per-group
-            overrides for ``lr``, ``beta_1``, ``beta_2``, ``eps``,
-            ``weight_decay``, and ``maximize``.
     """
 
     def __init__(

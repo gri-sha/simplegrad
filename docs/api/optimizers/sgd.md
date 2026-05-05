@@ -17,3 +17,26 @@ opt.zero_grad()
 ```
 
 ::: simplegrad.optimizers.sgd.SGD
+    options:
+      members: false
+      show_root_heading: true
+      heading_level: 2
+      docstring_section_style: list
+
+## Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `.lr` | `float` | Default learning rate. |
+| `.step_count` | `int` | Number of optimization steps taken. |
+| `.param_groups` | `list[dict]` | Parameter groups with `"lr"`, `"momentum"`, `"dampening"`, and `"params"`. |
+| `.velocities` | `dict` | Per-parameter velocity arrays used by the momentum update. |
+
+## Methods
+
+| Method | Description |
+|--------|-------------|
+| [`.step()`](sgd/step.md) | Apply one SGD update step to all parameters. |
+| [`.state()`](sgd/state.md) | Return the full optimizer state including velocities. |
+
+Inherits `.zero_grad()`, `.reset_step_count()`, `.set_param()` from [Optimizer](../core/optimizer.md).

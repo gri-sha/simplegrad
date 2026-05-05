@@ -1,6 +1,6 @@
 site_name: simplegrad
 site_description: A lightweight autograd engine for education and experimentation.
-site_url: https://simplegrad.github.io/simplegrad/
+site_url: https://simplegrad.github.io/
 
 repo_url: https://github.com/simplegrad/simplegrad
 repo_name: simplegrad/simplegrad
@@ -48,6 +48,7 @@ plugins:
             docstring_style: google
             annotations_path: brief
             show_signature_annotations: true
+            docstring_section_style: list
 
 nav:
   - Home: index.md
@@ -84,5 +85,8 @@ nav:
     - Adam: api/optimizers/adam.md
   - Schedulers:
     - Overview: api/schedulers/linear.md
-  - Tracking: api/track.md
-  - Visualization: api/visual.md
+  - Tracking:
+    - Overview: api/track.md
+  - Visualization:
+    - Inline: api/visual.md
+    - SimpleBoard: api/simpleboard.md

@@ -14,3 +14,23 @@ model = nn.Sequential(
 ```
 
 ::: simplegrad.nn.transform.Flatten
+    options:
+      members: false
+      show_root_heading: true
+      heading_level: 2
+      docstring_section_style: list
+
+## Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `.start_dim` | `int` | First dimension to flatten. Defaults to `1` (preserves batch dim). |
+| `.end_dim` | `int` | Last dimension to flatten. Defaults to `-1` (all remaining). |
+
+## Methods
+
+| Method | Description |
+|--------|-------------|
+| [`.forward()`](flatten/forward.md) | Flatten the input tensor from `start_dim` to `end_dim`. |
+
+Inherits all methods from [Module](../core/module.md): `.parameters()`, `.submodules()`, `.to_device()`, `.summary()`, `.set_train_mode()`, `.set_eval_mode()`.

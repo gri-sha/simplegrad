@@ -1,4 +1,4 @@
-# Visualization
+# Inline Visualization
 
 Simplegrad includes inline visualisation utilities for Jupyter notebooks. `graph` renders the full computation graph of a tensor using Graphviz, showing each operation as a node and the data-flow edges between them. `plot` and `scatter` produce quick training curves directly in the notebook without needing a separate plotting library.
 

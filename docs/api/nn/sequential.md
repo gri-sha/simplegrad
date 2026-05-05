@@ -15,3 +15,22 @@ out = model(sg.normal((32, 784)))
 ```
 
 ::: simplegrad.nn.sequential.Sequential
+    options:
+      members: false
+      show_root_heading: true
+      heading_level: 2
+      docstring_section_style: list
+
+## Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `.modules` | `list[Module]` | Ordered list of layers passed at construction. |
+
+## Methods
+
+| Method | Description |
+|--------|-------------|
+| [`.forward()`](sequential/forward.md) | Pass `x` through each layer in order and return the final output. |
+
+Inherits all methods from [Module](../core/module.md): `.parameters()`, `.submodules()`, `.to_device()`, `.summary()`, `.set_train_mode()`, `.set_eval_mode()`.

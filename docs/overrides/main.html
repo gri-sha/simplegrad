@@ -9,3 +9,16 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content="{{ config.site_url }}images/docs_og.png" />
 {% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Force all details elements open
+      document.querySelectorAll("details").forEach(function (el) {
+        el.setAttribute("open", "");
+      });
+
+    });
+  </script>
+{% endblock %}

@@ -16,3 +16,22 @@ out = model(sg.ones((8, 128)))
 ```
 
 ::: simplegrad.nn.dropout.Dropout
+    options:
+      members: false
+      show_root_heading: true
+      heading_level: 2
+      docstring_section_style: list
+
+## Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `.p` | `float` | Probability of zeroing each element during training. |
+
+## Methods
+
+| Method | Description |
+|--------|-------------|
+| [`.forward()`](dropout/forward.md) | Apply dropout mask during training; pass through during evaluation. |
+
+Inherits all methods from [Module](../core/module.md): `.parameters()`, `.submodules()`, `.to_device()`, `.summary()`, `.set_train_mode()`, `.set_eval_mode()`.

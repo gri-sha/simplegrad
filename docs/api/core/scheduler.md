@@ -18,3 +18,21 @@ for epoch in range(10):
 ```
 
 ::: simplegrad.core.scheduler.Scheduler
+    options:
+      members: false
+      show_root_heading: true
+      heading_level: 2
+      docstring_section_style: list
+
+## Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `.optimizer` | `Optimizer` | The optimizer whose learning rate this scheduler controls. |
+| `.steps` | `int` | Number of scheduler steps taken so far. |
+
+## Methods
+
+| Method | Description |
+|--------|-------------|
+| `.step()` | Advance the scheduler by one step. Implemented by subclasses. |

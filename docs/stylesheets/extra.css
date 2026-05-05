@@ -21,7 +21,7 @@
 /* Body / prose typography */
 .md-typeset {
   font-family: "Plus Jakarta Sans", sans-serif;
-  font-size: 0.9rem;
+  font-size: 0.74rem;
   line-height: 1.7;
   color: var(--md-default-fg-color);
 }
@@ -49,7 +49,7 @@
 .highlight,
 .highlight code {
   font-family: "JetBrains Mono", monospace !important;
-  font-size: 0.95rem;
+  font-size: 0.74rem;
   background-color: var(--md-code-bg-color);
 }
 
@@ -61,7 +61,7 @@
 /* Navigation */
 .md-nav__link {
   font-family: "Plus Jakarta Sans", sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
 }
 
 .md-nav__link--active,
@@ -95,23 +95,25 @@
   background-color: #1e2021;
 }
 
-/* Tables */
+/* Tables — coherent font size throughout */
 .md-typeset table:not([class]) {
   background-color: #1e2021;
   border: 1px solid #2a2d2e;
   border-radius: 6px;
   overflow: hidden;
+  font-size: 1em;
 }
 
 .md-typeset table:not([class]) th {
   background-color: #252829;
   color: var(--md-primary-fg-color);
   font-family: "JetBrains Mono", monospace;
-  font-size: 0.8em;
+  font-size: 1em;
 }
 
 .md-typeset table:not([class]) td {
   border-top: 1px solid #2a2d2e;
+  font-size: 1em;
 }
 
 /* Links */
@@ -193,3 +195,32 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #34b87e;
 }
+
+/* Force all details elements open — no collapsible dropdowns */
+.md-typeset details {
+  overflow: visible;
+}
+
+.md-typeset details > summary {
+  pointer-events: none;
+  cursor: default;
+  list-style: none;
+}
+
+.md-typeset details > summary::marker,
+.md-typeset details > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Hide function signature parameters — show only the function/method name */
+.doc.doc-heading code.highlight > span:not(:first-child) {
+  display: none;
+}
+
+/* Docstring block styling — visual boundary for auto-generated API content */
+.md-typeset .doc.doc-object {
+  border-left: 2px solid rgba(52, 184, 126, 0.35);
+  padding-left: 1.25rem;
+  margin: 1.75rem 0;
+}
+

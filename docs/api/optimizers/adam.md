@@ -17,3 +17,25 @@ opt.zero_grad()
 ```
 
 ::: simplegrad.optimizers.adam.Adam
+    options:
+      members: false
+      show_root_heading: true
+      heading_level: 2
+      docstring_section_style: list
+
+## Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `.lr` | `float` | Default learning rate. |
+| `.step_count` | `int` | Number of optimization steps taken. |
+| `.param_groups` | `list[dict]` | Parameter groups with `"lr"`, `"beta_1"`, `"beta_2"`, `"eps"`, and `"params"`. |
+
+## Methods
+
+| Method | Description |
+|--------|-------------|
+| [`.step()`](adam/step.md) | Apply one Adam update step to all parameters. |
+| [`.state()`](adam/state.md) | Return the full optimizer state including moment estimates. |
+
+Inherits `.zero_grad()`, `.reset_step_count()`, `.set_param()` from [Optimizer](../core/optimizer.md).

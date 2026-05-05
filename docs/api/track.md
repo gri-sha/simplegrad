@@ -1,4 +1,4 @@
-# Experiment Tracking
+# Tracking
 
 The experiment tracking module lets you log metrics, hyperparameters, and computation graphs across training runs, storing everything in a SQLite database. `Tracker` is the high-level API: you set an experiment, start a run, log scalars after each epoch, and end the run. Logged data can then be explored via the SimpleBoard web dashboard.
 

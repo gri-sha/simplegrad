@@ -63,22 +63,12 @@ def lazy():
 def mode(mode: str) -> None:
     """Set the global execution mode persistently.
 
-    Prefer the ``lazy()`` context manager for scoped control. Use
-    ``set_mode`` only when you need the mode to persist across multiple
-    function calls or modules.
-
     Args:
         mode: Either ``"eager"`` (default, execute numpy immediately) or
             ``"lazy"`` (defer execution until ``.realize()`` is called).
 
     Raises:
         ValueError: If ``mode`` is not ``"eager"`` or ``"lazy"``.
-
-    Example:
-        >>> sg.set_mode("lazy")
-        >>> out = model(x)
-        >>> out.realize()
-        >>> sg.set_mode("eager")
     """
     global _LAZY_MODE
     if mode == "lazy":
@@ -133,7 +123,6 @@ class Context:
     Two attributes are set automatically by :meth:`Function.apply` before
     ``forward`` is called:
 
-    Attributes:
         device: Device string of the operation's tensors (e.g. ``"cpu"``).
         backend: The compute module for this device — either :mod:`numpy`
             or :mod:`cupy`. Forward and backward methods should alias this
@@ -141,12 +130,6 @@ class Context:
 
     Additional attributes are set freely with dot notation — use whatever
     names are meaningful for the op.
-
-    Example:
-        >>> ctx = Context()
-        >>> xp = ctx.backend
-        >>> ctx.mask = xp.random.rand(*x.values.shape) >= p
-        >>> ctx.mask  # available in backward
     """
 
     device: str = "cpu"
@@ -249,15 +232,6 @@ class Tensor:
     Wraps a numpy or cupy array and records operations into a dynamic
     computation graph. Call `.backward()` on a scalar output to propagate
     gradients back to all leaf tensors with `comp_grad=True`.
-
-    Args:
-        values: Initial data. Converted to an array of the given dtype on
-            the given device.
-        comp_grad: Enable gradient tracking. Defaults to the global `_COMP_GRAD` flag.
-        label: Optional name shown in computation graph visualizations.
-        dtype: Data type string (e.g. ``"float32"``). Defaults to ``"float32"``.
-        device: Device string (e.g. ``"cpu"`` or ``"cuda:0"``). Defaults to
-            the current global default device.
     """
 
     def __init__(

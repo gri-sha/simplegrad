@@ -27,9 +27,6 @@ docs = [
 [project.scripts]
 simpleboard = "simplegrad.simpleboard.cli:main"
 
-[tool.setuptools.cmdclass]
-build_py = "tools.build_hooks:BuildPyCommand"
-
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["simplegrad*"]
