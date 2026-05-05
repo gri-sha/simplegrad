@@ -1,5 +1,6 @@
 """High-level experiment tracking API built on top of ExperimentDBManager."""
 
+from contextlib import contextmanager
 from pathlib import Path
 from .exp_db_manager import ExperimentDBManager, RunInfo, RecordInfo
 from .comp_graph import _build_graph_data
@@ -99,6 +100,62 @@ class Tracker:
         self.db_manager.save_image(
             self.current_run_id, name, step, int(w), int(h), int(c), arr.tobytes()
         )
+
+    def text(self, name: str, content: str, step: int):
+        """Log a text snippet at a given step.
+
+        Useful for recording sampled outputs from a generative model, validation
+        predictions, free-form notes, or model summaries — anything you'd want
+        to read back later in the dashboard. Mirrors TensorBoard's `add_text`.
+
+        Args:
+            name: Tag under which to group related texts (e.g. "samples").
+            content: The string to record. No length limit, but very long
+                strings will bloat the database.
+            step: Training step the text is associated with.
+        """
+        if self.current_run_id is None:
+            raise RuntimeError("No active run. Call start_run() first.")
+        self.db_manager.save_text(self.current_run_id, name, step, str(content))
+
+    def summary(self, run_id: int | None = None) -> dict[str, dict]:
+        """Return per-metric summary statistics (min/max/mean/std/last/n).
+
+        If `run_id` is omitted, summarizes the active run. The returned dict
+        maps metric name -> {min, max, mean, std, last, n, first_step,
+        last_step} and is the same data exposed at /api/runs/{id}/summary.
+        """
+        rid = run_id if run_id is not None else self.current_run_id
+        if rid is None:
+            raise RuntimeError("No active run and no run_id given.")
+        return self.db_manager.get_metric_summary(rid)
+
+    @contextmanager
+    def run(self, name: str | None = None, config: dict | None = None):
+        """Context manager that starts a run on enter and ends it on exit.
+
+        On clean exit the run is marked "completed". If the body raises, the
+        run is marked "failed" and the exception is re-raised — so dashboards
+        can distinguish crashed runs from successful ones without extra code
+        in the training loop.
+
+        Example:
+            >>> tracker.set_experiment("mnist")
+            >>> with tracker.run(name="lr=0.01", config={"lr": 0.01}) as run_id:
+            ...     for step in range(100):
+            ...         tracker.record("loss", loss_val, step)
+        """
+        run_id = self.start_run(name=name, config=config)
+        try:
+            yield run_id
+        except BaseException:
+            # only end the run if the user hasn't already ended it manually
+            if self.current_run_id == run_id:
+                self.end_run(status="failed")
+            raise
+        else:
+            if self.current_run_id == run_id:
+                self.end_run(status="completed")
 
     def end_run(self, status: str = "completed"):
         """End the current run with a given status"""

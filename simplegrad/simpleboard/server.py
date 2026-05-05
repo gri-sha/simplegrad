@@ -1,6 +1,8 @@
 """HTTP server for the simpleboard visualization dashboard."""
 
+import csv
 import dataclasses
+import io
 import json
 import mimetypes
 import re
@@ -11,6 +13,42 @@ from urllib.parse import parse_qs, urlparse
 from .api import state
 
 DIST = Path(__file__).parent / "app" / "dist"
+
+
+def _ema_smooth(values: list[float], smoothing: float) -> list[float]:
+    """Exponential moving average with debiasing, matching TensorBoard's
+    scalar smoothing. `smoothing` is in [0, 1); 0 means no smoothing."""
+    if smoothing <= 0 or not values:
+        return list(values)
+    smoothing = min(smoothing, 0.999)
+    smoothed: list[float] = []
+    last = 0.0
+    weight = 0.0
+    for v in values:
+        last = last * smoothing + v * (1 - smoothing)
+        weight = weight * smoothing + (1 - smoothing)
+        smoothed.append(last / weight if weight > 0 else v)
+    return smoothed
+
+
+def _parse_float(qs: dict, key: str, default: float) -> float:
+    raw = qs.get(key, [None])[0]
+    if raw is None or raw == "":
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+def _parse_id_list(qs: dict, key: str) -> list[int]:
+    raw = qs.get(key, [""])[0]
+    out: list[int] = []
+    for chunk in raw.split(","):
+        chunk = chunk.strip()
+        if chunk.isdigit():
+            out.append(int(chunk))
+    return out
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -55,18 +93,21 @@ class Handler(BaseHTTPRequestHandler):
                 self._error(404, f"Run {run_id} not found")
             else:
                 metric_name = qs.get("metric_name", [None])[0]
+                smoothing = _parse_float(qs, "smoothing", 0.0)
                 if metric_name:
-                    records = state.exp_db.get_records(run_id, metric_name)
-                    metrics = {metric_name: [dataclasses.asdict(r) for r in records]}
+                    names = [metric_name]
                 else:
                     names = state.exp_db.get_metrics(run_id)
-                    metrics = {
-                        name: [
-                            dataclasses.asdict(r) for r in state.exp_db.get_records(run_id, name)
-                        ]
-                        for name in names
-                    }
-                self._json({"run_id": run_id, "metrics": metrics})
+                metrics = {}
+                for name in names:
+                    records = state.exp_db.get_records(run_id, name)
+                    items = [dataclasses.asdict(r) for r in records]
+                    if smoothing > 0 and items:
+                        smoothed = _ema_smooth([it["value"] for it in items], smoothing)
+                        for it, sv in zip(items, smoothed):
+                            it["smoothed"] = sv
+                    metrics[name] = items
+                self._json({"run_id": run_id, "metrics": metrics, "smoothing": smoothing})
 
         elif m := re.fullmatch(r"/api/runs/(\d+)/metrics", path):
             run_id = int(m.group(1))
@@ -98,8 +139,139 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._json({"run_id": run_id, "images": state.exp_db.get_images(run_id)})
 
+        elif m := re.fullmatch(r"/api/runs/(\d+)/texts", path):
+            run_id = int(m.group(1))
+            if state.exp_db is None:
+                self._error(400, "No database selected")
+            elif state.exp_db.get_run(run_id) is None:
+                self._error(404, f"Run {run_id} not found")
+            else:
+                self._json({"run_id": run_id, "texts": state.exp_db.get_texts(run_id)})
+
+        elif m := re.fullmatch(r"/api/runs/(\d+)/summary", path):
+            run_id = int(m.group(1))
+            if state.exp_db is None:
+                self._error(400, "No database selected")
+            elif state.exp_db.get_run(run_id) is None:
+                self._error(404, f"Run {run_id} not found")
+            else:
+                self._json({"run_id": run_id, "metrics": state.exp_db.get_metric_summary(run_id)})
+
+        elif path == "/api/runs/compare":
+            if state.exp_db is None:
+                self._error(400, "No database selected")
+            else:
+                metric = qs.get("metric", [None])[0]
+                if not metric:
+                    self._error(400, "Query param 'metric' is required")
+                else:
+                    ids = _parse_id_list(qs, "ids")
+                    smoothing = _parse_float(qs, "smoothing", 0.0)
+                    runs_out: dict[str, dict] = {}
+                    for rid in ids:
+                        run = state.exp_db.get_run(rid)
+                        if run is None:
+                            continue
+                        records = state.exp_db.get_records(rid, metric)
+                        items = [dataclasses.asdict(r) for r in records]
+                        if smoothing > 0 and items:
+                            smoothed = _ema_smooth([it["value"] for it in items], smoothing)
+                            for it, sv in zip(items, smoothed):
+                                it["smoothed"] = sv
+                        runs_out[str(rid)] = {"name": run.name, "records": items}
+                    self._json({"metric": metric, "smoothing": smoothing, "runs": runs_out})
+
+        elif path == "/api/hparams":
+            if state.exp_db is None:
+                self._error(400, "No database selected")
+            else:
+                runs = state.exp_db.get_all_runs()
+                hparam_keys: set[str] = set()
+                metric_keys: set[str] = set()
+                table = []
+                for r in runs:
+                    summary = state.exp_db.get_metric_summary(r.run_id)
+                    metric_keys.update(summary.keys())
+                    if isinstance(r.config, dict):
+                        hparam_keys.update(r.config.keys())
+                    table.append(
+                        {
+                            "run_id": r.run_id,
+                            "name": r.name,
+                            "status": r.status,
+                            "created_at": r.created_at,
+                            "hparams": r.config if isinstance(r.config, dict) else {},
+                            "metrics": summary,
+                        }
+                    )
+                self._json(
+                    {
+                        "hparam_keys": sorted(hparam_keys),
+                        "metric_keys": sorted(metric_keys),
+                        "runs": table,
+                    }
+                )
+
+        elif m := re.fullmatch(r"/api/runs/(\d+)/records\.csv", path):
+            run_id = int(m.group(1))
+            if state.exp_db is None:
+                self._error(400, "No database selected")
+            elif state.exp_db.get_run(run_id) is None:
+                self._error(404, f"Run {run_id} not found")
+            else:
+                metric_name = qs.get("metric", [None])[0]
+                names = [metric_name] if metric_name else state.exp_db.get_metrics(run_id)
+                buf = io.StringIO()
+                writer = csv.writer(buf)
+                writer.writerow(["metric", "step", "value", "wall_time"])
+                for name in names:
+                    for r in state.exp_db.get_records(run_id, name):
+                        writer.writerow([name, r.step, r.value, r.log_time])
+                self._send_bytes(
+                    buf.getvalue().encode("utf-8"),
+                    content_type="text/csv",
+                    filename=f"run_{run_id}.csv",
+                )
+
+        elif m := re.fullmatch(r"/api/runs/(\d+)/export\.json", path):
+            run_id = int(m.group(1))
+            if state.exp_db is None:
+                self._error(400, "No database selected")
+            else:
+                run = state.exp_db.get_run(run_id)
+                if run is None:
+                    self._error(404, f"Run {run_id} not found")
+                else:
+                    metrics = {
+                        name: [
+                            dataclasses.asdict(r) for r in state.exp_db.get_records(run_id, name)
+                        ]
+                        for name in state.exp_db.get_metrics(run_id)
+                    }
+                    payload = {
+                        "run": dataclasses.asdict(run),
+                        "metrics": metrics,
+                        "summary": state.exp_db.get_metric_summary(run_id),
+                        "histograms": state.exp_db.get_histograms(run_id),
+                        "texts": state.exp_db.get_texts(run_id),
+                        "graphs": state.exp_db.get_comp_graphs(run_id),
+                    }
+                    body = json.dumps(payload, indent=2).encode("utf-8")
+                    self._send_bytes(
+                        body,
+                        content_type="application/json",
+                        filename=f"run_{run_id}.json",
+                    )
+
         else:
             self._serve_static(path)
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
 
     def do_POST(self):
         path = urlparse(self.path).path
@@ -160,11 +332,22 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", len(body))
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(body)
 
     def _error(self, status, detail):
         self._json({"detail": detail}, status)
+
+    def _send_bytes(self, body: bytes, content_type: str, filename: str | None = None):
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", len(body))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        if filename:
+            self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.end_headers()
+        self.wfile.write(body)
 
     def _read_body(self) -> dict:
         length = int(self.headers.get("Content-Length", 0))
@@ -183,6 +366,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", mime or "application/octet-stream")
         self.send_header("Content-Length", len(body))
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(body)
 
