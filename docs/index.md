@@ -4,13 +4,34 @@ A lightweight deep learning framework with automatic differentiation. Runs on Nu
 
 ## Installation
 
+The package is not yet on PyPI — install from source:
+
 ```bash
-pip install simplegrad[gpu] @ git+https://github.com/simplegrad/simplegrad.git
+# CPU only (NumPy backend)
+pip install git+https://github.com/simplegrad/simplegrad.git
+
+# GPU support (CuPy — requires CUDA 12.x)
+pip install "simplegrad[gpu] @ git+https://github.com/simplegrad/simplegrad.git"
 ```
 
-The SimpleBoard frontend is built automatically from npm sources during installation. If you do not have Node.js installed or want to skip the build, set `SIMPLEGRAD_NO_BUILD_WEB=1`:
+The SimpleBoard frontend is compiled from npm sources during installation. If Node.js is not available, skip the build with:
+
 ```bash
-SIMPLEGRAD_NO_BUILD_WEB=1 pip install simplegrad[gpu] @ git+https://github.com/simplegrad/simplegrad.git
+SIMPLEGRAD_NO_BUILD_WEB=1 pip install git+https://github.com/simplegrad/simplegrad.git
+```
+
+### Optional extras
+
+| Extra | Installs | Use when |
+|-------|----------|----------|
+| `gpu` | `cupy-cuda12x` | Running on an NVIDIA GPU (CUDA 12.x) |
+| `bench` | `torch` | Running the benchmarks in `benchmarks/` |
+| `dev` | `pytest`, `black`, `mypy`, `ipykernel` | Contributing / running tests |
+| `docs` | `mkdocs`, `mkdocs-material`, `mkdocstrings` | Building the documentation locally |
+
+```bash
+# Install multiple extras at once
+pip install "simplegrad[gpu,dev] @ git+https://github.com/simplegrad/simplegrad.git"
 ```
 
 ## Quick start
