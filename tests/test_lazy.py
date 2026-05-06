@@ -15,6 +15,7 @@ def _np(arr):
         return arr.get()
     return np.asarray(arr)
 
+
 # mode infrastructure
 
 

@@ -35,6 +35,7 @@ def _erf(xp, arr):
     if xp is np:
         return _erf_np(arr)
     import cupyx.scipy.special
+
     return cupyx.scipy.special.erf(arr)
 
 
