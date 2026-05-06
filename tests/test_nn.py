@@ -5,7 +5,7 @@ import pytest
 
 pytestmark = pytest.mark.usefixtures("device")
 import simplegrad as sg
-from .utils import gradcheck, fwdcheck
+from .utils import gradcheck, fwdcheck, _to_numpy
 
 
 def _test_conv2d_helper(
@@ -291,7 +291,7 @@ def test_dropout_eval_passthrough():
     dropout.set_eval_mode()
     out = dropout(x)
 
-    assert np.array_equal(out.values, x_data)
+    assert np.array_equal(_to_numpy(out.values), x_data)
 
 
 def test_dropout_training_zeroes_fraction():

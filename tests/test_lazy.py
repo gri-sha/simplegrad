@@ -8,6 +8,13 @@ import simplegrad as sg
 from simplegrad.core import Tensor, is_lazy, lazy, mode
 from simplegrad.core.autograd import _create_op_result
 
+
+def _np(arr):
+    """Convert CuPy array to NumPy for assertions."""
+    if hasattr(arr, "get"):
+        return arr.get()
+    return np.asarray(arr)
+
 # mode infrastructure
 
 
@@ -109,7 +116,7 @@ def test_realize_returns_self():
 def test_realize_on_eager_tensor_is_noop():
     t = Tensor([1.0, 2.0])
     t.realize()
-    np.testing.assert_array_equal(t.values, [1.0, 2.0])
+    np.testing.assert_array_equal(_np(t.values), [1.0, 2.0])
 
 
 def test_realize_executes_graph_in_topo_order():
@@ -121,7 +128,7 @@ def test_realize_executes_graph_in_topo_order():
         out.prev = {mid}
 
     out.realize()
-    np.testing.assert_array_almost_equal(out.values, [3.0, 5.0])
+    np.testing.assert_array_almost_equal(_np(out.values), [3.0, 5.0])
 
 
 # ce_loss backward fix
@@ -135,13 +142,13 @@ def test_ce_loss_backward_correct_after_lazy_realize():
 
     loss_eager = ce_loss(x, y, dim=-1)
     loss_eager.backward()
-    eager_grad = x.grad.copy()
+    eager_grad = _np(x.grad)
     x.grad = None
 
     with lazy():
         loss_lazy = ce_loss(x, y, dim=-1)
     loss_lazy.backward()
-    np.testing.assert_array_almost_equal(x.grad, eager_grad)
+    np.testing.assert_array_almost_equal(_np(x.grad), eager_grad)
 
 
 # lazy operator overloads
@@ -155,7 +162,7 @@ def test_lazy_add_tensor():
     assert out.values is None
     assert out.shape == (1, 2)
     out.realize()
-    np.testing.assert_array_equal(out.values, [[4.0, 6.0]])
+    np.testing.assert_array_equal(_np(out.values), [[4.0, 6.0]])
 
 
 def test_lazy_matmul():
@@ -166,7 +173,7 @@ def test_lazy_matmul():
     assert out.values is None
     assert out.shape == (2, 1)
     out.realize()
-    np.testing.assert_array_equal(out.values, [[1.0], [3.0]])
+    np.testing.assert_array_equal(_np(out.values), [[1.0], [3.0]])
 
 
 def test_lazy_add_backward():
@@ -175,8 +182,8 @@ def test_lazy_add_backward():
     with lazy():
         out = a + b
     out.backward()
-    np.testing.assert_array_equal(a.grad, [[1.0, 1.0]])
-    np.testing.assert_array_equal(b.grad, [[1.0, 1.0]])
+    np.testing.assert_array_equal(_np(a.grad), [[1.0, 1.0]])
+    np.testing.assert_array_equal(_np(b.grad), [[1.0, 1.0]])
 
 
 def test_lazy_transpose():
@@ -185,7 +192,7 @@ def test_lazy_transpose():
         out = a.T
     assert out.shape == (3, 1)
     out.realize()
-    np.testing.assert_array_equal(out.values, [[1.0], [2.0], [3.0]])
+    np.testing.assert_array_equal(_np(out.values), [[1.0], [2.0], [3.0]])
 
 
 # lazy activations and math functions
@@ -200,7 +207,7 @@ def test_lazy_relu():
     assert out.values is None
     assert out.shape == (3,)
     out.realize()
-    np.testing.assert_array_equal(out.values, [0.0, 0.0, 2.0])
+    np.testing.assert_array_equal(_np(out.values), [0.0, 0.0, 2.0])
 
 
 def test_lazy_exp():
@@ -211,7 +218,7 @@ def test_lazy_exp():
         out = exp(x)
     assert out.values is None
     out.realize()
-    np.testing.assert_array_almost_equal(out.values, [1.0, np.e])
+    np.testing.assert_array_almost_equal(_np(out.values), [1.0, np.e])
 
 
 def test_lazy_activation_backward():
@@ -221,7 +228,7 @@ def test_lazy_activation_backward():
     with lazy():
         out = relu(x)
     out.backward()
-    np.testing.assert_array_equal(x.grad, [0.0, 1.0])
+    np.testing.assert_array_equal(_np(x.grad), [0.0, 1.0])
 
 
 # lazy reduction ops
@@ -234,7 +241,7 @@ def test_lazy_sum_no_dim():
     assert out.values is None
     assert out.shape == (1, 1)
     out.realize()
-    np.testing.assert_array_equal(out.values, [[10.0]])
+    np.testing.assert_array_equal(_np(out.values), [[10.0]])
 
 
 def test_lazy_sum_with_dim():
@@ -243,7 +250,7 @@ def test_lazy_sum_with_dim():
         out = sg.sum(x, dim=1)
     assert out.shape == (2, 1)
     out.realize()
-    np.testing.assert_array_equal(out.values, [[3.0], [7.0]])
+    np.testing.assert_array_equal(_np(out.values), [[3.0], [7.0]])
 
 
 def test_lazy_mean():
@@ -251,7 +258,7 @@ def test_lazy_mean():
     with lazy():
         out = sg.mean(x)
     out.realize()
-    np.testing.assert_array_almost_equal(out.values, [[3.0]])
+    np.testing.assert_array_almost_equal(_np(out.values), [[3.0]])
 
 
 # lazy transform ops
@@ -322,7 +329,7 @@ def test_lazy_dropout_eval_mode():
     assert out.values is None
     assert out.shape == (1, 3)
     out.realize()
-    np.testing.assert_array_equal(out.values, x.values)
+    np.testing.assert_array_equal(_np(out.values), _np(x.values))
 
 
 def test_lazy_dropout_train_mode():
@@ -362,13 +369,13 @@ def test_lazy_linear_forward_matches_eager():
     x = Tensor(rng.standard_normal((3, 4)).astype("float32"), comp_grad=True)
 
     out_eager = layer.forward(x)
-    eager_values = out_eager.values.copy()
+    eager_values = _np(out_eager.values)
 
     with lazy():
         out_lazy = layer.forward(x)
     assert out_lazy.values is None
     out_lazy.realize()
-    np.testing.assert_array_almost_equal(out_lazy.values, eager_values)
+    np.testing.assert_array_almost_equal(_np(out_lazy.values), eager_values)
 
 
 def test_lazy_full_forward_and_backward():
@@ -385,7 +392,7 @@ def test_lazy_full_forward_and_backward():
     probs_e = softmax(logits_e, dim=1)
     loss_e = ce_loss(probs_e, y, dim=1)
     loss_e.backward()
-    eager_weight_grad = layer.weight.grad.copy()
+    eager_weight_grad = _np(layer.weight.grad)
     for p in layer.parameters().values():
         p.grad = None
 
@@ -395,7 +402,7 @@ def test_lazy_full_forward_and_backward():
         loss_l = ce_loss(probs_l, y, dim=1)
 
     loss_l.backward()
-    np.testing.assert_array_almost_equal(layer.weight.grad, eager_weight_grad, decimal=5)
+    np.testing.assert_array_almost_equal(_np(layer.weight.grad), eager_weight_grad, decimal=5)
 
 
 def test_lazy_dead_code_elimination():
@@ -421,4 +428,4 @@ def test_lazy_context_does_not_affect_outer_scope():
         y = x + Tensor([2.0])
     z = x + Tensor([3.0])
     assert z.values is not None
-    np.testing.assert_array_equal(z.values, [4.0])
+    np.testing.assert_array_equal(_np(z.values), [4.0])

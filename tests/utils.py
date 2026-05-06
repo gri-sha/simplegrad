@@ -4,6 +4,13 @@ from typing import Callable
 import numpy as np
 
 
+def _to_numpy(arr) -> np.ndarray:
+    """Return a NumPy array, calling .get() for CuPy arrays."""
+    if hasattr(arr, "get"):
+        return arr.get()
+    return np.asarray(arr)
+
+
 def fwdcheck(out, expected, atol: float = 1e-6) -> None:
     """Assert that a tensor's forward values match an expected numpy array.
 
@@ -15,10 +22,11 @@ def fwdcheck(out, expected, atol: float = 1e-6) -> None:
     Raises:
         AssertionError: If values differ by more than atol.
     """
+    values = _to_numpy(out.values)
     expected = np.asarray(expected)
-    assert np.allclose(out.values, expected, atol=atol), (
-        f"Forward mismatch: max diff = {np.max(np.abs(out.values - expected)):.2e}\n"
-        f"  got      = {out.values}\n"
+    assert np.allclose(values, expected, atol=atol), (
+        f"Forward mismatch: max diff = {np.max(np.abs(values - expected)):.2e}\n"
+        f"  got      = {values}\n"
         f"  expected = {expected}"
     )
 
@@ -60,7 +68,7 @@ def gradcheck(
     out.zero_grad()
     out.backward()
 
-    analytical = {id(inp): np.array(inp.grad) for inp in inputs}
+    analytical = {id(inp): _to_numpy(inp.grad) for inp in inputs}
 
     for inp in inputs:
         num_grad = np.zeros(inp.shape, dtype=np.float64)

@@ -34,7 +34,8 @@ def _erf(xp, arr):
     """Compute erf element-wise, supporting numpy and cupy backends."""
     if xp is np:
         return _erf_np(arr)
-    return xp.erf(arr)
+    import cupyx.scipy.special
+    return cupyx.scipy.special.erf(arr)
 
 
 class _GELUErf(Function):
