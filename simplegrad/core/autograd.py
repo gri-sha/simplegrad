@@ -259,6 +259,7 @@ class Tensor:
         self.grad = None
         self.backward_step = lambda: None
         self.group: tuple[str, int] | None = get_current_group()
+        self._op_group: tuple[str, int] | None = None
 
     @classmethod
     def deferred(
@@ -299,6 +300,7 @@ class Tensor:
         t.grad = None
         t.backward_step = lambda: None
         t.group = get_current_group()
+        t._op_group = None
         return t
 
     def convert_to(self, dtype: str, inplace: bool = True) -> "Tensor" | None:

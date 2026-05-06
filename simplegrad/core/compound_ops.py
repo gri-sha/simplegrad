@@ -50,6 +50,9 @@ def compound_op(func: Callable) -> Callable:
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         with graph_group(func.__name__):
-            return func(*args, **kwargs)
+            result = func(*args, **kwargs)
+        result._op_group = result.group
+        result.group = None
+        return result
 
     return wrapper

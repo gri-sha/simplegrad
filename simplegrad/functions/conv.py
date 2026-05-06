@@ -122,7 +122,7 @@ def _get_img_from_rec_fields(
 
 
 class _Conv2dNoPad(Function):
-    oper = "conv2d"
+    oper = "conv2d_no_pad"
 
     @staticmethod
     def output_shape(padded_input: Tensor, weight: Tensor, bias, stride) -> tuple:

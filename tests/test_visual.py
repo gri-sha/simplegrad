@@ -32,15 +32,14 @@ def test_multiple_calls_produce_different_ids():
     assert a.group[1] != b.group[1]
 
 
-def test_compound_op_decorator_tags_tensors():
+def test_compound_op_output_is_not_grouped():
     @compound_op
     def my_func(x):
         return Tensor(x.values * 2)
 
     x = Tensor([1.0])
     out = my_func(x)
-    assert out.group is not None
-    assert out.group[0] == "my_func"
+    assert out.group is None
 
 
 def test_compound_op_preserves_function_metadata():
@@ -56,12 +55,15 @@ def test_compound_op_preserves_function_metadata():
 def test_compound_op_different_calls_different_ids():
     @compound_op
     def my_func(x):
-        return Tensor(x.values * 2)
+        inner = x * 2
+        return inner + 0
 
-    x = Tensor([1.0])
+    x = Tensor([1.0], comp_grad=True)
     a = my_func(x)
     b = my_func(x)
-    assert a.group[1] != b.group[1]
+    a_internal = [t for t in _collect(a) if t is not x and t is not a]
+    b_internal = [t for t in _collect(b) if t is not x and t is not b]
+    assert a_internal[0].group[1] != b_internal[0].group[1]
 
 
 def _collect(t, seen=None):
@@ -81,7 +83,9 @@ def test_softmax_internal_tensors_are_grouped():
 
     x = Tensor([[1.0, 2.0, 3.0]], comp_grad=True)
     out = softmax(x, dim=1)
-    internal = [t for t in _collect(out) if t is not x]
+    # output sits outside the cluster; only intermediates are grouped
+    assert out.group is None
+    internal = [t for t in _collect(out) if t is not x and t is not out]
     assert all(t.group is not None for t in internal)
     group_ids = {t.group[1] for t in internal}
     assert len(group_ids) == 1
