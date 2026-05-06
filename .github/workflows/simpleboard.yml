@@ -1,0 +1,54 @@
+name: Build SimpleBoard
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'simplegrad/simpleboard/app/src/**'
+      - 'simplegrad/simpleboard/app/public/**'
+      - 'simplegrad/simpleboard/app/index.html'
+      - 'simplegrad/simpleboard/app/package.json'
+      - 'simplegrad/simpleboard/app/package-lock.json'
+      - 'simplegrad/simpleboard/app/vite.config.ts'
+      - 'simplegrad/simpleboard/app/tsconfig.json'
+      - 'simplegrad/simpleboard/app/tsconfig.app.json'
+      - 'simplegrad/simpleboard/app/tsconfig.node.json'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: simplegrad/simpleboard/app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: simplegrad/simpleboard/app
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: simplegrad/simpleboard/app
+        run: npm run build
+
+      - name: Commit updated dist
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git rm -r --cached simplegrad/simpleboard/app/dist/ 2>/dev/null || true
+          git add simplegrad/simpleboard/app/dist/
+          if git diff --staged --quiet; then
+            echo "No dist changes — skipping commit."
+          else
+            git commit -m "chore: rebuild SimpleBoard dist [skip ci]"
+            git push
+          fi

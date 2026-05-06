@@ -62,6 +62,9 @@ export function MainContent({
   const [ignoreOutliers, setIgnoreOutliers] = useState(() => {
     return localStorage.getItem('sb_ignoreOutliers') === 'true';
   });
+  const [overlayMode, setOverlayMode] = useState(() => {
+    return localStorage.getItem('sb_overlayMode') !== 'false';
+  });
 
   // Persist toolbar settings
   useEffect(() => { localStorage.setItem('sb_smoothing', String(smoothing)); }, [smoothing]);
@@ -69,6 +72,7 @@ export function MainContent({
   useEffect(() => { localStorage.setItem('sb_yScale', yScale); }, [yScale]);
   useEffect(() => { localStorage.setItem('sb_filter', filter); }, [filter]);
   useEffect(() => { localStorage.setItem('sb_ignoreOutliers', String(ignoreOutliers)); }, [ignoreOutliers]);
+  useEffect(() => { localStorage.setItem('sb_overlayMode', String(overlayMode)); }, [overlayMode]);
 
   // Union of metric names across the currently selected runs.
   const allMetricNames = useMemo(() => {
@@ -209,20 +213,47 @@ export function MainContent({
               onFilterChange={setFilter}
               ignoreOutliers={ignoreOutliers}
               onIgnoreOutliersChange={setIgnoreOutliers}
+              overlayMode={overlayMode}
+              onOverlayModeChange={setOverlayMode}
             />
             {visibleMetricNames.length > 0 ? (
               <div className="metrics-grid">
-                {visibleMetricNames.map((name) => (
-                  <MetricGraph
-                    key={name}
-                    metricName={name}
-                    series={seriesByMetric[name] || []}
-                    smoothing={smoothing}
-                    xAxisMode={xAxisMode}
-                    yScale={yScale}
-                    ignoreOutliers={ignoreOutliers}
-                  />
-                ))}
+                {overlayMode
+                  ? visibleMetricNames.map((name) => (
+                      <MetricGraph
+                        key={name}
+                        metricName={name}
+                        series={seriesByMetric[name] || []}
+                        smoothing={smoothing}
+                        xAxisMode={xAxisMode}
+                        yScale={yScale}
+                        ignoreOutliers={ignoreOutliers}
+                      />
+                    ))
+                  : selectedRunIds.flatMap((runId) =>
+                      visibleMetricNames
+                        .filter((name) => (metricsByRun[runId]?.[name]?.length ?? 0) > 0)
+                        .map((name) => {
+                          const runIndex = runs.findIndex((r) => r.run_id === runId);
+                          return (
+                            <MetricGraph
+                              key={`${runId}-${name}`}
+                              metricName={`${runNames[runId] || `Run #${runId}`} — ${name}`}
+                              series={[{
+                                runId,
+                                runName: runNames[runId] || `Run #${runId}`,
+                                color: colorForIndex(runIndex),
+                                data: metricsByRun[runId][name],
+                              }]}
+                              smoothing={smoothing}
+                              xAxisMode={xAxisMode}
+                              yScale={yScale}
+                              ignoreOutliers={ignoreOutliers}
+                            />
+                          );
+                        })
+                    )
+                }
               </div>
             ) : (
               <div className="main-empty">

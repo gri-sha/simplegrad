@@ -182,8 +182,8 @@ export function Sidebar({
                           <button onClick={(e) => { e.stopPropagation(); updateRunMeta(run.run_id, { pinned: !meta.pinned }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: meta.pinned ? 'var(--color-fg)' : 'inherit' }}>
                             <Pin size={12} fill={meta.pinned ? 'currentColor' : 'none'} />
                           </button>
-                          <button onClick={(e) => { e.stopPropagation(); updateRunMeta(run.run_id, { hidden: !meta.hidden }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: meta.hidden ? 'var(--color-fg)' : 'inherit' }}>
-                            <EyeOff size={12} />
+                          <button onClick={(e) => { e.stopPropagation(); updateRunMeta(run.run_id, { hidden: !meta.hidden }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: meta.hidden ? 'var(--muted)' : 'inherit' }}>
+                            {meta.hidden ? <EyeOff size={12} /> : <Eye size={12} />}
                           </button>
                           <button onClick={(e) => { e.stopPropagation(); updateRunMeta(run.run_id, { starred: !meta.starred }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: meta.starred ? 'var(--color-fg)' : 'inherit' }}>
                             <Star size={12} />

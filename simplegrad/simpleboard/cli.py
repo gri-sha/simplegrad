@@ -121,7 +121,7 @@ def main():
     if not _frontend_built():
         print(
             "  Warning: frontend bundle not found in simpleboard/app/dist.\n"
-            "           Build it with: python scripts/build_web.py"
+            "           If running from source, build it with: python tools/build_simpleboard.py"
         )
 
     server, bound_port = _bind_with_fallback(host, args.port)

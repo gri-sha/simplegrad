@@ -85,7 +85,7 @@
   background: var(--color-white);
   color: var(--color-fg);
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 500;
   transition: border-color 0.18s ease, background 0.18s ease;
 }
 
@@ -227,9 +227,8 @@
 }
 
 .sidebar-section-label {
-  font-family: var(--font-body);
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--muted);
   padding: 0.25rem 0.75rem 0.5rem;
 }
@@ -353,14 +352,12 @@
 }
 
 .run-item-id {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 0.8125rem;
+  font-size: 0.8rem;
 }
 
 .run-item-name {
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-weight: 500;
   color: var(--color-fg);
   white-space: nowrap;
   overflow: hidden;
@@ -373,7 +370,6 @@
   gap: 0.35rem;
   font-size: 0.75rem;
   color: var(--muted);
-  font-family: var(--font-mono);
 }
 
 .run-item-metrics {
@@ -384,8 +380,7 @@
 }
 
 .run-item-metric-tag {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--muted);
 }
 
@@ -451,8 +446,7 @@
 }
 
 .main-header-id {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--muted);
 }
 
@@ -477,7 +471,7 @@
   border: 1px solid var(--border);
   background: var(--color-white);
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--color-fg);
   transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
@@ -495,8 +489,7 @@
 }
 
 .main-tab-count {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   padding: 0.05rem 0.35rem;
   border-radius: 3px;
   background: rgba(21, 23, 24, 0.06);
@@ -669,8 +662,7 @@
 }
 
 .metric-graph-note {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--color-orange);
   margin-top: 0.25rem;
 }
@@ -692,7 +684,7 @@
 }
 
 .metric-graph-tooltip .mg-tt-x {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--muted);
   border-bottom: 1px solid var(--border);
   padding-bottom: 0.25rem;
@@ -721,7 +713,7 @@
 }
 
 .metric-graph-tooltip .mg-tt-val {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* Scalar toolbar */
@@ -761,8 +753,7 @@
 }
 
 .scalar-toolbar-readout {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--color-fg);
   min-width: 2.5em;
 }
@@ -776,9 +767,8 @@
 
 .scalar-toolbar-segment {
   padding: 0.3rem 0.7rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  font-weight: 500;
   color: var(--muted);
   background: var(--color-white);
   border: none;
@@ -797,14 +787,12 @@
 .scalar-toolbar-segment.active {
   background: var(--selected-bg);
   color: var(--color-fg);
-  border-color: var(--selected-border);
 }
 
 .scalar-toolbar-filter {
   flex: 1;
   min-width: 0;
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   padding: 0.32rem 0.55rem;
 }
 
@@ -817,15 +805,13 @@
 }
 
 .metric-graph-title {
-  font-family: var(--font-body);
   font-size: 0.88rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-fg);
 }
 
 .metric-graph-value {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: var(--muted);
 }
 
@@ -842,7 +828,6 @@
 }
 
 .metric-graph .axis text {
-  font-family: var(--font-mono);
   font-size: 11px;
   fill: var(--muted);
 }
@@ -889,9 +874,8 @@
 }
 
 .comp-graph-title {
-  font-family: var(--font-body);
   font-size: 0.88rem;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 0.75rem;
   color: var(--color-fg);
 }

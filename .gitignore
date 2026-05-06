@@ -11,7 +11,7 @@ demo_dashboard.py
 try.ipynb
 *.egg-info/
 build/
-dist/
+/dist/
 *.pyc
 __pycache__/
 *.db 
@@ -20,3 +20,4 @@ site/
 .oneignore
 *local.json
 .claude
+examples/

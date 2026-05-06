@@ -37,8 +37,9 @@ assets/                   # Static assets
 benchmarks/               # Performance benchmarks vs PyTorch (CPU and GPU)
     logs/                 # Saved benchmark output logs
 scripts/                  # Developer utility scripts
-    build_web.py          # Builds the SimpleBoard frontend
     check_cupy.py         # Prints CuPy/CUDA device info
+tools/                    # Developer utility scripts
+    build_simpleboard.py  # Builds the SimpleBoard frontend (local development)
 pyproject.toml            # Project metadata, dependencies, tool config
 mkdocs.yml                # Documentation site configuration
 ```
@@ -157,11 +158,17 @@ mkdocs gh-deploy --force
 
 ### SimpleBoard Frontend
 
-The SimpleBoard web app has a compiled frontend. After making changes to `simplegrad/simpleboard/app/`, rebuild it before committing:
+The SimpleBoard web app has a pre-built frontend. The compiled output lives in `simplegrad/simpleboard/app/dist/` and is committed to the repository.
+
+**CI rebuilds automatically.** Whenever a push to `main` changes files under `simplegrad/simpleboard/app/src/`, `public/`, or any top-level frontend config file (`package.json`, `vite.config.ts`, `tsconfig*.json`, `index.html`), the `simpleboard.yml` workflow runs `npm ci && npm run build` and commits the updated dist back to `main`.
+
+**Local development.** To preview frontend changes before pushing:
 
 ```bash
-python scripts/build_web.py
+python tools/build_simpleboard.py
 ```
+
+`pip install simplegrad` no longer requires Node.js.
 
 ### Benchmarks
 
