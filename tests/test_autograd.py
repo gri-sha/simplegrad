@@ -60,7 +60,7 @@ def test_gradient_accumulates_across_backward_calls():
     a = sg.Tensor(np.array([1.0, 2.0, 3.0], dtype=np.float64), dtype="float64")
 
     sg.sum(a * 2.0).backward()
-    grad_after_first = _to_numpy(a.grad)
+    grad_after_first = _to_numpy(a.grad).copy()
 
     sg.sum(a * 3.0).backward()
     assert np.allclose(_to_numpy(a.grad), grad_after_first + np.full(3, 3.0))
