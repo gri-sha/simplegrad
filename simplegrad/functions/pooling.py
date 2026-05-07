@@ -2,7 +2,12 @@
 
 from ..core import Tensor, Function, Context
 from ..core.devices import _CUPY
-from .conv import pad, _get_rec_fields_from_img, _get_img_from_rec_fields, _get_img_from_rec_fields_cuda
+from .conv import (
+    pad,
+    _get_rec_fields_from_img,
+    _get_img_from_rec_fields,
+    _get_img_from_rec_fields_cuda,
+)
 
 
 class _MaxPool2d(Function):

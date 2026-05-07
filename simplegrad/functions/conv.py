@@ -263,9 +263,7 @@ if _CUPY:
     def _conv2d_no_pad_cuda_bwd(ctx, grad_output):
         xp = ctx.backend
         grad_weight = xp.einsum("bihwpq,bopq->oihw", ctx.rec_fields, grad_output, optimize=True)
-        rec_fields_grad = xp.einsum(
-            "bopq,oihw->bihwpq", grad_output, ctx.weight, optimize=True
-        )
+        rec_fields_grad = xp.einsum("bopq,oihw->bihwpq", grad_output, ctx.weight, optimize=True)
         grad_padded_input = _get_img_from_rec_fields_cuda(
             rec_fields_grad, xp, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw
         )
