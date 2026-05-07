@@ -170,8 +170,7 @@ def _get_img_from_rec_fields_cuda(
     flat_idx = b_idx + c_idx + h_idx + w_idx  # broadcasts to (B, C, kh, kw, out_h, out_w)
 
     img_flat = cp.zeros(B * C * in_h * in_w, dtype=rec_fields.dtype)
-    import cupyx
-    cupyx.scatter_add(img_flat, flat_idx.ravel(), rec_fields.ravel())
+    cp.add.at(img_flat, flat_idx.ravel(), rec_fields.ravel())
     return img_flat.reshape(img_shape)
 
 
