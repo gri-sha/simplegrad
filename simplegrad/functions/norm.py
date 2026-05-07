@@ -62,24 +62,25 @@ class _Norm(Function):
 
 if _CUPY:
     # fused mean: sum(x) / _size
-    _norm_mean = cp.ReductionKernel(
+    # sum over reduction axes — divide by N explicitly in Python to avoid _size ambiguity
+    _norm_sum = cp.ReductionKernel(
         "T x",
         "T y",
         "x",
         "a + b",
-        "y = a / (T)_size",
+        "y = a",
         "0",
-        "sg_norm_mean",
+        "sg_norm_sum",
     )
-    # fused variance: mean((x - mu)^2)
-    _norm_var = cp.ReductionKernel(
-        "T x, T mu",
+    # sum of squared deviations: sum((x - mu)^2) — caller passes centered = x - mu
+    _norm_sum_sq = cp.ReductionKernel(
+        "T x",
         "T y",
-        "(x - mu) * (x - mu)",
+        "x * x",
         "a + b",
-        "y = a / (T)_size",
+        "y = a",
         "0",
-        "sg_norm_var",
+        "sg_norm_sum_sq",
     )
     # fused normalize: (x - mu) / sqrt(var + eps)
     _norm_normalize = cp.ElementwiseKernel(
@@ -88,15 +89,15 @@ if _CUPY:
         "xhat = (x - mu) / sqrt(var + eps)",
         "sg_norm_normalize",
     )
-    # fused mean of element-wise product: mean(a * b)
-    _norm_mean_dot = cp.ReductionKernel(
+    # sum of element-wise product: sum(x * z) — divide by N in Python
+    _norm_sum_dot = cp.ReductionKernel(
         "T x, T z",
         "T y",
         "x * z",
         "a + b",
-        "y = a / (T)_size",
+        "y = a",
         "0",
-        "sg_norm_mean_dot",
+        "sg_norm_sum_dot",
     )
     # fused dx: (dg - mean_dg - xhat * mean_dg_xhat) / sigma
     _norm_bwd_dx = cp.ElementwiseKernel(
@@ -114,16 +115,18 @@ if _CUPY:
         ctx.has_weight = weight is not None
         ctx.has_bias = bias is not None
 
-        # cast eps to the tensor dtype to avoid float32/float64 kernel type mismatch
+        N = 1
+        for a in axes:
+            N *= vals.shape[a]
+        # cast scalar constants to tensor dtype to avoid float32/float64 kernel type mismatch
+        N_typed = vals.dtype.type(N)
         eps_typed = vals.dtype.type(eps)
 
-        mu = _norm_mean(vals, axis=axes, keepdims=True)
-        var = _norm_var(vals, mu, axis=axes, keepdims=True)
+        mu = _norm_sum(vals, axis=axes, keepdims=True) / N_typed
+        centered = vals - mu
+        var = _norm_sum_sq(centered, axis=axes, keepdims=True) / N_typed
         if correction:
-            N = 1
-            for a in axes:
-                N *= vals.shape[a]
-            var = var * N / (N - correction)
+            var = var * N_typed / (N_typed - vals.dtype.type(correction))
 
         x_hat = _norm_normalize(vals, mu, var, eps_typed)
         ctx.x_hat = x_hat
@@ -142,8 +145,13 @@ if _CUPY:
     def _norm_cuda_bwd(ctx, grad):
         d_gamma_dy = grad * ctx.weight_vals if ctx.has_weight else grad
 
-        mean_d = _norm_mean(d_gamma_dy, axis=ctx.axes, keepdims=True)
-        mean_d_xhat = _norm_mean_dot(d_gamma_dy, ctx.x_hat, axis=ctx.axes, keepdims=True)
+        N = 1
+        for a in ctx.axes:
+            N *= ctx.x_hat.shape[a]
+        N_typed = ctx.x_hat.dtype.type(N)
+
+        mean_d = _norm_sum(d_gamma_dy, axis=ctx.axes, keepdims=True) / N_typed
+        mean_d_xhat = _norm_sum_dot(d_gamma_dy, ctx.x_hat, axis=ctx.axes, keepdims=True) / N_typed
         dx = _norm_bwd_dx(d_gamma_dy, mean_d, ctx.x_hat, mean_d_xhat, ctx.sigma)
 
         if ctx.has_weight and ctx.has_bias:

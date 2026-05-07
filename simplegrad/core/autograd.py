@@ -417,7 +417,7 @@ class Tensor:
     def zero_grad(self):
         """Zero gradients on all leaf tensors in the computation graph."""
         if self.comp_grad and self.is_leaf:
-            self.grad = get_backend(self.device).zeros(self.shape)
+            self.grad = get_backend(self.device).zeros(self.shape, dtype=self.dtype)
         for t in self.prev:
             t.zero_grad()
 
@@ -499,7 +499,7 @@ class Tensor:
 
         build_topo(self)
 
-        self.grad = get_backend(self.device).ones(self.values.shape)
+        self.grad = get_backend(self.device).ones(self.values.shape, dtype=self.dtype)
         for t in reversed(topo_order):
             t.backward_step()
 
@@ -510,7 +510,7 @@ class Tensor:
     def _init_grad_if_needed(self) -> None:
         """Initialize gradient array to zeros if not yet set."""
         if self.grad is None:
-            self.grad = get_backend(self.device).zeros(self.shape)
+            self.grad = get_backend(self.device).zeros(self.shape, dtype=self.dtype)
 
     def _reduce_broadcasted_dims(self, delta: np.ndarray) -> np.ndarray:
         """Sum gradient over broadcast dimensions to match this tensor's shape."""
