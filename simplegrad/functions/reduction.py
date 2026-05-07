@@ -20,7 +20,7 @@ class _Sum(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
         xp = ctx.backend
-        return xp.ones(ctx.x_shape) * grad_output
+        return xp.ones(ctx.x_shape, dtype=grad_output.dtype) * grad_output
 
 
 class _Trace(Function):
@@ -39,7 +39,7 @@ class _Trace(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: np.ndarray) -> np.ndarray:
         xp = ctx.backend
-        grad = xp.zeros(ctx.x_shape)
+        grad = xp.zeros(ctx.x_shape, dtype=grad_output.dtype)
         n = min(ctx.x_shape)
         idxs = xp.arange(n)
         grad[idxs, idxs] = grad_output.flatten()[:n]

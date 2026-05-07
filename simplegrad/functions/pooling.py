@@ -51,7 +51,10 @@ class _MaxPool2d(Function):
     @staticmethod
     def backward(ctx: Context, grad_output):
         xp = ctx.backend
-        mask = xp.zeros((ctx.batch_size, ctx.channels, ctx.kh * ctx.kw, ctx.out_h, ctx.out_w))
+        mask = xp.zeros(
+            (ctx.batch_size, ctx.channels, ctx.kh * ctx.kw, ctx.out_h, ctx.out_w),
+            dtype=grad_output.dtype,
+        )
         b_idx = xp.arange(ctx.batch_size)[:, None, None, None]
         c_idx = xp.arange(ctx.channels)[None, :, None, None]
         h_idx = xp.arange(ctx.out_h)[None, None, :, None]

@@ -112,7 +112,7 @@ def _get_img_from_rec_fields(
         out_w,
     ), f"rec_fields shape mismatch, expected {(batch_size, channels, kh, kw, out_h, out_w)}, got {rec_fields.shape}"
 
-    img = xp.zeros(img_shape)
+    img = xp.zeros(img_shape, dtype=rec_fields.dtype)
     for h in range(kh):
         h_max = h + sh * out_h
         for w in range(kw):
