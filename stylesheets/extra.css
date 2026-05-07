@@ -1,0 +1,239 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+
+:root,
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #151718;
+  --md-default-fg-color: #f5f5f5;
+  --md-primary-fg-color: #34b87e;
+  --md-primary-bg-color: #151718;
+  --md-accent-fg-color: #4474b8;
+  --md-code-bg-color: #1e2021;
+  --md-code-fg-color: #f5f5f5;
+  --md-footer-bg-color: #101213;
+  --md-footer-fg-color: #a0a0a0;
+  --md-typeset-a-color: #34b87e;
+}
+
+.md-header__title {
+  display: none;
+}
+
+/* Body / prose typography */
+.md-typeset {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 0.74rem;
+  line-height: 1.7;
+  color: var(--md-default-fg-color);
+}
+
+/* Headings */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  color: #f5f5f5;
+  letter-spacing: -0.01em;
+}
+
+.md-typeset h1 {
+  color: var(--md-primary-fg-color);
+}
+
+/* Code blocks and inline code */
+.md-typeset code,
+.md-typeset pre,
+.highlight,
+.highlight code {
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 0.7rem;
+  background-color: var(--md-code-bg-color);
+}
+
+.md-typeset pre {
+  border-radius: 6px;
+  border: 1px solid #2a2d2e;
+}
+
+/* Navigation */
+.md-nav__link {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 0.78rem;
+}
+
+.md-nav__link--active,
+.md-nav__link:hover {
+  color: var(--md-primary-fg-color);
+}
+
+/* Header */
+.md-header {
+  background-color: #101213;
+  border-bottom: 1px solid #2a2d2e;
+  box-shadow: none;
+}
+
+/* Sidebar */
+.md-sidebar {
+  background-color: #151718;
+}
+
+/* Footer */
+.md-footer {
+  background-color: #101213;
+  border-top: 1px solid #2a2d2e;
+}
+
+/* Admonitions */
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 6px;
+  border-left-color: var(--md-primary-fg-color);
+  background-color: #1e2021;
+}
+
+/* Tables — coherent font size throughout */
+.md-typeset table:not([class]) {
+  background-color: #1e2021;
+  border: 1px solid #2a2d2e;
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 1em;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: #252829;
+  color: var(--md-primary-fg-color);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 1em;
+}
+
+.md-typeset table:not([class]) td {
+  border-top: 1px solid #2a2d2e;
+  font-size: 1em;
+}
+
+/* Links */
+.md-typeset a {
+  color: var(--md-primary-fg-color);
+}
+
+.md-typeset a:hover {
+  color: var(--md-accent-fg-color);
+}
+
+/* Search */
+.md-search__input {
+  background-color: #1e2021;
+  color: #f5f5f5;
+}
+
+.md-search__input::placeholder {
+  color: rgba(245, 245, 245, 0.6);
+}
+
+.md-search__icon,
+.md-search__icon.md-icon {
+  color: #f5f5f5;
+}
+
+/* GitHub source link */
+.md-header__source,
+.md-source,
+.md-source__icon,
+.md-source__repository {
+  color: #f5f5f5 !important;
+}
+
+.md-source__icon svg,
+.md-source .md-icon svg {
+  fill: #f5f5f5;
+}
+
+/* Push source link to the right of the header */
+.md-header__inner {
+  display: flex;
+  align-items: center;
+}
+
+.md-header__source {
+  margin-left: auto;
+  order: 99;
+}
+
+/* Section spacing and visual separation */
+.md-typeset h2 {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(245,245,245,0.1);
+}
+.md-typeset h3 {
+  margin-top: 2rem;
+}
+.md-typeset p {
+  margin-bottom: 1.35em;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e2021;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3a3d3e;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #34b87e;
+}
+
+/* Force all details elements open — no collapsible dropdowns */
+.md-typeset details {
+  overflow: visible;
+}
+
+.md-typeset details > summary {
+  pointer-events: none;
+  cursor: default;
+  list-style: none;
+}
+
+.md-typeset details > summary::marker,
+.md-typeset details > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Hide function signature parameters — show only the function/method name */
+.doc.doc-heading code.highlight > span:not(:first-child) {
+  display: none;
+}
+
+/* Docstring block styling — visual boundary for auto-generated API content */
+.md-typeset .doc.doc-object {
+  border-left: 2px solid rgba(52, 184, 126, 0.35);
+  padding-left: 1.25rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  margin: 1.75rem 0;
+}
+
+/* Reset h2/h3 separator rules inside doc blocks so the green border has
+   equal visual space at the top and bottom — the general h2 rule adds
+   3rem margin-top + 1.5rem padding-top which pushes the separator far
+   below the border start, making the top gap much larger than the bottom. */
+.md-typeset .doc.doc-object > h2,
+.md-typeset .doc.doc-object > h3 {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
