@@ -111,9 +111,11 @@ if _CUPY:
         ndim = vals.ndim
         axes = tuple(d % ndim for d in dims)
         ctx.axes = axes
-        ctx.eps = eps
         ctx.has_weight = weight is not None
         ctx.has_bias = bias is not None
+
+        # cast eps to the tensor dtype to avoid float32/float64 kernel type mismatch
+        eps_typed = vals.dtype.type(eps)
 
         mu = _norm_mean(vals, axis=axes, keepdims=True)
         var = _norm_var(vals, mu, axis=axes, keepdims=True)
@@ -123,9 +125,9 @@ if _CUPY:
                 N *= vals.shape[a]
             var = var * N / (N - correction)
 
-        x_hat = _norm_normalize(vals, mu, var, eps)
+        x_hat = _norm_normalize(vals, mu, var, eps_typed)
         ctx.x_hat = x_hat
-        ctx.sigma = cp.sqrt(var + eps)
+        ctx.sigma = cp.sqrt(var + eps_typed)
 
         out = x_hat
         if weight is not None:

@@ -63,7 +63,7 @@ if _CUPY:
     _gelu_erf_fwd = cp.ElementwiseKernel(
         "T x",
         "T y",
-        "y = (T)0.5 * x * ((T)1.0 + erf(x * (T)M_SQRT1_2))",
+        "y = (T)0.5 * x * ((T)1.0 + erf(x * (T)0.7071067811865476))",
         "sg_gelu_erf_fwd",
     )
     # fused backward: grad * d/dx[0.5 * x * (1 + erf(x/sqrt(2)))]
@@ -71,8 +71,8 @@ if _CUPY:
         "T x, T g",
         "T y",
         """
-        T e   = erf(x * (T)M_SQRT1_2);
-        T pdf = exp((T)-0.5 * x * x) * (T)M_1_SQRTPI * (T)M_SQRT1_2;
+        T e   = erf(x * (T)0.7071067811865476);
+        T pdf = exp((T)-0.5 * x * x) * (T)0.3989422804014327;
         y = g * ((T)0.5 * ((T)1.0 + e) + x * pdf);
         """,
         "sg_gelu_erf_bwd",

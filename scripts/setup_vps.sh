@@ -9,8 +9,8 @@
 
 set -euo pipefail
 
-apt-get update -qq
-apt-get install -y graphviz unzip
+sudo apt-get update -qq
+sudo apt-get install -y graphviz unzip
 
 BASE_DIR="${BASE_DIR:-$HOME}"
 SIMPLEGRAD_REPO="https://github.com/simplegrad/simplegrad.git"
