@@ -9,7 +9,10 @@
 
 set -euo pipefail
 
-BASE_DIR="${BASE_DIR:-/workspace}"
+apt-get update -qq
+apt-get install -y graphviz unzip
+
+BASE_DIR="${BASE_DIR:-$HOME}"
 SIMPLEGRAD_REPO="https://github.com/simplegrad/simplegrad.git"
 EXAMPLES_REPO="https://github.com/simplegrad/examples.git"
 
@@ -25,7 +28,7 @@ TMP_FILES=()
 cleanup() { rm -f "${TMP_FILES[@]}"; }
 trap cleanup EXIT
 
-for cmd in python3 git curl unzip; do
+for cmd in python3 git curl; do
     command -v "$cmd" &>/dev/null || die "'$cmd' not found — install it and retry."
 done
 
