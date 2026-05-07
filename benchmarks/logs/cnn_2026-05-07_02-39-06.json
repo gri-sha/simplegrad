@@ -1,0 +1,238 @@
+{
+  "suite": "cnn",
+  "timestamp": "2026-05-07T02:40:38",
+  "n_runs": 30,
+  "warmup": 5,
+  "sysinfo": {
+    "os": "Linux 6.8.0-1046-nvidia x86_64",
+    "cpu": {
+      "model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+      "physical_cores": 30,
+      "logical_cores": 30
+    },
+    "ram": "222 GB",
+    "python": "3.10.12",
+    "numpy": "2.2.6",
+    "torch": "2.11.0+cu130",
+    "torch_cuda_build": "13.0",
+    "cupy": "14.0.1",
+    "cuda_devices": [
+      {
+        "index": 0,
+        "name": "NVIDIA A10",
+        "compute": "8.6",
+        "memory": "22 GB",
+        "multiprocessors": 72,
+        "clock_mhz": 1695,
+        "driver": "13.0",
+        "runtime": "12.9"
+      }
+    ],
+    "mps": false,
+    "metal_gpu": null
+  },
+  "backends": [
+    {
+      "name": "sg-cpu",
+      "device_label": "numpy  cpu  x86_64"
+    },
+    {
+      "name": "sg-gpu",
+      "device_label": "cupy   cuda:0  NVIDIA A10"
+    },
+    {
+      "name": "torch-cpu",
+      "device_label": "torch  cpu  x86_64"
+    },
+    {
+      "name": "torch-gpu",
+      "device_label": "torch  cuda:0  NVIDIA A10"
+    }
+  ],
+  "groups": [
+    {
+      "label": "img 32x32  in_ch=3  conv(3\u219232\u219264)  fc(\u2192512\u219210)",
+      "configs": [
+        {
+          "label": "batch 8",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 28.851,
+              "fwd_std": 25.681,
+              "bwd_mean": 28.4585,
+              "bwd_std": 17.5399
+            },
+            "sg-gpu": {
+              "fwd_mean": 1.5423,
+              "fwd_std": 0.172,
+              "bwd_mean": 3.7983,
+              "bwd_std": 0.1066
+            },
+            "torch-cpu": {
+              "fwd_mean": 55.8753,
+              "fwd_std": 22.3203,
+              "bwd_mean": 118.8591,
+              "bwd_std": 42.8799
+            },
+            "torch-gpu": {
+              "fwd_mean": 0.422,
+              "fwd_std": 0.1572,
+              "bwd_mean": 0.6297,
+              "bwd_std": 0.0776
+            }
+          }
+        },
+        {
+          "label": "batch 32",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 44.7634,
+              "fwd_std": 32.7641,
+              "bwd_mean": 58.5982,
+              "bwd_std": 34.1665
+            },
+            "sg-gpu": {
+              "fwd_mean": 1.6279,
+              "fwd_std": 0.4928,
+              "bwd_mean": 3.8757,
+              "bwd_std": 0.2255
+            },
+            "torch-cpu": {
+              "fwd_mean": 49.1505,
+              "fwd_std": 28.014,
+              "bwd_mean": 108.1398,
+              "bwd_std": 54.8074
+            },
+            "torch-gpu": {
+              "fwd_mean": 0.3724,
+              "fwd_std": 0.0929,
+              "bwd_mean": 0.681,
+              "bwd_std": 0.2256
+            }
+          }
+        },
+        {
+          "label": "batch 64",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 77.9463,
+              "fwd_std": 32.0631,
+              "bwd_mean": 104.2741,
+              "bwd_std": 38.2205
+            },
+            "sg-gpu": {
+              "fwd_mean": 1.7163,
+              "fwd_std": 0.5776,
+              "bwd_mean": 3.8989,
+              "bwd_std": 0.2245
+            },
+            "torch-cpu": {
+              "fwd_mean": 48.6636,
+              "fwd_std": 31.8911,
+              "bwd_mean": 143.052,
+              "bwd_std": 49.2197
+            },
+            "torch-gpu": {
+              "fwd_mean": 0.4549,
+              "fwd_std": 0.2278,
+              "bwd_mean": 0.841,
+              "bwd_std": 0.1926
+            }
+          }
+        }
+      ]
+    },
+    {
+      "label": "img 64x64  in_ch=3  conv(3\u219232\u219264)  fc(\u2192512\u219210)",
+      "configs": [
+        {
+          "label": "batch 8",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 78.9194,
+              "fwd_std": 80.9101,
+              "bwd_mean": 52.6518,
+              "bwd_std": 31.7229
+            },
+            "sg-gpu": {
+              "fwd_mean": 1.6093,
+              "fwd_std": 0.285,
+              "bwd_mean": 3.8318,
+              "bwd_std": 0.2198
+            },
+            "torch-cpu": {
+              "fwd_mean": 44.9114,
+              "fwd_std": 29.3655,
+              "bwd_mean": 92.9086,
+              "bwd_std": 54.6499
+            },
+            "torch-gpu": {
+              "fwd_mean": 0.4916,
+              "fwd_std": 0.2915,
+              "bwd_mean": 0.7447,
+              "bwd_std": 0.2092
+            }
+          }
+        },
+        {
+          "label": "batch 32",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 165.7906,
+              "fwd_std": 106.0118,
+              "bwd_mean": 232.5255,
+              "bwd_std": 75.6927
+            },
+            "sg-gpu": {
+              "fwd_mean": 1.7786,
+              "fwd_std": 0.6123,
+              "bwd_mean": 5.1195,
+              "bwd_std": 0.7951
+            },
+            "torch-cpu": {
+              "fwd_mean": 51.1898,
+              "fwd_std": 24.9082,
+              "bwd_mean": 112.4483,
+              "bwd_std": 61.0892
+            },
+            "torch-gpu": {
+              "fwd_mean": 0.8263,
+              "fwd_std": 0.3663,
+              "bwd_mean": 1.3383,
+              "bwd_std": 0.3475
+            }
+          }
+        },
+        {
+          "label": "batch 64",
+          "results": {
+            "sg-cpu": {
+              "fwd_mean": 265.9337,
+              "fwd_std": 105.0984,
+              "bwd_mean": 362.5228,
+              "bwd_std": 97.2894
+            },
+            "sg-gpu": {
+              "fwd_mean": 3.0251,
+              "fwd_std": 2.5876,
+              "bwd_mean": 9.3761,
+              "bwd_std": 1.7929
+            },
+            "torch-cpu": {
+              "fwd_mean": 52.1071,
+              "fwd_std": 27.4306,
+              "bwd_mean": 136.5424,
+              "bwd_std": 49.1787
+            },
+            "torch-gpu": {
+              "fwd_mean": 1.4219,
+              "fwd_std": 0.6718,
+              "bwd_mean": 2.2125,
+              "bwd_std": 0.3204
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

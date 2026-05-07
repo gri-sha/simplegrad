@@ -1,0 +1,86 @@
+system
+  os      Linux 6.8.0-1046-nvidia  x86_64
+  python  3.10.12
+  numpy   2.2.6
+  cupy    14.0.1
+  torch   2.11.0+cu130  (cuda build: 13.0)
+
+  cpu     Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz  (30p / 30t)
+  ram     222 GB
+  mps     not available
+
+  gpu     NVIDIA A10
+  vram    22 GB
+  cuda    12.9
+  driver  13.0
+
+mlp
+  n_runs  30    warmup  5
+
+  backends
+    sg-cpu          numpy  cpu  x86_64
+    sg-gpu          cupy   cuda:0  NVIDIA A10
+    torch-cpu       torch  cpu  x86_64
+    torch-gpu       torch  cuda:0  NVIDIA A10
+
+  in_features=128  fc(→512→512→256→10)
+
+    batch 32
+      sg-cpu          fwd 0.67±0.95 ms  bwd 1.43±1.23 ms  total 2.10±1.56 ms
+      sg-gpu          fwd 0.59±0.19 ms  bwd 0.97±0.15 ms  total 1.56±0.24 ms
+      torch-cpu       fwd 1.56±4.92 ms  bwd 3.43±11.38 ms  total 4.99±12.40 ms
+      torch-gpu       fwd 0.25±0.11 ms  bwd 0.51±0.14 ms  total 0.76±0.18 ms
+
+    batch 128
+      sg-cpu          fwd 1.31±1.24 ms  bwd 2.74±1.70 ms  total 4.05±2.11 ms
+      sg-gpu          fwd 0.53±0.07 ms  bwd 0.95±0.11 ms  total 1.48±0.13 ms
+      torch-cpu       fwd 39.95±17.70 ms  bwd 74.02±13.86 ms  total 113.98±22.48 ms
+      torch-gpu       fwd 0.23±0.08 ms  bwd 0.50±0.11 ms  total 0.73±0.13 ms
+
+    batch 256
+      sg-cpu          fwd 1.71±1.45 ms  bwd 5.26±2.57 ms  total 6.97±2.96 ms
+      sg-gpu          fwd 1.16±1.22 ms  bwd 1.73±1.44 ms  total 2.89±1.89 ms
+      torch-cpu       fwd 8.84±20.26 ms  bwd 9.82±24.46 ms  total 18.67±31.76 ms
+      torch-gpu       fwd 0.26±0.16 ms  bwd 0.52±0.14 ms  total 0.78±0.21 ms
+
+  in_features=512  fc(→512→512→256→10)
+
+    batch 32
+      sg-cpu          fwd 0.82±1.12 ms  bwd 1.46±1.22 ms  total 2.28±1.66 ms
+      sg-gpu          fwd 0.57±0.13 ms  bwd 0.93±0.16 ms  total 1.49±0.20 ms
+      torch-cpu       fwd 0.40±0.73 ms  bwd 0.76±1.12 ms  total 1.16±1.34 ms
+      torch-gpu       fwd 0.23±0.15 ms  bwd 0.49±0.09 ms  total 0.72±0.18 ms
+
+    batch 128
+      sg-cpu          fwd 33.48±9.57 ms  bwd 55.70±13.26 ms  total 89.18±16.36 ms
+      sg-gpu          fwd 0.58±0.17 ms  bwd 0.96±0.14 ms  total 1.54±0.22 ms
+      torch-cpu       fwd 45.74±9.06 ms  bwd 73.04±18.11 ms  total 118.79±20.25 ms
+      torch-gpu       fwd 0.26±0.13 ms  bwd 0.52±0.12 ms  total 0.78±0.18 ms
+
+    batch 256
+      sg-cpu          fwd 10.57±13.12 ms  bwd 19.23±19.81 ms  total 29.80±23.76 ms
+      sg-gpu          fwd 0.59±0.47 ms  bwd 0.87±0.12 ms  total 1.46±0.49 ms
+      torch-cpu       fwd 0.72±0.92 ms  bwd 2.22±1.64 ms  total 2.94±1.88 ms
+      torch-gpu       fwd 0.27±0.25 ms  bwd 0.46±0.09 ms  total 0.73±0.26 ms
+
+  in_features=1024  fc(→512→512→256→10)
+
+    batch 32
+      sg-cpu          fwd 5.78±16.03 ms  bwd 8.52±19.31 ms  total 14.30±25.09 ms
+      sg-gpu          fwd 0.55±0.12 ms  bwd 0.97±0.21 ms  total 1.52±0.24 ms
+      torch-cpu       fwd 19.98±1.09 ms  bwd 46.47±1.84 ms  total 66.45±2.14 ms
+      torch-gpu       fwd 0.27±0.17 ms  bwd 0.54±0.11 ms  total 0.80±0.20 ms
+
+    batch 128
+      sg-cpu          fwd 9.51±13.62 ms  bwd 15.93±20.78 ms  total 25.44±24.85 ms
+      sg-gpu          fwd 0.55±0.13 ms  bwd 0.91±0.08 ms  total 1.46±0.16 ms
+      torch-cpu       fwd 47.53±18.00 ms  bwd 76.97±4.64 ms  total 124.50±18.59 ms
+      torch-gpu       fwd 0.25±0.16 ms  bwd 0.51±0.09 ms  total 0.76±0.19 ms
+
+    batch 256
+      sg-cpu          fwd 8.57±10.12 ms  bwd 18.55±17.48 ms  total 27.12±20.19 ms
+      sg-gpu          fwd 0.60±0.20 ms  bwd 0.99±0.18 ms  total 1.59±0.27 ms
+      torch-cpu       fwd 1.55±1.44 ms  bwd 2.08±1.42 ms  total 3.63±2.03 ms
+      torch-gpu       fwd 0.24±0.11 ms  bwd 0.50±0.09 ms  total 0.74±0.14 ms
+
+done
