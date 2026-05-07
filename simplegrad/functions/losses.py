@@ -1,7 +1,8 @@
 """Loss functions: cross-entropy and mean squared error."""
 
 import numpy as np
-from ..core import Tensor, Function, Context, compound_op
+from ..core import Tensor, Function, Context
+from ..core.devices import _CUPY, cp
 from .reduction import sum, mean
 
 
@@ -51,7 +52,86 @@ def ce_loss(z: Tensor, y: Tensor, dim: int = -1, reduction: str = "mean") -> Ten
         raise ValueError(f"Invalid reduction: {reduction}")
 
 
-@compound_op
+class _MSELoss(Function):
+    @staticmethod
+    def output_shape(p: Tensor, y: Tensor, reduction) -> tuple:
+        if reduction is None:
+            return p.shape
+        return (1,) * len(p.shape)
+
+    @staticmethod
+    def forward(ctx: Context, p: Tensor, y: Tensor, reduction) -> np.ndarray:
+        xp = ctx.backend
+        diff = p.values - y.values
+        ctx.diff = diff
+        ctx.reduction = reduction
+        sq = diff * diff
+        if reduction == "mean":
+            ctx.N = diff.size
+            return xp.sum(sq).reshape((1,) * diff.ndim) / diff.size
+        if reduction == "sum":
+            ctx.N = None
+            return xp.sum(sq).reshape((1,) * diff.ndim)
+        ctx.N = None
+        return sq
+
+    @staticmethod
+    def backward(ctx: Context, grad: np.ndarray) -> tuple:
+        coeff = (2.0 / ctx.N) if ctx.reduction == "mean" else 2.0
+        d = grad * coeff * ctx.diff
+        return d, -d
+
+
+if _CUPY:
+    # fused (p - y)^2 in one pass
+    _mse_sq = cp.ElementwiseKernel(
+        "T p, T y",
+        "T z",
+        "z = (p - y) * (p - y)",
+        "sg_mse_sq",
+    )
+    # reduction sum
+    _mse_sum = cp.ReductionKernel(
+        "T z",
+        "T out",
+        "z",
+        "a + b",
+        "out = a",
+        "0",
+        "sg_mse_sum",
+    )
+    # fused backward: 2 * diff * grad, returns both dp and -dp
+    _mse_bwd_ew = cp.ElementwiseKernel(
+        "T diff, T g",
+        "T dp, T dy",
+        "dp = (T)2.0 * diff * g; dy = -dp",
+        "sg_mse_bwd",
+    )
+
+    def _mse_cuda_fwd(ctx, p, y, reduction):
+        sq = _mse_sq(p.values, y.values)
+        diff = p.values - y.values
+        ctx.diff = diff
+        ctx.reduction = reduction
+        if reduction == "mean":
+            ctx.N = diff.size
+            return (_mse_sum(sq) / diff.size).reshape((1,) * diff.ndim)
+        if reduction == "sum":
+            ctx.N = None
+            return _mse_sum(sq).reshape((1,) * diff.ndim)
+        ctx.N = None
+        return sq
+
+    def _mse_cuda_bwd(ctx, grad):
+        dp, dy = _mse_bwd_ew(ctx.diff, grad)
+        if ctx.reduction == "mean":
+            return dp / ctx.N, dy / ctx.N
+        return dp, dy
+
+    _MSELoss.cuda_forward = _mse_cuda_fwd
+    _MSELoss.cuda_backward = _mse_cuda_bwd
+
+
 def mse_loss(p: Tensor, y: Tensor, reduction: str = "mean") -> Tensor:
     """Compute mean squared error loss: mean((p - y)^2).
 
@@ -63,11 +143,6 @@ def mse_loss(p: Tensor, y: Tensor, reduction: str = "mean") -> Tensor:
     Raises:
         ValueError: If ``reduction`` is not a valid option.
     """
-    if reduction == "mean":
-        return mean((p - y) ** 2)
-    elif reduction == "sum":
-        return sum((p - y) ** 2)
-    elif reduction is None:
-        return (p - y) ** 2
-    else:
+    if reduction not in ("mean", "sum", None):
         raise ValueError(f"Invalid reduction: {reduction}")
+    return _MSELoss.apply(p, y, reduction, oper=f"MSELoss({reduction})")

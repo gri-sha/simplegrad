@@ -1,6 +1,7 @@
 """2D convolution and padding operations with autograd support."""
 
 from ..core import Tensor, Function, Context, compound_op, get_backend
+from ..core.devices import _CUPY, cp
 
 
 # check https://numpy.org/doc/stable/reference/generated/numpy.pad.html for mode options
@@ -121,6 +122,58 @@ def _get_img_from_rec_fields(
     return img
 
 
+def _get_img_from_rec_fields_cuda(
+    rec_fields, xp, img_shape: tuple[int, int, int, int], kh: int, kw: int, sh: int, sw: int
+):
+    """
+    Vectorized col2im for CUDA: replaces the kh*kw Python loop with a single scatter_add.
+
+    Instead of kh*kw separate kernel launches, builds flat linear indices for all
+    (b, c, h, w, p, q) → (b, c, h+sh*p, w+sw*q) mappings in parallel and dispatches
+    a single atomic scatter-add over the flattened output buffer.
+
+    Args:
+        rec_fields: cupy array of shape (batch_size, channels, kh, kw, out_h, out_w)
+        img_shape: tuple (batch_size, channels, in_h, in_w)
+        kh, kw: kernel height and width
+        sh, sw: stride height and width
+
+    Returns:
+        img: cupy array of shape (batch_size, channels, in_h, in_w)
+    """
+    B, C, in_h, in_w = img_shape
+    out_h = (in_h - kh) // sh + 1
+    out_w = (in_w - kw) // sw + 1
+
+    assert rec_fields.shape == (
+        B,
+        C,
+        kh,
+        kw,
+        out_h,
+        out_w,
+    ), f"rec_fields shape mismatch, expected {(B, C, kh, kw, out_h, out_w)}, got {rec_fields.shape}"
+
+    # Build flat linear indices broadcasting to (B, C, kh, kw, out_h, out_w).
+    # Each element maps to img[b, c, h + sh*p, w + sw*q] = flat index:
+    #   b*(C*in_h*in_w) + c*(in_h*in_w) + (h+sh*p)*in_w + (w+sw*q)
+    b_idx = cp.arange(B, dtype=cp.int64).reshape(B, 1, 1, 1, 1, 1) * (C * in_h * in_w)
+    c_idx = cp.arange(C, dtype=cp.int64).reshape(1, C, 1, 1, 1, 1) * (in_h * in_w)
+    h_idx = (
+        cp.arange(kh, dtype=cp.int64).reshape(1, 1, kh, 1, 1, 1)
+        + sh * cp.arange(out_h, dtype=cp.int64).reshape(1, 1, 1, 1, out_h, 1)
+    ) * in_w
+    w_idx = cp.arange(kw, dtype=cp.int64).reshape(1, 1, 1, kw, 1, 1) + sw * cp.arange(
+        out_w, dtype=cp.int64
+    ).reshape(1, 1, 1, 1, 1, out_w)
+
+    flat_idx = b_idx + c_idx + h_idx + w_idx  # broadcasts to (B, C, kh, kw, out_h, out_w)
+
+    img_flat = cp.zeros(B * C * in_h * in_w, dtype=rec_fields.dtype)
+    cp.scatter_add(img_flat, flat_idx.ravel(), rec_fields.ravel())
+    return img_flat.reshape(img_shape)
+
+
 class _Conv2dNoPad(Function):
     oper = "conv2d_no_pad"
 
@@ -203,6 +256,25 @@ class _Conv2dNoPad(Function):
             grad_bias = xp.sum(grad_output, axis=(0, 2, 3))
             return grad_padded_input, grad_weight, grad_bias
         return grad_padded_input, grad_weight
+
+
+if _CUPY:
+
+    def _conv2d_no_pad_cuda_bwd(ctx, grad_output):
+        xp = ctx.backend
+        grad_weight = xp.einsum("bihwpq,bopq->oihw", ctx.rec_fields, grad_output, optimize=True)
+        rec_fields_grad = xp.einsum(
+            "bopq,oihw->bihwpq", grad_output, ctx.weight, optimize=True
+        )
+        grad_padded_input = _get_img_from_rec_fields_cuda(
+            rec_fields_grad, xp, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw
+        )
+        if ctx.has_bias:
+            grad_bias = xp.sum(grad_output, axis=(0, 2, 3))
+            return grad_padded_input, grad_weight, grad_bias
+        return grad_padded_input, grad_weight
+
+    _Conv2dNoPad.cuda_backward = _conv2d_no_pad_cuda_bwd
 
 
 def _conv2d_no_pad(

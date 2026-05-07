@@ -78,29 +78,26 @@ def _collect(t, seen=None):
     return result
 
 
-def test_softmax_internal_tensors_are_grouped():
+def test_softmax_is_single_node():
     from simplegrad.functions.activations import softmax
 
     x = Tensor([[1.0, 2.0, 3.0]], comp_grad=True)
     out = softmax(x, dim=1)
-    # output sits outside the cluster; only intermediates are grouped
+    # softmax is now a single Function node — no internal intermediates
+    assert out.oper == "Softmax"
     assert out.group is None
     internal = [t for t in _collect(out) if t is not x and t is not out]
-    assert all(t.group is not None for t in internal)
-    group_ids = {t.group[1] for t in internal}
-    assert len(group_ids) == 1
-    assert internal[0].group[0] == "softmax"
+    assert len(internal) == 0
 
 
-def test_softmax_graph_contains_cluster():
+def test_softmax_graph_contains_node():
     from simplegrad.functions.activations import softmax
     from simplegrad.visual.inline_comp_graph import graph as render_graph
 
     x = Tensor([[1.0, 2.0, 3.0]], comp_grad=True, label="x")
     out = softmax(x, dim=1)
     g = render_graph(out)
-    assert "cluster_" in g.source
-    assert "softmax" in g.source
+    assert "Softmax" in g.source
 
 
 def test_relu_graph_has_no_cluster():
@@ -113,7 +110,7 @@ def test_relu_graph_has_no_cluster():
     assert "cluster_" not in g.source
 
 
-def test_two_softmax_calls_produce_two_clusters():
+def test_two_softmax_calls_produce_two_nodes():
     from simplegrad.functions.activations import softmax
     from simplegrad.visual.inline_comp_graph import graph as render_graph
 
@@ -121,4 +118,4 @@ def test_two_softmax_calls_produce_two_clusters():
     a = softmax(x, dim=1)
     b = softmax(a, dim=1)
     g = render_graph(b)
-    assert g.source.count("cluster_") == 2
+    assert g.source.count("label=Softmax") == 2

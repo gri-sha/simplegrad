@@ -8,10 +8,10 @@ import numpy as np
 try:
     import cupy as cp
 
-    _CUPY_AVAILABLE = True
+    _CUPY = True
 except ImportError:
     cp = None
-    _CUPY_AVAILABLE = False
+    _CUPY = False
 
 _DEFAULT_DEVICE: str = "cpu"
 _CUDA_DEVICE_RE = re.compile(
@@ -32,7 +32,7 @@ def cuda_is_available(verbose: bool = False) -> bool:
     Returns:
         True if CUDA is usable, False otherwise.
     """
-    if not _CUPY_AVAILABLE:
+    if not _CUPY:
         if verbose:
             print("CuPy is not installed. Install it to use CUDA devices.")
         return False
@@ -135,7 +135,7 @@ def available_devices() -> dict[str, str]:
             }
     """
     devices: dict[str, str] = {"cpu": _cpu_description()}
-    if _CUPY_AVAILABLE:
+    if _CUPY:
         try:
             n = cp.cuda.runtime.getDeviceCount()
             for i in range(n):
@@ -213,7 +213,7 @@ def get_backend(device: str):
     if device == "cpu":
         return np
     if _CUDA_DEVICE_RE.match(device):
-        if not _CUPY_AVAILABLE:
+        if not _CUPY:
             raise RuntimeError(
                 "CuPy is not installed. Install it to use CUDA devices. "
                 "See https://docs.cupy.dev/en/stable/install.html"

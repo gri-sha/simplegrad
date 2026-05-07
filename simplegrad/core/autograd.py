@@ -156,6 +156,8 @@ class Function:
 
     oper: str = ""
     differentiable: bool = True
+    cuda_forward = None  # override with a function for a fused CUDA forward path
+    cuda_backward = None  # override with a function for a fused CUDA backward path
 
     @classmethod
     def apply(cls, *inputs: object, oper: str | None = None) -> "Tensor":
@@ -177,8 +179,13 @@ class Function:
         device = validate_same_device(*tensor_inputs)
         ctx.device = device
         ctx.backend = get_backend(device)
+        on_cuda = device != "cpu"
+        if on_cuda and cls.cuda_forward is not None:
+            forward_fn = lambda: cls.cuda_forward(ctx, *inputs)
+        else:
+            forward_fn = lambda: cls.forward(ctx, *inputs)
         out = _create_op_result(
-            lambda: cls.forward(ctx, *inputs),
+            forward_fn,
             shape=cls.output_shape(*inputs),
             dtype=tensor_inputs[0].dtype,
             device=device,
@@ -194,7 +201,10 @@ class Function:
     @classmethod
     def _accumulate(cls, ctx, out, tensor_inputs: list) -> None:
         """This is a wrapper around backward for gradient accumulation: calls backward() and accumulates returned gradients into .grad of each input tensor."""
-        grads = cls.backward(ctx, out.grad)
+        if ctx.device != "cpu" and cls.cuda_backward is not None:
+            grads = cls.cuda_backward(ctx, out.grad)
+        else:
+            grads = cls.backward(ctx, out.grad)
         if not isinstance(grads, tuple):
             grads = (grads,)
         for inp, grad in zip(tensor_inputs, grads):

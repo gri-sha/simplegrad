@@ -1,7 +1,8 @@
 """Pooling operations with autograd support."""
 
 from ..core import Tensor, Function, Context
-from .conv import pad, _get_rec_fields_from_img, _get_img_from_rec_fields
+from ..core.devices import _CUPY
+from .conv import pad, _get_rec_fields_from_img, _get_img_from_rec_fields, _get_img_from_rec_fields_cuda
 
 
 class _MaxPool2d(Function):
@@ -59,6 +60,31 @@ class _MaxPool2d(Function):
         return _get_img_from_rec_fields(
             rec_fields_grad, xp, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw
         )
+
+
+if _CUPY:
+
+    def _max_pool2d_cuda_bwd(ctx, grad_output):
+        xp = ctx.backend
+        mask = xp.zeros(
+            (ctx.batch_size, ctx.channels, ctx.kh * ctx.kw, ctx.out_h, ctx.out_w),
+            dtype=grad_output.dtype,
+        )
+        b_idx = xp.arange(ctx.batch_size)[:, None, None, None]
+        c_idx = xp.arange(ctx.channels)[None, :, None, None]
+        h_idx = xp.arange(ctx.out_h)[None, None, :, None]
+        w_idx = xp.arange(ctx.out_w)[None, None, None, :]
+        mask[b_idx, c_idx, ctx.max_idx, h_idx, w_idx] = 1.0
+
+        rec_fields_grad = mask * grad_output[:, :, None, :, :]
+        rec_fields_grad = rec_fields_grad.reshape(
+            ctx.batch_size, ctx.channels, ctx.kh, ctx.kw, ctx.out_h, ctx.out_w
+        )
+        return _get_img_from_rec_fields_cuda(
+            rec_fields_grad, xp, ctx.padded_input_shape, ctx.kh, ctx.kw, ctx.sh, ctx.sw
+        )
+
+    _MaxPool2d.cuda_backward = _max_pool2d_cuda_bwd
 
 
 def max_pool2d(
